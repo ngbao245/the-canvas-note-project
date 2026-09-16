@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bibo — Workspaces</title>
+<link rel="stylesheet" href="shared.css" />
+<script src="icons.js"></script>
+<style>
+  .ws-card {
+    padding: 20px; border: 1px solid var(--border); border-radius: 12px;
+    background: var(--card); display: flex; gap: 16px;
+    transition: border-color var(--duration-normal) var(--easing-standard);
+  }
+  .ws-card:hover { border-color: var(--border-strong); }
+  .ws-card.current { border-color: var(--primary); background: color-mix(in srgb, var(--primary-soft) 40%, var(--card)); }
+  .ws-icon {
+    width: 52px; height: 52px; border-radius: 12px;
+    display: grid; place-items: center; flex-shrink: 0;
+    background: var(--primary-soft); color: var(--primary);
+  }
+  .ws-icon.success { background: var(--success-soft); color: var(--success); }
+  .ws-icon.warning { background: var(--warning-soft); color: var(--warning); }
+  .ws-body { flex: 1; min-width: 0; }
+  .ws-body h3 { margin: 0 0 4px; font-size: 15px; }
+  .ws-body p { margin: 0 0 12px; color: var(--muted-foreground); font-size: 12.5px; }
+  .ws-meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--muted-foreground); }
+  .ws-meta span { display: inline-flex; align-items: center; gap: 4px; }
+  .ws-actions { display: flex; gap: 6px; }
+  .role-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 7px; border-radius: 6px;
+    background: var(--muted); color: var(--muted-foreground);
+    font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .role-badge.owner { background: var(--primary-soft); color: var(--primary); }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark"><svg class="icon"><use href="#i-grid"/></svg></span>
+      <span class="brand-name">bibo</span>
+    </div>
+    <nav class="nav-section">
+      <div class="nav-label">Workspace</div>
+      <div class="nav-list">
+        <a class="nav-item" href="02-app-home.html"><svg class="icon"><use href="#i-home"/></svg><span>Home</span></a>
+        <a class="nav-item" href="04-canvas.html"><svg class="icon"><use href="#i-canvas"/></svg><span>Canvas</span></a>
+        <a class="nav-item" href="07-notes.html"><svg class="icon"><use href="#i-note"/></svg><span>Notes</span></a>
+        <a class="nav-item" href="08-sources.html"><svg class="icon"><use href="#i-source"/></svg><span>Sources</span></a>
+      </div>
+    </nav>
+    <nav class="nav-section">
+      <div class="nav-label">Manage</div>
+      <div class="nav-list">
+        <a class="nav-item active" href="03-workspaces.html"><svg class="icon"><use href="#i-users"/></svg><span>Workspaces</span></a>
+        <a class="nav-item" href="05-plugin-store.html"><svg class="icon"><use href="#i-store"/></svg><span>Plugin Store</span></a>
+        <a class="nav-item" href="10-settings.html"><svg class="icon"><use href="#i-settings"/></svg><span>Settings</span></a>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="main-shell">
+    <header class="topbar">
+      <label class="workspace-switcher">
+        <span class="workspace-dot"></span>
+        <select class="workspace-select"><option>Research Lab</option></select>
+        <svg class="icon icon-sm" style="transform: rotate(90deg)"><use href="#i-chevron"/></svg>
+      </label>
+      <div class="topbar-spacer"></div>
+      <a href="index.html" class="top-action"><svg class="icon icon-sm"><use href="#i-grid"/></svg> Mockup Index</a>
+      <div class="avatar">BN</div>
+    </header>
+
+    <div class="content">
+      <section class="page-intro">
+        <div>
+          <div class="eyebrow"><svg class="icon icon-sm"><use href="#i-users"/></svg> Quản lý</div>
+          <h1>Workspaces</h1>
+          <p>Mỗi workspace có plugin, permission và thành viên riêng. Tối đa 5 workspace cho gói cá nhân.</p>
+        </div>
+        <button class="btn btn-primary"><svg class="icon icon-sm"><use href="#i-plus"/></svg> Tạo workspace mới</button>
+      </section>
+
+      <div class="stack" style="gap: 12px;">
+        <div class="ws-card current">
+          <div class="ws-icon"><svg class="icon icon-lg"><use href="#i-canvas"/></svg></div>
+          <div class="ws-body">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <h3>Research Lab</h3>
+              <span class="role-badge owner">Owner</span>
+              <span class="chip primary">Đang mở</span>
+            </div>
+            <p>Phân tích tài liệu, BCTC, memo. Plugin nghiêng về research + finance.</p>
+            <div class="ws-meta">
+              <span><svg class="icon icon-sm"><use href="#i-package"/></svg> 4 plugin</span>
+              <span><svg class="icon icon-sm"><use href="#i-file"/></svg> 12 sources</span>
+              <span><svg class="icon icon-sm"><use href="#i-note"/></svg> 24 notes</span>
+              <span><svg class="icon icon-sm"><use href="#i-users"/></svg> 1 thành viên</span>
+              <span><svg class="icon icon-sm"><use href="#i-clock"/></svg> Truy cập 2m trước</span>
+            </div>
+          </div>
+          <div class="ws-actions">
+            <button class="btn"><svg class="icon icon-sm"><use href="#i-settings"/></svg> Cài đặt</button>
+            <button class="btn btn-primary"><svg class="icon icon-sm"><use href="#i-arrow-right"/></svg> Mở</button>
+          </div>
+        </div>
+
+        <div class="ws-card">
+          <div class="ws-icon warning"><svg class="icon icon-lg"><use href="#i-briefcase"/></svg></div>
+          <div class="ws-body">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <h3>Agency Workspace</h3>
+              <span class="role-badge owner">Owner</span>
+            </div>
+            <p>Client brief, campaign, deliverable. Plugin agency workflow đã cài.</p>
+            <div class="ws-meta">
+              <span><svg class="icon icon-sm"><use href="#i-package"/></svg> 3 plugin</span>
+              <span><svg class="icon icon-sm"><use href="#i-file"/></svg> 8 sources</span>
+              <span><svg class="icon icon-sm"><use href="#i-note"/></svg> 15 notes</span>
+              <span><svg class="icon icon-sm"><use href="#i-users"/></svg> 3 thành viên</span>
+              <span><svg class="icon icon-sm"><use href="#i-clock"/></svg> Truy cập hôm qua</span>
+            </div>
+          </div>
+          <div class="ws-actions">
+            <button class="btn"><svg class="icon icon-sm"><use href="#i-settings"/></svg> Cài đặt</button>
+            <button class="btn"><svg class="icon icon-sm"><use href="#i-arrow-right"/></svg> Mở</button>
+          </div>
+        </div>
+
+        <div class="ws-card">
+          <div class="ws-icon success"><svg class="icon icon-lg"><use href="#i-home"/></svg></div>
+          <div class="ws-body">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <h3>Personal Hub</h3>
+              <span class="role-badge owner">Owner</span>
+            </div>
+            <p>Không gian cá nhân: đọc sách, journal, dịch. Đa số plugin miễn phí.</p>
+            <div class="ws-meta">
+              <span><svg class="icon icon-sm"><use href="#i-package"/></svg> 6 plugin</span>
+              <span><svg class="icon icon-sm"><use href="#i-file"/></svg> 42 sources</span>
+              <span><svg class="icon icon-sm"><use href="#i-note"/></svg> 108 notes</span>
+              <span><svg class="icon icon-sm"><use href="#i-users"/></svg> 1 thành viên</span>
+              <span><svg class="icon icon-sm"><use href="#i-clock"/></svg> Truy cập tuần trước</span>
+            </div>
+          </div>
+          <div class="ws-actions">
+            <button class="btn"><svg class="icon icon-sm"><use href="#i-settings"/></svg> Cài đặt</button>
+            <button class="btn"><svg class="icon icon-sm"><use href="#i-arrow-right"/></svg> Mở</button>
+          </div>
+        </div>
+
+        <div class="ws-card" style="opacity: 0.7;">
+          <div class="ws-icon" style="background: var(--muted); color: var(--muted-foreground);"><svg class="icon icon-lg"><use href="#i-inbox"/></svg></div>
+          <div class="ws-body">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <h3>Nova Kim's Workspace</h3>
+              <span class="role-badge">Guest</span>
+            </div>
+            <p>Được mời làm thành viên. Chỉ có quyền đọc.</p>
+            <div class="ws-meta">
+              <span><svg class="icon icon-sm"><use href="#i-package"/></svg> 5 plugin</span>
+              <span><svg class="icon icon-sm"><use href="#i-users"/></svg> 4 thành viên</span>
+              <span><svg class="icon icon-sm"><use href="#i-clock"/></svg> Chưa vào</span>
+            </div>
+          </div>
+          <div class="ws-actions">
+            <button class="btn"><svg class="icon icon-sm"><use href="#i-arrow-right"/></svg> Mở</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 32px; padding: 20px; border: 1px dashed var(--border-strong); border-radius: 12px; display: flex; align-items: center; gap: 14px;">
+        <div style="width: 44px; height: 44px; border-radius: 10px; background: var(--muted); color: var(--muted-foreground); display: grid; place-items: center;">
+          <svg class="icon icon-lg"><use href="#i-plus"/></svg>
+        </div>
+        <div style="flex: 1;">
+          <strong>Nhập workspace từ bibo-hub</strong>
+          <p style="margin: 4px 0 0; color: var(--muted-foreground); font-size: 12.5px;">Bibo có thể import setting + data từ workspace bibo-hub cũ của bạn.</p>
+        </div>
+        <button class="btn"><svg class="icon icon-sm"><use href="#i-download"/></svg> Nhập từ backup</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

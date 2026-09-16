@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bibo — Object Inspector</title>
+<link rel="stylesheet" href="shared.css" />
+<script src="icons.js"></script>
+<style>
+  body { display: grid; place-items: center; min-height: 100vh; padding: 40px 20px; }
+  .demo-wrap { display: flex; gap: 32px; align-items: flex-start; max-width: 900px; width: 100%; flex-wrap: wrap; }
+  .demo-note { flex: 1; min-width: 280px; color: var(--muted-foreground); font-size: 13px; line-height: 1.7; }
+  .demo-note h1 { color: var(--foreground); font-size: 22px; letter-spacing: -0.02em; margin: 0 0 8px; }
+  .demo-note ul { padding-left: 18px; }
+  .demo-note li { margin-bottom: 6px; }
+  .inspector-standalone {
+    width: 320px; border: 1px solid var(--border); border-radius: 14px;
+    background: var(--card); box-shadow: var(--shadow); overflow: hidden;
+  }
+  .insp-header { padding: 16px; border-bottom: 1px solid var(--border); }
+  .insp-header .row { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+  .insp-header strong { font-size: 14px; }
+  .insp-header .sub { font-size: 11.5px; color: var(--subtle-foreground); }
+  .insp-content { padding: 16px; }
+  .insp-block { margin-bottom: 18px; }
+  .insp-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--subtle-foreground); margin-bottom: 8px; }
+  .prov { border: 1px solid var(--border); border-radius: 8px; background: var(--background); padding: 10px; }
+  .prov-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+  .prov-row span:first-child { color: var(--muted-foreground); }
+  .bar { height: 6px; border-radius: 3px; background: var(--muted); overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--success); }
+  .rel { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted-foreground); padding: 6px 0; }
+  .rel .tag { font-size: 10px; border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; color: var(--subtle-foreground); }
+  .rel b { color: var(--foreground); font-weight: 500; }
+  .act-btn { width: 100%; text-align: left; border: 1px solid var(--border); border-radius: 7px; background: var(--background); color: var(--foreground); padding: 8px 10px; font-size: 12.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 9px; }
+  .act-btn:hover { border-color: var(--border-strong); background: var(--muted); }
+  .act-btn .icon { color: var(--primary); }
+</style>
+</head>
+<body>
+
+<div class="demo-wrap">
+  <div class="demo-note">
+    <h1>Object Inspector</h1>
+    <p>Panel bên phải xuất hiện khi chọn 1 object bất kỳ (finding, table, note, source). Đây là nơi bibo thể hiện triết lý provenance.</p>
+    <ul>
+      <li><strong>Provenance</strong>: mọi object biết mình từ đâu ra, click mở đúng đoạn nguồn.</li>
+      <li><strong>Độ tin cậy</strong>: với object AI trích xuất, hiện % confidence.</li>
+      <li><strong>Quan hệ</strong>: object này liên kết với object nào (derived from, supports, compares).</li>
+      <li><strong>Contextual action</strong>: action đến từ plugin, chỉ hiện action hợp với loại object.</li>
+    </ul>
+    <p><a href="index.html">← Về Mockup Index</a></p>
+  </div>
+
+  <aside class="inspector-standalone">
+    <div class="insp-header">
+      <div class="row"><span class="chip warning">FINDING</span><strong>Biến động cần chú ý</strong></div>
+      <div class="sub">Object trên Canvas · cập nhật 2 phút trước</div>
+    </div>
+    <div class="insp-content">
+      <div class="insp-block">
+        <div class="insp-label">Provenance</div>
+        <div class="prov">
+          <div class="prov-row"><span>File</span><span>BCTC 2024.pdf</span></div>
+          <div class="prov-row"><span>Trang</span><span>18</span></div>
+          <div class="prov-row"><span>Mục</span><span>25 — Chi phí</span></div>
+          <button class="btn btn-primary" style="width: 100%; margin-top: 9px; height: 32px; font-size: 12px;"><svg class="icon icon-sm"><use href="#i-external"/></svg> Mở đúng đoạn nguồn</button>
+        </div>
+      </div>
+
+      <div class="insp-block">
+        <div class="insp-label">Độ tin cậy trích xuất</div>
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted-foreground);">
+          <div class="bar" style="flex: 1;"><i style="width: 94%;"></i></div> 94%
+        </div>
+      </div>
+
+      <div class="insp-block">
+        <div class="insp-label">Quan hệ</div>
+        <div class="rel"><span class="tag">compares</span> <b>Metric 2023 + 2024</b></div>
+        <div class="rel"><span class="tag">derived from</span> <b>So sánh 2023 → 2024</b></div>
+        <div class="rel"><span class="tag">supports</span> <b>Memo · Mục 3</b></div>
+      </div>
+
+      <div class="insp-block">
+        <div class="insp-label">Contextual actions</div>
+        <button class="act-btn"><svg class="icon icon-sm"><use href="#i-zap"/></svg> Giải thích biến động</button>
+        <button class="act-btn"><svg class="icon icon-sm"><use href="#i-chart"/></svg> Kiểm tra chỉ tiêu liên quan</button>
+        <button class="act-btn"><svg class="icon icon-sm"><use href="#i-note"/></svg> Tạo note từ finding</button>
+        <button class="act-btn"><svg class="icon icon-sm"><use href="#i-arrow-right"/></svg> Thêm vào memo</button>
+      </div>
+    </div>
+  </aside>
+</div>
+
+</body>
+</html>

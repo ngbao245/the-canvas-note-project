@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bibo — App Home</title>
+<link rel="stylesheet" href="shared.css" />
+<script src="icons.js"></script>
+<style>
+  .stat-card {
+    display: flex; flex-direction: column; gap: 6px;
+    padding: 16px; border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--card);
+  }
+  .stat-card .label { color: var(--muted-foreground); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .stat-card .value { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+  .stat-card .delta { font-size: 11px; color: var(--success); }
+  .quick-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .quick-action {
+    display: flex; flex-direction: column; gap: 10px; align-items: flex-start;
+    padding: 14px; border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--card); text-align: left; text-decoration: none; color: inherit;
+    transition: border-color var(--duration-normal) var(--easing-standard);
+  }
+  .quick-action:hover { border-color: var(--primary); }
+  .quick-action .icon-box {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--primary-soft); color: var(--primary);
+    display: grid; place-items: center;
+  }
+  .quick-action h4 { margin: 0; font-size: 13px; }
+  .quick-action p { margin: 0; color: var(--muted-foreground); font-size: 11px; }
+  .activity-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 8px;
+  }
+  .activity-item:hover { background: var(--muted); }
+  .activity-avatar {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--primary-soft); color: var(--primary);
+    display: grid; place-items: center; flex-shrink: 0;
+  }
+  .activity-body { flex: 1; min-width: 0; }
+  .activity-body strong { font-size: 13px; }
+  .activity-body p { margin: 2px 0 0; color: var(--muted-foreground); font-size: 11.5px; }
+  .activity-time { color: var(--subtle-foreground); font-size: 11px; }
+  @media (max-width: 900px) {
+    .quick-actions { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark"><svg class="icon"><use href="#i-grid"/></svg></span>
+      <span class="brand-name">bibo</span>
+    </div>
+    <nav class="nav-section">
+      <div class="nav-label">Workspace</div>
+      <div class="nav-list">
+        <a class="nav-item active" href="02-app-home.html"><svg class="icon"><use href="#i-home"/></svg><span>Home</span></a>
+        <a class="nav-item" href="04-canvas.html"><svg class="icon"><use href="#i-canvas"/></svg><span>Canvas</span></a>
+        <a class="nav-item" href="07-notes.html"><svg class="icon"><use href="#i-note"/></svg><span>Notes</span><span class="nav-count">24</span></a>
+        <a class="nav-item" href="08-sources.html"><svg class="icon"><use href="#i-source"/></svg><span>Sources</span><span class="nav-count">12</span></a>
+        <a class="nav-item" href="#"><svg class="icon"><use href="#i-inbox"/></svg><span>Inbox</span></a>
+      </div>
+    </nav>
+    <nav class="nav-section">
+      <div class="nav-label">Capabilities</div>
+      <div class="nav-list">
+        <a class="nav-item" href="05-plugin-store.html"><svg class="icon"><use href="#i-store"/></svg><span>Plugin Store</span></a>
+        <a class="nav-item" href="#"><svg class="icon"><use href="#i-package"/></svg><span>Installed</span><span class="nav-count">4</span></a>
+        <a class="nav-item" href="10-settings.html"><svg class="icon"><use href="#i-settings"/></svg><span>Settings</span></a>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <a class="nav-item" href="03-workspaces.html"><svg class="icon"><use href="#i-users"/></svg><span>Manage workspaces</span></a>
+    </div>
+  </aside>
+
+  <main class="main-shell">
+    <header class="topbar">
+      <label class="workspace-switcher">
+        <span class="workspace-dot"></span>
+        <select class="workspace-select">
+          <option>Research Lab</option>
+          <option>Agency Workspace</option>
+          <option>Personal Hub</option>
+        </select>
+        <svg class="icon icon-sm" style="transform: rotate(90deg)"><use href="#i-chevron"/></svg>
+      </label>
+      <div class="topbar-spacer"></div>
+      <a class="top-action" href="09-command-palette.html"><svg class="icon icon-sm"><use href="#i-command"/></svg> Commands <span style="color: var(--subtle-foreground); font-size: 10px">Ctrl K</span></a>
+      <button class="top-action" style="width: 38px;"><svg class="icon"><use href="#i-bell"/></svg></button>
+      <button class="top-action" style="width: 38px;"><svg class="icon"><use href="#i-moon"/></svg></button>
+      <div class="avatar">BN</div>
+    </header>
+
+    <div class="content">
+      <section class="page-intro">
+        <div>
+          <div class="eyebrow"><svg class="icon icon-sm"><use href="#i-home"/></svg> Xin chào Bảo</div>
+          <h1>Sáng nay có gì cần xử?</h1>
+          <p>Research Lab đang có 3 finding chưa review và 1 memo đang chờ hoàn thiện.</p>
+        </div>
+      </section>
+
+      <section class="stack" style="gap: 24px;">
+        <div class="grid-4">
+          <div class="stat-card">
+            <span class="label">Notes</span>
+            <span class="value">24</span>
+            <span class="delta">+3 tuần này</span>
+          </div>
+          <div class="stat-card">
+            <span class="label">Sources</span>
+            <span class="value">12</span>
+            <span class="delta">+2 hôm nay</span>
+          </div>
+          <div class="stat-card">
+            <span class="label">Findings</span>
+            <span class="value">8</span>
+            <span class="delta">3 chưa review</span>
+          </div>
+          <div class="stat-card">
+            <span class="label">Plugin</span>
+            <span class="value">4</span>
+            <span class="delta" style="color: var(--muted-foreground);">/ 12 available</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-heading">
+            <h2>Quick actions</h2>
+            <span>Truy cập nhanh capability đã cài</span>
+          </div>
+          <div class="quick-actions">
+            <a class="quick-action" href="04-canvas.html">
+              <div class="icon-box"><svg class="icon"><use href="#i-canvas"/></svg></div>
+              <div>
+                <h4>Mở canvas mới</h4>
+                <p>Bắt đầu phân tích trên canvas trống</p>
+              </div>
+            </a>
+            <a class="quick-action" href="07-notes.html">
+              <div class="icon-box"><svg class="icon"><use href="#i-note"/></svg></div>
+              <div>
+                <h4>Tạo note nhanh</h4>
+                <p>Ghi chú không cần rời home</p>
+              </div>
+            </a>
+            <a class="quick-action" href="08-sources.html">
+              <div class="icon-box"><svg class="icon"><use href="#i-source"/></svg></div>
+              <div>
+                <h4>Import PDF</h4>
+                <p>Kéo thả hoặc chọn file</p>
+              </div>
+            </a>
+            <a class="quick-action" href="05-plugin-store.html">
+              <div class="icon-box"><svg class="icon"><use href="#i-store"/></svg></div>
+              <div>
+                <h4>Thêm plugin</h4>
+                <p>Duyệt catalog capability</p>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <div class="grid" style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 18px;">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Hoạt động gần đây</h3>
+              <a href="#" style="margin-left: auto; font-size: 12px;">Xem tất cả</a>
+            </div>
+            <div>
+              <div class="activity-item">
+                <div class="activity-avatar"><svg class="icon icon-sm"><use href="#i-file"/></svg></div>
+                <div class="activity-body">
+                  <strong>BCTC 2024.pdf</strong> được import
+                  <p>3 bảng đã trích tự động · plugin PDF Research</p>
+                </div>
+                <span class="activity-time">5m</span>
+              </div>
+              <div class="activity-item">
+                <div class="activity-avatar"><svg class="icon icon-sm"><use href="#i-star"/></svg></div>
+                <div class="activity-body">
+                  <strong>Finding mới</strong>: Chi phí bán hàng +60.9%
+                  <p>Trên Canvas "BCTC Analysis" · trang 18</p>
+                </div>
+                <span class="activity-time">12m</span>
+              </div>
+              <div class="activity-item">
+                <div class="activity-avatar"><svg class="icon icon-sm"><use href="#i-note"/></svg></div>
+                <div class="activity-body">
+                  <strong>Memo phân tích Q1</strong> lưu bản nháp
+                  <p>4 section · 2 citation</p>
+                </div>
+                <span class="activity-time">1h</span>
+              </div>
+              <div class="activity-item">
+                <div class="activity-avatar"><svg class="icon icon-sm"><use href="#i-package"/></svg></div>
+                <div class="activity-body">
+                  <strong>Plugin Financial Analysis</strong> cài vào workspace
+                  <p>Kích hoạt 3 object type, 5 action</p>
+                </div>
+                <span class="activity-time">2h</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Đang chờ review</h3>
+            </div>
+            <div class="stack-sm">
+              <div style="padding: 10px; border: 1px solid var(--border); border-radius: 8px;">
+                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                  <span class="chip warning">FINDING</span>
+                  <span style="font-size: 11px; color: var(--muted-foreground);">2h trước</span>
+                </div>
+                <strong style="font-size: 13px;">Chi phí bán hàng tăng bất thường</strong>
+                <p style="margin: 4px 0 0; color: var(--muted-foreground); font-size: 12px;">BCTC 2024 · Trang 18</p>
+              </div>
+              <div style="padding: 10px; border: 1px solid var(--border); border-radius: 8px;">
+                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                  <span class="chip warning">FINDING</span>
+                  <span style="font-size: 11px; color: var(--muted-foreground);">3h trước</span>
+                </div>
+                <strong style="font-size: 13px;">Biên LN gộp giảm 0.8đ</strong>
+                <p style="margin: 4px 0 0; color: var(--muted-foreground); font-size: 12px;">So sánh 2023 → 2024</p>
+              </div>
+              <div style="padding: 10px; border: 1px solid var(--border); border-radius: 8px;">
+                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                  <span class="chip primary">MEMO</span>
+                  <span style="font-size: 11px; color: var(--muted-foreground);">1h trước</span>
+                </div>
+                <strong style="font-size: 13px;">Memo phân tích Q1 · nháp</strong>
+                <p style="margin: 4px 0 0; color: var(--muted-foreground); font-size: 12px;">Cần bổ sung kết luận</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

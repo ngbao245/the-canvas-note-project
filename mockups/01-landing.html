@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bibo — Landing công khai</title>
+<link rel="stylesheet" href="shared.css" />
+<script src="icons.js"></script>
+<style>
+  body { background: var(--background); }
+  .nav {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; gap: 22px;
+    padding: 14px 32px; border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--background) 88%, transparent);
+    backdrop-filter: blur(14px);
+  }
+  .nav-brand { display: flex; align-items: center; gap: 10px; font-weight: 720; }
+  .nav-brand .brand-mark { width: 30px; height: 30px; }
+  .nav-links { display: flex; gap: 24px; margin-left: auto; }
+  .nav-links a { color: var(--muted-foreground); font-size: 13px; font-weight: 550; }
+  .nav-links a:hover { color: var(--foreground); }
+  .hero {
+    padding: 80px 32px 60px; text-align: center;
+    background: radial-gradient(ellipse at 50% 0%, var(--primary-soft), transparent 60%);
+  }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 11px; margin-bottom: 24px;
+    border-radius: 999px; background: var(--primary-soft); color: var(--primary);
+    font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .hero h1 {
+    max-width: 900px; margin: 0 auto 20px;
+    font-size: clamp(38px, 5vw, 68px); line-height: 1.05; letter-spacing: -0.04em;
+  }
+  .hero h1 em { color: var(--primary); font-style: normal; }
+  .hero-sub {
+    max-width: 680px; margin: 0 auto 32px;
+    color: var(--muted-foreground); font-size: 17px; line-height: 1.55;
+  }
+  .hero-cta { display: inline-flex; gap: 10px; }
+  .hero-preview {
+    max-width: 1100px; margin: 60px auto 0;
+    border: 1px solid var(--border); border-radius: 14px;
+    background: var(--card); box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .preview-topbar {
+    display: flex; gap: 6px; padding: 12px 16px;
+    border-bottom: 1px solid var(--border); background: var(--card-elevated);
+  }
+  .preview-topbar span {
+    width: 12px; height: 12px; border-radius: 50%; background: var(--muted);
+  }
+  .preview-topbar span:nth-child(1) { background: #f0716f; }
+  .preview-topbar span:nth-child(2) { background: #f0b34e; }
+  .preview-topbar span:nth-child(3) { background: #46c98b; }
+  .preview-body {
+    display: grid; grid-template-columns: 200px 1fr 240px;
+    min-height: 340px;
+  }
+  .preview-body > div { padding: 16px; border-right: 1px solid var(--border); }
+  .preview-body > div:last-child { border-right: 0; }
+  .preview-body .col-title { font-size: 10px; text-transform: uppercase; color: var(--subtle-foreground); letter-spacing: 0.08em; margin-bottom: 8px; }
+  .preview-body .item { padding: 6px 8px; border-radius: 6px; font-size: 12px; color: var(--muted-foreground); margin-bottom: 3px; }
+  .preview-body .item.active { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+  .preview-card {
+    padding: 14px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--card-elevated); margin-bottom: 8px;
+  }
+  .preview-card h4 { margin: 0 0 4px; font-size: 12px; }
+  .preview-card p { margin: 0; font-size: 11px; color: var(--muted-foreground); }
+  .features {
+    max-width: 1200px; margin: 100px auto 0;
+    padding: 0 32px;
+  }
+  .features h2 {
+    text-align: center; font-size: clamp(28px, 3vw, 40px);
+    letter-spacing: -0.03em; margin: 0 0 12px;
+  }
+  .features-sub {
+    text-align: center; color: var(--muted-foreground); max-width: 600px; margin: 0 auto 40px;
+  }
+  .feature-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+  }
+  .feature-card {
+    padding: 24px; border: 1px solid var(--border); border-radius: 12px; background: var(--card);
+  }
+  .feature-icon {
+    width: 42px; height: 42px; border-radius: 10px;
+    background: var(--primary-soft); color: var(--primary);
+    display: grid; place-items: center; margin-bottom: 14px;
+  }
+  .feature-card h3 { margin: 0 0 6px; font-size: 15px; letter-spacing: -0.01em; }
+  .feature-card p { margin: 0; color: var(--muted-foreground); font-size: 13px; line-height: 1.55; }
+  .footer {
+    margin-top: 100px; padding: 40px 32px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 24px;
+    color: var(--muted-foreground); font-size: 12px;
+  }
+  .footer .brand-mark { width: 26px; height: 26px; }
+  @media (max-width: 780px) {
+    .feature-grid { grid-template-columns: 1fr; }
+    .preview-body { grid-template-columns: 1fr; }
+    .preview-body > div { border-right: 0; border-bottom: 1px solid var(--border); }
+    .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="nav-brand" href="index.html">
+    <span class="brand-mark"><svg class="icon"><use href="#i-grid"/></svg></span>
+    bibo
+  </a>
+  <div class="nav-links">
+    <a href="#features">Tính năng</a>
+    <a href="05-plugin-store.html">Plugin</a>
+    <a href="#docs">Tài liệu</a>
+    <a href="#pricing">Bảng giá</a>
+  </div>
+  <a href="02-app-home.html" class="btn btn-primary" style="height: 34px; padding: 0 14px; font-size: 12px;">
+    Vào app <svg class="icon icon-sm"><use href="#i-arrow-right"/></svg>
+  </a>
+</nav>
+
+<section class="hero">
+  <span class="hero-eyebrow"><svg class="icon icon-sm"><use href="#i-zap"/></svg> Nền tảng workspace theo plugin</span>
+  <h1>Một workspace, <em>mọi công việc</em>, không rối.</h1>
+  <p class="hero-sub">
+    bibo là môi trường làm việc theo canvas + plugin. Nạp đúng capability cho từng workspace, giữ context xuyên suốt, provenance đầy đủ.
+  </p>
+  <div class="hero-cta">
+    <a href="02-app-home.html" class="btn btn-primary" style="height: 44px; padding: 0 20px;">
+      Dùng thử miễn phí <svg class="icon icon-sm"><use href="#i-arrow-right"/></svg>
+    </a>
+    <a href="#features" class="btn" style="height: 44px; padding: 0 20px;">
+      <svg class="icon icon-sm"><use href="#i-play"/></svg> Xem demo
+    </a>
+  </div>
+
+  <div class="hero-preview">
+    <div class="preview-topbar"><span></span><span></span><span></span></div>
+    <div class="preview-body">
+      <div>
+        <div class="col-title">Workspace</div>
+        <div class="item active">Research Lab</div>
+        <div class="item">Agency</div>
+        <div class="item">Personal</div>
+        <div class="col-title" style="margin-top: 16px;">Tool</div>
+        <div class="item">Canvas</div>
+        <div class="item">Notes</div>
+        <div class="item">Sources</div>
+      </div>
+      <div>
+        <div class="col-title">Canvas · BCTC Analysis</div>
+        <div class="preview-card">
+          <h4>BCTC 2024 · Q1</h4>
+          <p>Doanh thu +21.7% · Chi phí bán hàng +60.9%</p>
+        </div>
+        <div class="preview-card">
+          <h4>Finding: biến động chi phí</h4>
+          <p>Trích từ trang 18 · Đã tạo memo mục 3</p>
+        </div>
+      </div>
+      <div>
+        <div class="col-title">Inspector</div>
+        <div style="font-size: 11px; color: var(--muted-foreground); line-height: 1.6;">
+          <div><strong style="color: var(--foreground);">Provenance</strong></div>
+          <div>BCTC 2024.pdf · Trang 18</div>
+          <div style="margin-top: 8px;"><strong style="color: var(--foreground);">Độ tin cậy</strong></div>
+          <div>94%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <h2>Được xây để scale, không phải để đẹp một lần.</h2>
+  <p class="features-sub">Ba nguyên tắc lõi giữ bibo không rối khi bạn thêm 20 tool.</p>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon"><svg class="icon"><use href="#i-package"/></svg></div>
+      <h3>Plugin architecture</h3>
+      <p>Mỗi tool là 1 plugin khai báo object type, action, permission. Cài per workspace, không đụng core.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><svg class="icon"><use href="#i-shield"/></svg></div>
+      <h3>Provenance mọi lúc</h3>
+      <p>Mọi finding, memo, so sánh đều link về đúng đoạn nguồn. Click là mở đúng trang PDF gốc.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><svg class="icon"><use href="#i-command"/></svg></div>
+      <h3>Contextual action</h3>
+      <p>Action chỉ hiện khi hợp context. Click PDF thấy Extract, click table thấy Compare. Không menu ngập UI.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><svg class="icon"><use href="#i-zap"/></svg></div>
+      <h3>Animation mượt</h3>
+      <p>60ms transition chuẩn. Drag preview, layout shift, drop indicator đều theo motion token.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><svg class="icon"><use href="#i-users"/></svg></div>
+      <h3>Multi-workspace</h3>
+      <p>Research, agency, cá nhân — cùng 1 app, cài plugin khác nhau, permission tách biệt.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><svg class="icon"><use href="#i-lock"/></svg></div>
+      <h3>Privacy trước tiên</h3>
+      <p>Data ở local IndexedDB mặc định. Sync opt-in. Không tracking, không quảng cáo.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <a class="nav-brand" href="index.html" style="color: inherit;">
+    <span class="brand-mark"><svg class="icon icon-sm"><use href="#i-grid"/></svg></span>
+    bibo
+  </a>
+  <span>© 2026 bibo project · MIT License</span>
+  <div style="margin-left: auto; display: flex; gap: 20px;">
+    <a href="#" style="color: inherit;">GitHub</a>
+    <a href="#" style="color: inherit;">Discord</a>
+    <a href="#" style="color: inherit;">Privacy</a>
+  </div>
+</footer>
+
+</body>
+</html>

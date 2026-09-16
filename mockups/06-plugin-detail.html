@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bibo — Plugin Detail</title>
+<link rel="stylesheet" href="shared.css" />
+<script src="icons.js"></script>
+<style>
+  .detail-layout { display: grid; grid-template-columns: 1fr 320px; gap: 24px; align-items: start; }
+  .cover {
+    display: flex; align-items: flex-end; gap: 16px; padding: 24px;
+    border: 1px solid var(--border); border-radius: 14px;
+    background: radial-gradient(circle at 80% 20%, var(--primary-soft), transparent 40%), linear-gradient(145deg, var(--card-elevated), var(--card));
+    margin-bottom: 20px;
+  }
+  .cover-icon { width: 64px; height: 64px; border-radius: 14px; display: grid; place-items: center; background: var(--card); border: 1px solid var(--border-strong); color: var(--primary); box-shadow: var(--shadow-soft); }
+  .cover h1 { margin: 0; font-size: 26px; letter-spacing: -0.03em; }
+  .cover .pub { color: var(--muted-foreground); font-size: 12px; }
+  .screenshot { border: 1px solid var(--border); border-radius: 10px; background: var(--card-elevated); height: 200px; display: grid; place-items: center; color: var(--subtle-foreground); margin-bottom: 8px; }
+  .screens { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .screens .screenshot { height: 100px; margin: 0; }
+  .section-block { margin-bottom: 26px; }
+  .section-block h3 { font-size: 15px; margin: 0 0 10px; letter-spacing: -0.01em; }
+  .contract-item { display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .contract-item:last-child { border: 0; }
+  .contract-item .k { color: var(--muted-foreground); }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .perm { display: flex; align-items: flex-start; gap: 8px; padding: 8px 0; font-size: 12.5px; color: var(--muted-foreground); }
+  .perm .icon { color: var(--success); margin-top: 1px; }
+  .changelog-item { padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .changelog-item:last-child { border: 0; }
+  .changelog-item .ver { font-size: 12px; font-weight: 700; color: var(--primary); }
+  .changelog-item p { margin: 4px 0 0; font-size: 12.5px; color: var(--muted-foreground); }
+  .side-card { border: 1px solid var(--border); border-radius: 12px; background: var(--card); padding: 18px; position: sticky; top: 76px; }
+  .side-stat { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+  .side-stat:last-of-type { border: 0; }
+  .side-stat span:first-child { color: var(--muted-foreground); }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-mark"><svg class="icon"><use href="#i-grid"/></svg></span><span class="brand-name">bibo</span></div>
+    <nav class="nav-section">
+      <div class="nav-label">Capabilities</div>
+      <div class="nav-list">
+        <a class="nav-item active" href="05-plugin-store.html"><svg class="icon"><use href="#i-store"/></svg><span>Plugin Store</span></a>
+        <a class="nav-item" href="#"><svg class="icon"><use href="#i-package"/></svg><span>Installed</span><span class="nav-count">4</span></a>
+        <a class="nav-item" href="10-settings.html"><svg class="icon"><use href="#i-settings"/></svg><span>Settings</span></a>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="main-shell">
+    <header class="topbar">
+      <a href="05-plugin-store.html" class="top-action"><svg class="icon icon-sm" style="transform: rotate(180deg)"><use href="#i-arrow-right"/></svg> Store</a>
+      <div class="topbar-spacer"></div>
+      <a href="index.html" class="top-action"><svg class="icon icon-sm"><use href="#i-grid"/></svg> Index</a>
+      <div class="avatar">BN</div>
+    </header>
+
+    <div class="content">
+      <div class="cover">
+        <div class="cover-icon"><svg class="icon icon-lg"><use href="#i-file"/></svg></div>
+        <div style="flex: 1;">
+          <div style="display: flex; align-items: center; gap: 8px;"><h1>PDF Research</h1><span class="chip primary">Installed</span></div>
+          <div class="pub">bibo Labs · v1.4.0 · Cập nhật 3 ngày trước</div>
+        </div>
+      </div>
+
+      <div class="detail-layout">
+        <div>
+          <div class="section-block">
+            <h3>Mô tả</h3>
+            <p style="color: var(--muted-foreground); line-height: 1.6;">Plugin nền tảng cho mọi workflow nghiên cứu tài liệu. Đọc PDF, chọn đoạn, trích thành evidence object giữ nguyên liên kết về trang gốc. Mọi citation tạo ra đều click được để mở đúng vị trí trong PDF.</p>
+          </div>
+
+          <div class="section-block">
+            <h3>Ảnh minh hoạ</h3>
+            <div class="screenshot"><svg class="icon icon-lg"><use href="#i-image"/></svg></div>
+            <div class="screens">
+              <div class="screenshot"><svg class="icon"><use href="#i-image"/></svg></div>
+              <div class="screenshot"><svg class="icon"><use href="#i-image"/></svg></div>
+              <div class="screenshot"><svg class="icon"><use href="#i-image"/></svg></div>
+            </div>
+          </div>
+
+          <div class="section-block">
+            <h3>Object contract</h3>
+            <div class="contract-item"><span class="k">Nhận vào</span><span>PDF source, Excerpt</span></div>
+            <div class="contract-item"><span class="k">Tạo ra</span><span>Excerpt, Citation, Evidence object</span></div>
+            <div class="contract-item"><span class="k">Action</span><span>Extract selection, Create citation, Open source</span></div>
+            <div class="contract-item"><span class="k">Command</span><span>pdf.extract, pdf.cite, pdf.open</span></div>
+          </div>
+
+          <div class="section-block">
+            <h3>Changelog</h3>
+            <div class="changelog-item"><span class="ver">v1.4.0</span><p>Thêm OCR fallback cho PDF scan. Tối ưu tốc độ trích bảng.</p></div>
+            <div class="changelog-item"><span class="ver">v1.3.2</span><p>Fix lỗi citation lệch trang với PDF nhiều cột.</p></div>
+            <div class="changelog-item"><span class="ver">v1.3.0</span><p>Hỗ trợ highlight màu cho excerpt.</p></div>
+          </div>
+        </div>
+
+        <aside>
+          <div class="side-card">
+            <button class="btn" style="width: 100%; margin-bottom: 8px;"><svg class="icon icon-sm"><use href="#i-check"/></svg> Đã cài · Gỡ</button>
+            <button class="btn btn-primary" style="width: 100%;"><svg class="icon icon-sm"><use href="#i-settings"/></svg> Cấu hình</button>
+
+            <div style="margin-top: 18px;">
+              <div class="side-stat"><span>Phiên bản</span><span>1.4.0</span></div>
+              <div class="side-stat"><span>Kích thước</span><span>124 KB</span></div>
+              <div class="side-stat"><span>Cập nhật</span><span>3 ngày trước</span></div>
+              <div class="side-stat"><span>Scope</span><span>Research Lab</span></div>
+            </div>
+
+            <div style="margin-top: 18px;">
+              <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--subtle-foreground); margin-bottom: 8px;">Permissions</div>
+              <div class="perm"><svg class="icon icon-sm"><use href="#i-check"/></svg><span>Đọc file được thêm vào workspace</span></div>
+              <div class="perm"><svg class="icon icon-sm"><use href="#i-check"/></svg><span>Tạo object mới trên Canvas</span></div>
+            </div>
+
+            <div style="margin-top: 18px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--background); display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted-foreground);">
+              <svg class="icon icon-sm" style="color: var(--primary);"><use href="#i-lock"/></svg>
+              <span>Chỉ chạy trong Research Lab</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

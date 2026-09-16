@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bibo — Notes</title>
+<link rel="stylesheet" href="shared.css" />
+<script src="icons.js"></script>
+<style>
+  .notes-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .tag-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag-pill { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border); border-radius: 999px; background: var(--card); padding: 5px 11px; font-size: 12px; color: var(--muted-foreground); }
+  .tag-pill:hover { border-color: var(--border-strong); color: var(--foreground); }
+  .tag-pill.active { background: var(--primary-soft); color: var(--primary); border-color: color-mix(in srgb, var(--primary) 55%, var(--border)); }
+  .tag-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .notes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .note-card {
+    display: flex; flex-direction: column; gap: 8px;
+    border: 1px solid var(--border); border-radius: var(--radius); background: var(--card);
+    padding: 16px; min-height: 150px; cursor: pointer;
+    transition: border-color var(--duration-normal) var(--easing-standard);
+  }
+  .note-card:hover { border-color: var(--border-strong); }
+  .note-card h3 { margin: 0; font-size: 14px; letter-spacing: -0.01em; }
+  .note-card p { margin: 0; flex: 1; color: var(--muted-foreground); font-size: 12.5px; line-height: 1.55; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
+  .note-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+  .note-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 5px; font-size: 10px; }
+  .note-tag.research { background: var(--primary-soft); color: var(--primary); }
+  .note-tag.finance { background: var(--warning-soft); color: var(--warning); }
+  .note-tag.idea { background: var(--success-soft); color: var(--success); }
+  .note-foot { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--subtle-foreground); }
+  @media (max-width: 1000px) { .notes-grid { grid-template-columns: repeat(2,1fr); } }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-mark"><svg class="icon"><use href="#i-grid"/></svg></span><span class="brand-name">bibo</span></div>
+    <nav class="nav-section">
+      <div class="nav-label">Workspace</div>
+      <div class="nav-list">
+        <a class="nav-item" href="02-app-home.html"><svg class="icon"><use href="#i-home"/></svg><span>Home</span></a>
+        <a class="nav-item" href="04-canvas.html"><svg class="icon"><use href="#i-canvas"/></svg><span>Canvas</span></a>
+        <a class="nav-item active" href="07-notes.html"><svg class="icon"><use href="#i-note"/></svg><span>Notes</span><span class="nav-count">24</span></a>
+        <a class="nav-item" href="08-sources.html"><svg class="icon"><use href="#i-source"/></svg><span>Sources</span><span class="nav-count">12</span></a>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="main-shell">
+    <header class="topbar">
+      <label class="workspace-switcher"><span class="workspace-dot"></span><select class="workspace-select"><option>Research Lab</option></select><svg class="icon icon-sm" style="transform: rotate(90deg)"><use href="#i-chevron"/></svg></label>
+      <div class="topbar-spacer"></div>
+      <a href="index.html" class="top-action"><svg class="icon icon-sm"><use href="#i-grid"/></svg> Index</a>
+      <div class="avatar">BN</div>
+    </header>
+
+    <div class="content">
+      <section class="page-intro">
+        <div>
+          <div class="eyebrow"><svg class="icon icon-sm"><use href="#i-note"/></svg> Notes</div>
+          <h1>24 ghi chú</h1>
+          <p>Ghi chú tự do hoặc tạo từ finding trên Canvas. Gắn tag để lọc nhanh.</p>
+        </div>
+        <button class="btn btn-primary"><svg class="icon icon-sm"><use href="#i-plus"/></svg> Note mới</button>
+      </section>
+
+      <section class="notes-toolbar">
+        <label class="search-wrap"><svg class="icon"><use href="#i-search"/></svg><input class="input" placeholder="Tìm trong ghi chú…" /></label>
+        <div class="tag-filters">
+          <button class="tag-pill active">Tất cả</button>
+          <button class="tag-pill"><span class="tag-dot" style="background: var(--primary);"></span>Research</button>
+          <button class="tag-pill"><span class="tag-dot" style="background: var(--warning);"></span>Finance</button>
+          <button class="tag-pill"><span class="tag-dot" style="background: var(--success);"></span>Idea</button>
+        </div>
+      </section>
+
+      <div class="notes-grid">
+        <div class="note-card">
+          <div class="note-tags"><span class="note-tag finance">Finance</span></div>
+          <h3>Cảnh báo chi phí bán hàng Q1</h3>
+          <p>Chi phí bán hàng tăng 60.9% trong khi doanh thu chỉ tăng 21.7%. Cần rà soát chi tiết các khoản mục con, đặc biệt là chi phí marketing và hoa hồng.</p>
+          <div class="note-foot"><svg class="icon icon-sm"><use href="#i-source"/></svg> BCTC 2024 · <svg class="icon icon-sm"><use href="#i-clock"/></svg> 2h</div>
+        </div>
+        <div class="note-card">
+          <div class="note-tags"><span class="note-tag research">Research</span><span class="note-tag finance">Finance</span></div>
+          <h3>Biên lợi nhuận gộp xu hướng giảm</h3>
+          <p>2023: 29.6% → 2024: 28.8%. Giảm 0.8 điểm phần trăm. Nguyên nhân có thể từ giá vốn tăng nhanh hơn giá bán.</p>
+          <div class="note-foot"><svg class="icon icon-sm"><use href="#i-source"/></svg> So sánh kỳ · <svg class="icon icon-sm"><use href="#i-clock"/></svg> 3h</div>
+        </div>
+        <div class="note-card">
+          <div class="note-tags"><span class="note-tag idea">Idea</span></div>
+          <h3>Ý tưởng cấu trúc memo</h3>
+          <p>Nên tách memo thành: tóm tắt điều hành 1 trang, phân tích chi tiết, phụ lục số liệu. Đặt cảnh báo lên đầu.</p>
+          <div class="note-foot"><svg class="icon icon-sm"><use href="#i-clock"/></svg> Hôm qua</div>
+        </div>
+        <div class="note-card">
+          <div class="note-tags"><span class="note-tag research">Research</span></div>
+          <h3>Danh sách chỉ tiêu cần theo dõi</h3>
+          <p>ROE, ROA, hệ số thanh toán hiện hành, vòng quay hàng tồn kho, tỷ lệ nợ trên vốn chủ sở hữu.</p>
+          <div class="note-foot"><svg class="icon icon-sm"><use href="#i-clock"/></svg> 2 ngày</div>
+        </div>
+        <div class="note-card">
+          <div class="note-tags"><span class="note-tag finance">Finance</span></div>
+          <h3>Câu hỏi cho ban lãnh đạo</h3>
+          <p>Kế hoạch kiểm soát chi phí bán hàng năm sau? Có khoản đầu tư marketing một lần không lặp lại không?</p>
+          <div class="note-foot"><svg class="icon icon-sm"><use href="#i-clock"/></svg> 3 ngày</div>
+        </div>
+        <div class="note-card">
+          <div class="note-tags"><span class="note-tag idea">Idea</span></div>
+          <h3>Template so sánh nhanh</h3>
+          <p>Dựng plugin so sánh 2 kỳ tự động highlight biến động vượt ngưỡng 50%. Sẽ tiết kiệm nhiều thời gian.</p>
+          <div class="note-foot"><svg class="icon icon-sm"><use href="#i-clock"/></svg> Tuần trước</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

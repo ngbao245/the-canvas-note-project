@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bibo — Sources</title>
+<link rel="stylesheet" href="shared.css" />
+<script src="icons.js"></script>
+<style>
+  .drop-zone {
+    border: 1px dashed var(--border-strong); border-radius: 12px;
+    background: var(--card); padding: 24px; text-align: center; margin-bottom: 22px;
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+  }
+  .drop-zone .icon-box { width: 44px; height: 44px; border-radius: 10px; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
+  .source-table { width: 100%; border-collapse: collapse; }
+  .source-table th { text-align: left; padding: 10px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--subtle-foreground); border-bottom: 1px solid var(--border); }
+  .source-table td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .source-table tr:hover td { background: var(--muted); }
+  .source-name { display: flex; align-items: center; gap: 10px; }
+  .source-icon { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; flex-shrink: 0; }
+  .source-icon.pdf { background: var(--destructive-soft); color: var(--destructive); }
+  .source-icon.img { background: var(--success-soft); color: var(--success); }
+  .source-icon.web { background: var(--primary-soft); color: var(--primary); }
+  .source-name strong { font-size: 13px; }
+  .source-name span { font-size: 11px; color: var(--subtle-foreground); }
+  .used-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 5px; background: var(--muted); color: var(--muted-foreground); font-size: 10px; }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-mark"><svg class="icon"><use href="#i-grid"/></svg></span><span class="brand-name">bibo</span></div>
+    <nav class="nav-section">
+      <div class="nav-label">Workspace</div>
+      <div class="nav-list">
+        <a class="nav-item" href="02-app-home.html"><svg class="icon"><use href="#i-home"/></svg><span>Home</span></a>
+        <a class="nav-item" href="04-canvas.html"><svg class="icon"><use href="#i-canvas"/></svg><span>Canvas</span></a>
+        <a class="nav-item" href="07-notes.html"><svg class="icon"><use href="#i-note"/></svg><span>Notes</span></a>
+        <a class="nav-item active" href="08-sources.html"><svg class="icon"><use href="#i-source"/></svg><span>Sources</span><span class="nav-count">12</span></a>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="main-shell">
+    <header class="topbar">
+      <label class="workspace-switcher"><span class="workspace-dot"></span><select class="workspace-select"><option>Research Lab</option></select><svg class="icon icon-sm" style="transform: rotate(90deg)"><use href="#i-chevron"/></svg></label>
+      <div class="topbar-spacer"></div>
+      <a href="index.html" class="top-action"><svg class="icon icon-sm"><use href="#i-grid"/></svg> Index</a>
+      <div class="avatar">BN</div>
+    </header>
+
+    <div class="content">
+      <section class="page-intro">
+        <div>
+          <div class="eyebrow"><svg class="icon icon-sm"><use href="#i-source"/></svg> Sources</div>
+          <h1>Kho nguồn</h1>
+          <p>Mọi PDF, ảnh, web clip trong workspace. Object dẫn xuất luôn link ngược về đây.</p>
+        </div>
+        <button class="btn btn-primary"><svg class="icon icon-sm"><use href="#i-download"/></svg> Import</button>
+      </section>
+
+      <div class="drop-zone">
+        <div class="icon-box"><svg class="icon icon-lg"><use href="#i-download"/></svg></div>
+        <div style="text-align: left;">
+          <strong>Kéo thả file vào đây</strong>
+          <p style="margin: 3px 0 0; color: var(--muted-foreground); font-size: 12.5px;">PDF, PNG, JPG, hoặc dán link web · tối đa 50 MB / file</p>
+        </div>
+      </div>
+
+      <div class="card" style="padding: 0; overflow: hidden;">
+        <table class="source-table">
+          <thead>
+            <tr><th>Tên</th><th>Loại</th><th>Được dùng</th><th>Thêm lúc</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><div class="source-name"><div class="source-icon pdf"><svg class="icon icon-sm"><use href="#i-file"/></svg></div><div><strong>BCTC 2024.pdf</strong><br/><span>31 trang · 2.4 MB</span></div></div></td>
+              <td><span class="chip destructive">PDF</span></td>
+              <td><span class="used-badge"><svg class="icon icon-sm"><use href="#i-canvas"/></svg> 3 canvas</span></td>
+              <td style="color: var(--muted-foreground);">5m trước</td>
+              <td><button class="btn-ghost btn" style="width: 34px; padding: 0;"><svg class="icon icon-sm"><use href="#i-more"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><div class="source-name"><div class="source-icon pdf"><svg class="icon icon-sm"><use href="#i-file"/></svg></div><div><strong>BCTC 2023.pdf</strong><br/><span>28 trang · 2.1 MB</span></div></div></td>
+              <td><span class="chip destructive">PDF</span></td>
+              <td><span class="used-badge"><svg class="icon icon-sm"><use href="#i-canvas"/></svg> 2 canvas</span></td>
+              <td style="color: var(--muted-foreground);">Hôm qua</td>
+              <td><button class="btn-ghost btn" style="width: 34px; padding: 0;"><svg class="icon icon-sm"><use href="#i-more"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><div class="source-name"><div class="source-icon img"><svg class="icon icon-sm"><use href="#i-image"/></svg></div><div><strong>bang-can-doi.png</strong><br/><span>1920×1080 · 340 KB</span></div></div></td>
+              <td><span class="chip success">IMAGE</span></td>
+              <td><span class="used-badge">Chưa dùng</span></td>
+              <td style="color: var(--muted-foreground);">2 ngày</td>
+              <td><button class="btn-ghost btn" style="width: 34px; padding: 0;"><svg class="icon icon-sm"><use href="#i-more"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><div class="source-name"><div class="source-icon web"><svg class="icon icon-sm"><use href="#i-globe"/></svg></div><div><strong>Báo cáo ngành 2024</strong><br/><span>cafef.vn · web clip</span></div></div></td>
+              <td><span class="chip primary">WEB</span></td>
+              <td><span class="used-badge"><svg class="icon icon-sm"><use href="#i-note"/></svg> 1 note</span></td>
+              <td style="color: var(--muted-foreground);">3 ngày</td>
+              <td><button class="btn-ghost btn" style="width: 34px; padding: 0;"><svg class="icon icon-sm"><use href="#i-more"/></svg></button></td>
+            </tr>
+            <tr>
+              <td><div class="source-name"><div class="source-icon pdf"><svg class="icon icon-sm"><use href="#i-file"/></svg></div><div><strong>Q1-2025.pdf</strong><br/><span>12 trang · 890 KB</span></div></div></td>
+              <td><span class="chip destructive">PDF</span></td>
+              <td><span class="used-badge">Chưa dùng</span></td>
+              <td style="color: var(--muted-foreground);">Tuần trước</td>
+              <td><button class="btn-ghost btn" style="width: 34px; padding: 0;"><svg class="icon icon-sm"><use href="#i-more"/></svg></button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

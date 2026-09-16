@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bibo — Canvas</title>
+<link rel="stylesheet" href="shared.css" />
+<script src="icons.js"></script>
+<style>
+  html, body { height: 100%; overflow: hidden; }
+
+  .canvas-app {
+    display: grid;
+    grid-template-columns: 56px 232px minmax(0, 1fr) 0px;
+    grid-template-rows: 52px 1fr;
+    grid-template-areas:
+      "rail topbar topbar topbar"
+      "rail sidebar board unsort";
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    transition: grid-template-columns var(--duration-normal) var(--easing-standard);
+  }
+  .canvas-app.show-unsort { grid-template-columns: 56px 232px minmax(0, 1fr) 260px; }
+
+  /* Rail workspace rút gọn 56px — luôn hiện, hover/click để mở Workspace panel */
+  .rail { grid-area: rail; background: var(--card); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 0; z-index: 30; }
+  .rail .brand-mark { width: 32px; height: 32px; margin-bottom: 10px; display: grid; place-items: center; background: var(--primary); color: var(--primary-foreground); border-radius: 8px; }
+  .rail-btn { width: 40px; height: 40px; border-radius: 9px; border: 0; background: transparent; color: var(--muted-foreground); display: grid; place-items: center; cursor: pointer; transition: background var(--duration-fast) var(--easing-standard), color var(--duration-fast) var(--easing-standard); }
+  .rail-btn:hover { background: var(--muted); color: var(--foreground); }
+  .rail-btn.active { background: var(--primary-soft); color: var(--primary); }
+  .rail-spacer { flex: 1; }
+
+  /* Topbar */
+  .c-topbar { grid-area: topbar; display: flex; align-items: center; gap: 14px; padding: 0 16px; background: var(--card); border-bottom: 1px solid var(--border); z-index: 20; }
+  .breadcrumb { display: flex; align-items: center; gap: 8px; color: var(--muted-foreground); font-size: 13px; }
+  .breadcrumb b { color: var(--foreground); }
+  .cmdk { display: flex; align-items: center; gap: 8px; background: var(--background); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; color: var(--subtle-foreground); font-size: 12.5px; min-width: 220px; text-decoration: none; }
+  .cmdk:hover { border-color: var(--border-strong); }
+  .cmdk kbd { margin-left: auto; background: var(--muted); border: 1px solid var(--border-strong); border-radius: 5px; padding: 1px 6px; font-size: 11px; }
+
+  /* ---- Sidebar trái: khu component (mặc định) + tools (khi chọn object) ---- */
+  .c-sidebar { grid-area: sidebar; background: var(--card); border-right: 1px solid var(--border); overflow: hidden; position: relative; }
+  /* side-view = cột dọc: phần scroll ở trên + footer cố định (Trash) ở đáy */
+  .side-view { position: absolute; inset: 0; display: flex; flex-direction: column; transition: opacity var(--duration-normal) var(--easing-standard), transform var(--duration-normal) var(--easing-standard); }
+  /* Scroll khi cần, KHÔNG hiện scrollbar */
+  .side-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 14px 10px; scrollbar-width: none; }
+  .side-scroll::-webkit-scrollbar { display: none; }
+
+  /* Ẩn scrollbar mọi panel (vẫn scroll được bằng wheel/touch) */
+  .ws-panel, .inspector, .unsort-panel { scrollbar-width: none; }
+  .ws-panel::-webkit-scrollbar, .inspector::-webkit-scrollbar, .unsort-panel::-webkit-scrollbar { display: none; }
+  .side-footer { flex: 0 0 auto; border-top: 1px solid var(--border); padding: 8px 10px; }
+
+  /* Trash dính đáy */
+  .trash-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--background); color: var(--muted-foreground); font-size: 12px; cursor: pointer; transition: border-color var(--duration-fast) var(--easing-standard), color var(--duration-fast) var(--easing-standard), background var(--duration-fast) var(--easing-standard); }
+  .trash-btn:hover { border-color: color-mix(in srgb, var(--destructive) 40%, var(--border)); color: var(--destructive); background: var(--destructive-soft); }
+  .canvas-app.comp-compact .side-footer { padding: 8px 6px; }
+  .canvas-app.comp-compact .trash-btn { flex-direction: column; gap: 2px; padding: 8px 4px; font-size: 0; }
+  .canvas-app.comp-compact .trash-btn .icon { margin: 0; }
+  /* mặc định = components; chọn object = tools */
+  .side-view.tools { opacity: 0; transform: translateY(8px); pointer-events: none; }
+  .canvas-app.has-selection .side-view.components { opacity: 0; transform: translateY(-8px); pointer-events: none; }
+  .canvas-app.has-selection .side-view.tools { opacity: 1; transform: none; pointer-events: auto; }
+
+  .side-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--subtle-foreground); padding: 0 8px; margin-bottom: 8px; }
+  .side-group + .side-group { margin-top: 18px; }
+
+  /* Component palette (mở rộng) — icon trực quan, CÓ box thường trực */
+  .comp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .comp-tile {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 12px 6px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--background); cursor: grab;
+    transition: border-color var(--duration-fast) var(--easing-standard), background var(--duration-fast) var(--easing-standard), transform var(--duration-fast) var(--easing-standard);
+  }
+  .comp-tile:hover { border-color: var(--border-strong); background: var(--muted); }
+  .comp-tile:active { cursor: grabbing; transform: scale(0.96); }
+  .comp-tile .el-icon { width: 34px; height: 28px; display: grid; place-items: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.16)); }
+  .comp-tile .el-icon svg { width: 32px; height: auto; }
+  .comp-tile .comp-name { font-size: 11px; font-weight: 500; color: var(--muted-foreground); }
+  .comp-tile:hover .comp-name { color: var(--foreground); }
+
+  /* Thanh header trên cùng sidebar — dính sát mép, full-width, chỉ icon (kiểu dismiss Milanote) */
+  .side-topbar { flex: 0 0 auto; border-bottom: 1px solid var(--border); }
+  .side-topbar-btn { display: flex; align-items: center; justify-content: center; width: 100%; height: 28px; border: 0; background: transparent; color: var(--muted-foreground); cursor: pointer; transition: background var(--duration-fast) var(--easing-standard), color var(--duration-fast) var(--easing-standard); }
+  .side-topbar-btn:hover { background: var(--muted); color: var(--foreground); }
+  .side-topbar-btn .icon { width: 15px; height: 15px; }
+
+  /* Chế độ 1 cột rút gọn (compact) — hẹp như Milanote (~72px) */
+  .canvas-app.comp-compact { grid-template-columns: 56px 72px minmax(0, 1fr) 0px; }
+  .canvas-app.comp-compact.show-unsort { grid-template-columns: 56px 72px minmax(0, 1fr) 260px; }
+  .canvas-app.comp-compact .side-scroll { padding: 10px 4px; }
+  /* Compact: component tile bỏ box, trơn */
+  .canvas-app.comp-compact .comp-grid { grid-template-columns: 1fr; gap: 1px; }
+  .canvas-app.comp-compact .comp-tile { border: 0; background: transparent; padding: 7px 4px; }
+  .canvas-app.comp-compact .comp-tile { flex-direction: column; gap: 0; padding: 7px 4px; border-radius: 8px; position: relative; }
+  .canvas-app.comp-compact .comp-tile .el-icon { width: 32px; height: 26px; }
+  .canvas-app.comp-compact .comp-tile .el-icon svg { width: 30px; }
+  .canvas-app.comp-compact .comp-tile .comp-name { font-size: 10px; margin-top: 3px; }
+
+  /* Compact mode cho Tools view (khi chọn object) */
+  .canvas-app.comp-compact .side-view.tools .side-group { margin-bottom: 10px; }
+  .canvas-app.comp-compact .side-view.tools .side-title { text-align: center; font-size: 9px; margin-bottom: 4px; padding: 0; }
+  .canvas-app.comp-compact .tools-grid { grid-template-columns: 1fr; gap: 1px; }
+  /* Compact: tool action bỏ box, trơn hẳn */
+  .canvas-app.comp-compact .tool-btn2 { padding: 8px 4px; font-size: 9.5px; gap: 3px; border: 0; background: transparent; color: var(--muted-foreground); }
+  .canvas-app.comp-compact .tool-btn2 .icon { width: 16px; height: 16px; }
+
+  /* Compact: item trơn hẳn, KHÔNG nền hover (chỉ đổi màu) */
+  .canvas-app.comp-compact .comp-tile:hover { background: transparent; }
+  .canvas-app.comp-compact .tool-btn2:hover { background: transparent; color: var(--foreground); }
+  .canvas-app.comp-compact .comp-tile:hover .comp-name,
+  .canvas-app.comp-compact .comp-tile:hover .el-icon,
+  .canvas-app.comp-compact .tool-btn2:hover .icon { color: var(--foreground); }
+  /* element icon fill dùng token: giấy trắng = card, nét = foreground mờ */
+  .el-paper { fill: var(--card); }
+  [data-theme='light'] .el-paper { fill: #ffffff; }
+  .el-line { fill: var(--muted-foreground); }
+  .el-board { fill: var(--primary); }
+  .el-stroke { stroke: var(--muted-foreground); }
+
+  /* Tools view (khi chọn object) */
+  /* Tool action (mở rộng) — CÓ box thường trực (border + nền) */
+  .tools-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .tool-btn2 { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 11px 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--background); color: var(--foreground); font-size: 11px; cursor: pointer; transition: border-color var(--duration-fast) var(--easing-standard), background var(--duration-fast) var(--easing-standard); }
+  .tool-btn2:hover { border-color: var(--border-strong); background: var(--muted); }
+  .tool-btn2 .icon { color: var(--muted-foreground); }
+
+
+  /* ---- Workspace panel: overlay trượt ra từ rail (peek khi hover, stick khi click) ---- */
+  .ws-panel {
+    position: absolute; top: 52px; left: 56px; bottom: 0; width: 236px; z-index: 28;
+    background: var(--card); border-right: 1px solid var(--border);
+    padding: 14px 10px; overflow-y: auto;
+    box-shadow: var(--shadow);
+    opacity: 0; transform: translateX(-12px); pointer-events: none;
+    transition: opacity var(--duration-normal) var(--easing-standard), transform var(--duration-normal) var(--easing-standard);
+  }
+  .canvas-app.ws-peek .ws-panel,
+  .canvas-app.ws-stick .ws-panel { opacity: 1; transform: none; pointer-events: auto; }
+  .ws-panel .ws-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .ws-panel .ws-head strong { font-size: 14px; font-weight: 700; flex: 1; }
+  .ws-pin { width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--subtle-foreground); display: grid; place-items: center; cursor: pointer; }
+  .ws-pin:hover { background: var(--muted); color: var(--foreground); }
+  .canvas-app.ws-stick .ws-pin { background: var(--primary-soft); color: var(--primary); }
+  .side-item { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 7px; color: var(--muted-foreground); font-size: 13px; text-decoration: none; background: transparent; border: 0; width: 100%; text-align: left; cursor: pointer; transition: background var(--duration-fast) var(--easing-standard), color var(--duration-fast) var(--easing-standard); }
+  .side-item:hover { background: var(--muted); color: var(--foreground); }
+  .side-item.active { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+  .side-item .count { margin-left: auto; font-size: 11px; color: var(--subtle-foreground); }
+  .side-item .icon { flex-shrink: 0; }
+
+  /* Board */
+  .board { grid-area: board; position: relative; overflow: hidden; background-color: color-mix(in srgb, var(--background) 96%, #000); background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--foreground) 7%, transparent) 1px, transparent 0); background-size: 26px 26px; }
+  .canvas-toolbar { position: absolute; top: 12px; left: 12px; z-index: 6; display: flex; gap: 6px; padding: 5px; background: color-mix(in srgb, var(--card) 90%, transparent); border: 1px solid var(--border); border-radius: 9px; backdrop-filter: blur(8px); }
+  .tool-btn { background: transparent; border: 1px solid transparent; color: var(--muted-foreground); border-radius: 6px; padding: 6px 9px; font-size: 12.5px; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: background var(--duration-fast) var(--easing-standard), color var(--duration-fast) var(--easing-standard); }
+  .tool-btn:hover { background: var(--muted); color: var(--foreground); }
+  .tool-btn.active { border-color: var(--border-strong); color: var(--foreground); background: var(--muted); }
+  .banner { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 5; font-size: 11.5px; color: var(--muted-foreground); background: color-mix(in srgb, var(--card) 90%, transparent); border: 1px solid var(--border); border-radius: 20px; padding: 5px 14px; backdrop-filter: blur(8px); }
+  .board-inner { position: absolute; inset: 0; }
+  .connectors { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+
+  /* Card */
+  .card-node { position: absolute; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); z-index: 2; user-select: none; cursor: pointer; transition: border-color var(--duration-fast) var(--easing-standard), box-shadow var(--duration-fast) var(--easing-standard); }
+  .card-node:hover { border-color: var(--border-strong); }
+  .card-node.selected { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary), var(--shadow); }
+  .card-head { display: flex; align-items: center; gap: 8px; padding: 9px 11px; border-bottom: 1px solid var(--border); }
+  .card-title { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-head .dots { margin-left: auto; color: var(--subtle-foreground); }
+  .card-body { padding: 11px; }
+  .doc-preview { height: 100px; border-radius: 7px; background: linear-gradient(180deg, var(--card-elevated), var(--card)); border: 1px solid var(--border); padding: 12px; }
+  .doc-line { height: 6px; border-radius: 3px; background: var(--muted); margin-bottom: 7px; }
+  .doc-line.short { width: 55%; } .doc-line.mid { width: 78%; }
+  table.mini { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  table.mini th, table.mini td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--border); }
+  table.mini th:first-child, table.mini td:first-child { text-align: left; color: var(--muted-foreground); }
+  table.mini thead th { color: var(--subtle-foreground); font-size: 10px; text-transform: uppercase; }
+  table.mini tbody tr:last-child td { border-bottom: none; }
+  .cmp-row { display: grid; grid-template-columns: 1.3fr 1fr 1fr 0.9fr; gap: 6px; padding: 6px 4px; border-bottom: 1px solid var(--border); font-size: 11.5px; align-items: center; }
+  .cmp-row:last-child { border-bottom: none; }
+  .cmp-row.head { color: var(--subtle-foreground); font-size: 10px; text-transform: uppercase; }
+  .cmp-row .num { text-align: right; } .cmp-row .lbl { color: var(--muted-foreground); }
+  .delta { text-align: right; font-weight: 700; }
+  .delta.up { color: var(--success); } .delta.down { color: var(--destructive); } .delta.flag { color: var(--warning); }
+  .finding-text { font-size: 12.5px; line-height: 1.5; } .finding-text b { color: var(--warning); }
+  .source-ref { margin-top: 10px; display: flex; align-items: center; gap: 7px; padding: 7px 9px; background: var(--background); border: 1px solid var(--border); border-radius: 7px; font-size: 11px; color: var(--muted-foreground); }
+  .source-ref .icon { color: var(--destructive); }
+  .source-ref .link { color: var(--primary); margin-left: auto; }
+
+  /* Inspector overlay phải (thay phiên với Unsort) */
+  .inspector { position: absolute; top: 64px; right: 12px; bottom: 12px; z-index: 20; width: 300px; background: color-mix(in srgb, var(--card) 96%, transparent); border: 1px solid var(--border); border-radius: 12px; padding: 16px 14px; backdrop-filter: blur(10px); box-shadow: var(--shadow); overflow-y: auto; opacity: 0; transform: translateX(12px); pointer-events: none; transition: opacity var(--duration-normal) var(--easing-standard), transform var(--duration-normal) var(--easing-standard); }
+  .canvas-app.show-inspector .inspector { opacity: 1; transform: none; pointer-events: auto; }
+  .insp-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; margin-bottom: 3px; }
+  .insp-sub { font-size: 11.5px; color: var(--subtle-foreground); margin-bottom: 16px; }
+  .insp-block { margin-bottom: 16px; }
+  .insp-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--subtle-foreground); margin-bottom: 7px; }
+  .prov { background: var(--background); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+  .prov-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+  .prov-row span:first-child { color: var(--muted-foreground); }
+  .prov .open { margin-top: 9px; width: 100%; height: 32px; font-size: 12px; }
+  .confidence { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted-foreground); }
+  .bar { flex: 1; height: 6px; border-radius: 3px; background: var(--muted); overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--success); }
+  .rel-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted-foreground); padding: 6px 0; }
+  .rel-item .tag { font-size: 10px; color: var(--subtle-foreground); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; }
+  .rel-item b { color: var(--foreground); font-weight: 500; }
+
+  /* Unsort panel phải (đẩy layout) */
+  .unsort-panel { grid-area: unsort; background: var(--card); border-left: 1px solid var(--border); overflow-y: auto; padding: 14px 12px; display: none; }
+  .canvas-app.show-unsort .unsort-panel { display: block; }
+  .unsort-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .unsort-head strong { font-size: 13px; flex: 1; }
+  .unsort-head .badge { font-size: 10px; padding: 2px 7px; border-radius: 999px; background: var(--warning-soft); color: var(--warning); font-weight: 700; }
+  .unsort-close { width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--muted-foreground); display: grid; place-items: center; cursor: pointer; }
+  .unsort-close:hover { background: var(--muted); color: var(--foreground); }
+  .unsort-desc { font-size: 11px; color: var(--subtle-foreground); margin-bottom: 14px; line-height: 1.5; }
+  .unsort-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--background); margin-bottom: 8px; cursor: grab; }
+  .unsort-item:hover { border-color: var(--border-strong); }
+  .unsort-item .icon-box { width: 30px; height: 30px; border-radius: 7px; display: grid; place-items: center; flex-shrink: 0; }
+  .unsort-item.pdf .icon-box { background: var(--destructive-soft); color: var(--destructive); }
+  .unsort-item.img .icon-box { background: var(--success-soft); color: var(--success); }
+  .unsort-item.note .icon-box { background: var(--primary-soft); color: var(--primary); }
+  .unsort-item strong { display: block; font-size: 12px; }
+  .unsort-item span { display: block; font-size: 10.5px; color: var(--muted-foreground); margin-top: 2px; }
+  .unsort-hint { margin-top: 12px; padding: 10px; border: 1px dashed var(--border-strong); border-radius: 8px; font-size: 11px; color: var(--subtle-foreground); text-align: center; }
+
+  /* Nút Unsort — tab dính sát góc phải trên board */
+  .unsort-toggle { position: absolute; top: 0; right: 0; z-index: 15; display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; border: 1px solid var(--border); border-top: 0; border-right: 0; border-radius: 0 0 0 10px; background: color-mix(in srgb, var(--card) 94%, transparent); backdrop-filter: blur(8px); color: var(--muted-foreground); font-size: 12px; cursor: pointer; transition: background var(--duration-normal) var(--easing-standard), color var(--duration-normal) var(--easing-standard); }
+  .unsort-toggle:hover { color: var(--foreground); background: var(--muted); }
+  .unsort-toggle .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warning); }
+  .canvas-app.show-unsort .unsort-toggle { display: none; }
+
+  .zoom-pill { position: absolute; bottom: 14px; right: 14px; z-index: 6; display: flex; align-items: center; gap: 8px; background: color-mix(in srgb, var(--card) 90%, transparent); border: 1px solid var(--border); border-radius: 20px; padding: 5px 10px; font-size: 12px; color: var(--muted-foreground); backdrop-filter: blur(8px); }
+  .zoom-pill button { background: transparent; border: 0; color: var(--muted-foreground); font-size: 15px; width: 18px; cursor: pointer; }
+  .hint { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 6; font-size: 11.5px; color: var(--subtle-foreground); background: color-mix(in srgb, var(--card) 85%, transparent); border: 1px solid var(--border); border-radius: 7px; padding: 6px 12px; backdrop-filter: blur(8px); }
+  .hint b { color: var(--muted-foreground); }
+</style>
+</head>
+<body>
+
+<div class="canvas-app" id="app">
+  <!-- Rail workspace rút gọn (luôn hiện) -->
+  <div class="rail" id="rail">
+    <a class="brand-mark" href="index.html" title="Index"><svg class="icon"><use href="#i-grid"/></svg></a>
+    <button class="rail-btn active" id="railWsBtn" title="Workspace (hover mở, click ghim)"><svg class="icon"><use href="#i-canvas"/></svg></button>
+    <button class="rail-btn" title="Notes" onclick="location.href='07-notes.html'"><svg class="icon"><use href="#i-note"/></svg></button>
+    <button class="rail-btn" title="Sources" onclick="location.href='08-sources.html'"><svg class="icon"><use href="#i-source"/></svg></button>
+    <button class="rail-btn" title="Plugin" onclick="location.href='05-plugin-store.html'"><svg class="icon"><use href="#i-store"/></svg></button>
+    <div class="rail-spacer"></div>
+    <button class="rail-btn" title="Settings" onclick="location.href='10-settings.html'"><svg class="icon"><use href="#i-settings"/></svg></button>
+  </div>
+
+  <!-- Topbar -->
+  <header class="c-topbar">
+    <div class="breadcrumb">Financial Analysis <span>/</span> <b>So sánh BCTC — Công ty A</b></div>
+    <div style="flex:1"></div>
+    <a class="cmdk" href="09-command-palette.html"><svg class="icon icon-sm"><use href="#i-search"/></svg> Tìm hoặc chạy hành động… <kbd>Ctrl K</kbd></a>
+    <button class="top-action" style="width:38px;" id="themeBtn"><svg class="icon"><use href="#i-moon"/></svg></button>
+    <div class="avatar">BN</div>
+  </header>
+
+  <!-- Sidebar trái: mặc định = component list; chọn object = tools -->
+  <aside class="c-sidebar">
+    <!-- Components (mặc định) — icon vẽ hình object thật kiểu Milanote -->
+    <div class="side-view components">
+      <div class="side-topbar">
+        <button class="side-topbar-btn" id="compLayoutBtn" title="Đổi layout (2 cột / 1 cột)"><svg class="icon icon-sm"><use href="#i-grid"/></svg></button>
+      </div>
+      <div class="side-scroll">
+      <div class="comp-grid">
+        <div class="comp-tile" draggable="true" data-name="Note">
+          <div class="el-icon"><svg viewBox="0 0 32 24"><rect class="el-paper" width="32" height="24" rx="3"/><path class="el-line" d="M5.75 5h20.5a.75.75 0 1 1 0 1.5H5.75a.75.75 0 0 1 0-1.5zm0 5h20.5a.75.75 0 1 1 0 1.5H5.75a.75.75 0 1 1 0-1.5zm0 5h18.1a.75.75 0 1 1 0 1.5H5.75a.75.75 0 1 1 0-1.5z"/></svg></div>
+          <span class="comp-name">Note</span>
+        </div>
+        <div class="comp-tile" draggable="true" data-name="Link">
+          <div class="el-icon"><svg viewBox="0 0 32 24"><rect class="el-paper" width="32" height="24" rx="3"/><path class="el-line" fill-rule="nonzero" d="M17.986 10.014a4.285 4.285 0 0 1 0 6.06l-1.67 1.67a4.285 4.285 0 0 1-6.06-6.06.741.741 0 0 1 1.048 1.05 2.802 2.802 0 0 0 3.963 3.962l1.67-1.67a2.802 2.802 0 0 0 0-3.964.741.741 0 1 1 1.049-1.048zm3.759-3.759a4.285 4.285 0 0 1 0 6.06.741.741 0 0 1-1.049-1.048 2.802 2.802 0 0 0-3.963-3.963l-1.67 1.67a2.802 2.802 0 0 0 0 3.964.741.741 0 1 1-1.049 1.048 4.285 4.285 0 0 1 0-6.06l1.67-1.67a4.285 4.285 0 0 1 6.06 0z"/></svg></div>
+          <span class="comp-name">Link</span>
+        </div>
+        <div class="comp-tile" draggable="true" data-name="To-do">
+          <div class="el-icon"><svg viewBox="0 0 32 24"><rect class="el-paper" width="32" height="24" rx="3"/><path class="el-line" d="M6.28 7.77a.75.75 0 0 0-1.06 1.06l1.5 1.5a.75.75 0 0 0 1.06 0l3-3a.75.75 0 0 0-1.06-1.06L7.25 8.74l-.97-.97zm0 6.5a.75.75 0 0 0-1.06 1.06l1.5 1.5a.75.75 0 0 0 1.06 0l3-3a.75.75 0 0 0-1.06-1.06l-2.47 2.47-.97-.97zM14.75 8h11.3a.75.75 0 1 1 0 1.5h-11.3a.75.75 0 1 1 0-1.5zm0 6.4h11.3a.75.75 0 1 1 0 1.5h-11.3a.75.75 0 1 1 0-1.5z"/></svg></div>
+          <span class="comp-name">To-do</span>
+        </div>
+        <div class="comp-tile" draggable="true" data-name="Board">
+          <div class="el-icon"><svg viewBox="0 0 32 32"><rect class="el-board" width="32" height="32" rx="8"/><rect width="7" height="7" x="8" y="8" fill="#fff" rx="2"/><rect width="7" height="7" x="8" y="17" fill="#fff" fill-opacity="0.75" rx="2"/><rect width="7" height="7" x="17" y="8" fill="#fff" fill-opacity="0.35" rx="3.5"/><rect width="7" height="7" x="17" y="17" fill="#fff" fill-opacity="0.55" rx="2"/></svg></div>
+          <span class="comp-name">Board</span>
+        </div>
+        <div class="comp-tile" draggable="true" data-name="Table">
+          <div class="el-icon"><svg viewBox="0 0 32 24"><rect class="el-paper" width="32" height="24" rx="3"/><path class="el-stroke" fill="none" stroke-width="1.5" d="M4 6h9M4 10h9M4 14h7M18 6h10M18 10h10M18 14h8"/></svg></div>
+          <span class="comp-name">Table</span>
+        </div>
+        <div class="comp-tile" draggable="true" data-name="Image">
+          <div class="el-icon"><svg viewBox="0 0 32 24"><rect class="el-paper" width="32" height="24" rx="3"/><circle class="el-line" cx="10" cy="9" r="2.5"/><path class="el-line" d="M4 20l6-6 4 3 5-5 9 8H4z"/></svg></div>
+          <span class="comp-name">Image</span>
+        </div>
+        <div class="comp-tile" draggable="true" data-name="File">
+          <div class="el-icon"><svg viewBox="0 0 32 24"><path class="el-paper" d="M6 1h13l7 7v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2z"/><path class="el-line" d="M19 1v6a1 1 0 0 0 1 1h6" opacity="0.4"/><path class="el-line" d="M9 13h11a.6.6 0 1 1 0 1.2H9A.6.6 0 1 1 9 13zm0 4h11a.6.6 0 1 1 0 1.2H9A.6.6 0 1 1 9 17z"/></svg></div>
+          <span class="comp-name">File</span>
+        </div>
+        <div class="comp-tile" draggable="true" data-name="Line">
+          <div class="el-icon"><svg viewBox="0 0 32 28"><path class="el-line" fill-rule="evenodd" d="m30.385 0-3 8-1.793-1.793-21.5 21.5a1 1 0 0 1-1.32.083l-.094-.083a1 1 0 0 1 0-1.414L24.177 4.792 22.385 3l8-3z"/></svg></div>
+          <span class="comp-name">Line</span>
+        </div>
+      </div>
+      </div>
+      <div class="side-footer">
+        <button class="trash-btn" title="Thùng rác"><svg class="icon icon-sm"><use href="#i-trash"/></svg> Thùng rác</button>
+      </div>
+    </div>
+
+    <!-- Tools (khi chọn object) -->
+    <div class="side-view tools">
+      <div class="side-topbar">
+        <button class="side-topbar-btn" id="backBtn" title="Bỏ chọn"><svg class="icon icon-sm" style="transform:rotate(180deg)"><use href="#i-arrow-right"/></svg></button>
+      </div>
+      <div class="side-scroll">
+      <div class="side-group">
+        <div class="side-title">Hành động</div>
+        <div class="tools-grid" id="objActions"></div>
+      </div>
+      <div class="side-group">
+        <div class="side-title">Chung</div>
+        <div class="tools-grid">
+          <button class="tool-btn2"><svg class="icon"><use href="#i-tag"/></svg>Label</button>
+          <button class="tool-btn2"><svg class="icon"><use href="#i-star"/></svg>Color</button>
+          <button class="tool-btn2"><svg class="icon"><use href="#i-lock"/></svg>Lock</button>
+        </div>
+      </div>
+      </div>
+      <div class="side-footer">
+        <button class="trash-btn" title="Xoá object"><svg class="icon icon-sm"><use href="#i-trash"/></svg> Xoá object</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Workspace panel: overlay peek/stick -->
+  <aside class="ws-panel" id="wsPanel">
+    <div class="ws-head">
+      <strong>Workspace</strong>
+      <button class="ws-pin" id="wsPin" title="Ghim panel"><svg class="icon icon-sm"><use href="#i-lock"/></svg></button>
+    </div>
+    <div class="side-group">
+      <a class="side-item active" href="04-canvas.html"><svg class="icon icon-sm"><use href="#i-canvas"/></svg> Canvas <span class="count">3</span></a>
+      <a class="side-item" href="07-notes.html"><svg class="icon icon-sm"><use href="#i-note"/></svg> Notes <span class="count">24</span></a>
+      <a class="side-item" href="08-sources.html"><svg class="icon icon-sm"><use href="#i-source"/></svg> Sources <span class="count">12</span></a>
+    </div>
+    <div class="side-group">
+      <div class="side-title">Sources trên board</div>
+      <a class="side-item" href="08-sources.html"><svg class="icon icon-sm"><use href="#i-file"/></svg> BCTC 2023.pdf</a>
+      <a class="side-item" href="08-sources.html"><svg class="icon icon-sm"><use href="#i-file"/></svg> BCTC 2024.pdf</a>
+      <a class="side-item" href="08-sources.html"><svg class="icon icon-sm"><use href="#i-file"/></svg> Q1-2025.pdf</a>
+    </div>
+    <div class="side-group">
+      <div class="side-title">Capability</div>
+      <a class="side-item"><svg class="icon icon-sm"><use href="#i-download"/></svg> Extract tables</a>
+      <a class="side-item"><svg class="icon icon-sm"><use href="#i-chart"/></svg> Compare kỳ</a>
+      <a class="side-item"><svg class="icon icon-sm"><use href="#i-zap"/></svg> Variance detect</a>
+    </div>
+  </aside>
+
+  <!-- Board -->
+  <section class="board" id="board">
+    <div class="canvas-toolbar">
+      <button class="tool-btn active"><svg class="icon icon-sm"><use href="#i-arrow-right"/></svg> Select</button>
+      <button class="tool-btn"><svg class="icon icon-sm"><use href="#i-canvas"/></svg> Pan</button>
+      <button class="tool-btn"><svg class="icon icon-sm"><use href="#i-download"/></svg> Import</button>
+    </div>
+
+    <div class="banner">Sidebar trái = kéo component vào canvas · Hover rail → Workspace · Click object → Tools</div>
+
+    <button class="unsort-toggle" id="unsortBtn"><span class="dot"></span> <svg class="icon icon-sm"><use href="#i-inbox"/></svg> Unsort · 3</button>
+
+    <div class="board-inner">
+      <svg class="connectors" id="connectors"></svg>
+
+      <article class="card-node" data-id="doc2024" data-type="pdf" style="left: 30px; top: 90px; width: 190px;">
+        <div class="card-head"><span class="chip destructive">PDF</span><span class="card-title">BCTC 2024</span><span class="dots">···</span></div>
+        <div class="card-body"><div class="doc-preview"><div class="doc-line"></div><div class="doc-line mid"></div><div class="doc-line short"></div><div class="doc-line"></div></div></div>
+      </article>
+
+      <article class="card-node" data-id="table" data-type="table" style="left: 290px; top: 100px; width: 250px;">
+        <div class="card-head"><span class="chip primary">TABLE</span><span class="card-title">Kết quả kinh doanh</span><span class="dots">···</span></div>
+        <div class="card-body">
+          <table class="mini"><thead><tr><th>Chỉ tiêu</th><th>2023</th><th>2024</th></tr></thead>
+          <tbody><tr><td>Doanh thu</td><td>120.000</td><td>146.000</td></tr><tr><td>LN gộp</td><td>35.500</td><td>42.100</td></tr><tr><td>CP bán hàng</td><td>9.200</td><td>14.800</td></tr></tbody></table>
+        </div>
+      </article>
+
+      <article class="card-node" data-id="compare" data-type="compare" style="left: 610px; top: 100px; width: 300px;">
+        <div class="card-head"><span class="chip primary">COMPARE</span><span class="card-title">So sánh 2023 → 2024</span><span class="dots">···</span></div>
+        <div class="card-body">
+          <div class="cmp-row head"><span>Chỉ tiêu</span><span class="num">2023</span><span class="num">2024</span><span class="num">±%</span></div>
+          <div class="cmp-row"><span class="lbl">Doanh thu</span><span class="num">120.000</span><span class="num">146.000</span><span class="delta up">+21,7%</span></div>
+          <div class="cmp-row"><span class="lbl">CP bán hàng</span><span class="num">9.200</span><span class="num">14.800</span><span class="delta flag">+60,9%</span></div>
+        </div>
+      </article>
+
+      <article class="card-node" data-id="finding" data-type="finding" style="left: 610px; top: 340px; width: 300px;">
+        <div class="card-head"><span class="chip warning">FINDING</span><span class="card-title">Biến động cần chú ý</span><span class="dots">···</span></div>
+        <div class="card-body">
+          <div class="finding-text">Chi phí bán hàng tăng <b>+60,9%</b> trong khi doanh thu chỉ tăng 21,7%.</div>
+          <div class="source-ref"><svg class="icon icon-sm"><use href="#i-file"/></svg> BCTC 2024 · Trang 18 <span class="link">Mở nguồn</span></div>
+        </div>
+      </article>
+    </div>
+
+    <div class="zoom-pill"><button>−</button> 82% <button>+</button></div>
+    <div class="hint"><b>Hover</b> rail trái → Workspace · <b>Click</b> rail → ghim · <b>Click object</b> → Tools</div>
+  </section>
+
+  <!-- Inspector overlay phải -->
+  <aside class="inspector" id="inspector">
+    <div class="insp-title" id="inspTitle"><span class="chip primary">TABLE</span> Kết quả kinh doanh</div>
+    <div class="insp-sub">Object trên Canvas · cập nhật 2 phút trước</div>
+    <div class="insp-block">
+      <div class="insp-label">Provenance</div>
+      <div class="prov">
+        <div class="prov-row"><span>File</span><span>BCTC 2024.pdf</span></div>
+        <div class="prov-row"><span>Trang</span><span>12</span></div>
+        <div class="prov-row"><span>Bảng</span><span>Kết quả KD</span></div>
+        <button class="btn btn-primary open"><svg class="icon icon-sm"><use href="#i-external"/></svg> Mở đúng đoạn nguồn</button>
+      </div>
+    </div>
+    <div class="insp-block">
+      <div class="insp-label">Độ tin cậy</div>
+      <div class="confidence"><div class="bar"><i style="width: 94%;"></i></div> 94%</div>
+    </div>
+    <div class="insp-block">
+      <div class="insp-label">Quan hệ</div>
+      <div class="rel-item"><span class="tag">derived from</span> <b>BCTC 2024</b></div>
+      <div class="rel-item"><span class="tag">compares</span> <b>Metric 2023 + 2024</b></div>
+      <div class="rel-item"><span class="tag">supports</span> <b>Memo · Mục 3</b></div>
+    </div>
+  </aside>
+
+  <!-- Unsort panel -->
+  <aside class="unsort-panel">
+    <div class="unsort-head">
+      <strong>Unsort</strong>
+      <span class="badge">3</span>
+      <button class="unsort-close" id="unsortCloseBtn" title="Đóng"><svg class="icon icon-sm"><use href="#i-arrow-right"/></svg></button>
+    </div>
+    <p class="unsort-desc">Object mới import, chưa xếp lên canvas. Kéo thả sang board để dùng.</p>
+    <div class="unsort-item pdf"><div class="icon-box"><svg class="icon icon-sm"><use href="#i-file"/></svg></div><div><strong>Q1-2025.pdf</strong><span>12 trang · vừa import</span></div></div>
+    <div class="unsort-item img"><div class="icon-box"><svg class="icon icon-sm"><use href="#i-image"/></svg></div><div><strong>bang-can-doi.png</strong><span>340 KB · 5m trước</span></div></div>
+    <div class="unsort-item note"><div class="icon-box"><svg class="icon icon-sm"><use href="#i-note"/></svg></div><div><strong>Ghi chú cuộc họp</strong><span>Chưa gắn nguồn</span></div></div>
+    <div class="unsort-hint">Kéo thả một item ra board để đặt lên canvas.</div>
+  </aside>
+</div>
+
+<script>
+  const app = document.getElementById('app');
+  const board = document.getElementById('board');
+  const rail = document.getElementById('rail');
+  const wsPanel = document.getElementById('wsPanel');
+
+  // ---- Workspace peek (hover) / stick (click) ----
+  let wsStuck = false;
+  const railWsBtn = document.getElementById('railWsBtn');
+
+  rail.addEventListener('mouseenter', () => { if (!wsStuck) app.classList.add('ws-peek'); });
+  rail.addEventListener('mouseleave', () => { if (!wsStuck) app.classList.remove('ws-peek'); });
+  // hover ở lại panel cũng giữ hiện
+  wsPanel.addEventListener('mouseenter', () => { if (!wsStuck) app.classList.add('ws-peek'); });
+  wsPanel.addEventListener('mouseleave', () => { if (!wsStuck) app.classList.remove('ws-peek'); });
+
+  function stickWorkspace() {
+    wsStuck = true;
+    app.classList.remove('ws-peek');
+    app.classList.add('ws-stick');
+  }
+  function unstickWorkspace() {
+    wsStuck = false;
+    app.classList.remove('ws-stick', 'ws-peek');
+  }
+  railWsBtn.addEventListener('click', (e) => { e.stopPropagation(); wsStuck ? unstickWorkspace() : stickWorkspace(); });
+  document.getElementById('wsPin').addEventListener('click', (e) => { e.stopPropagation(); wsStuck ? unstickWorkspace() : stickWorkspace(); });
+  // click item trong workspace cũng ghim
+  wsPanel.querySelectorAll('.side-item').forEach((it) => it.addEventListener('click', (e) => { e.stopPropagation(); stickWorkspace(); }));
+  // click ra ngoài → bỏ ghim
+  document.addEventListener('click', (e) => {
+    if (wsStuck && !e.target.closest('.ws-panel') && !e.target.closest('#railWsBtn')) unstickWorkspace();
+  });
+
+  // ---- Component palette layout toggle (2 cột / 1 cột compact) ----
+  const compBtn = document.getElementById('compLayoutBtn');
+  const compSaved = localStorage.getItem('bibo-canvas-comp-compact');
+  if (compSaved === '1') app.classList.add('comp-compact');
+  function syncCompBtn() {
+    const compact = app.classList.contains('comp-compact');
+    compBtn.querySelector('use').setAttribute('href', compact ? '#i-menu' : '#i-grid');
+    compBtn.title = compact ? 'Đang 1 cột · bấm để 2 cột' : 'Đang 2 cột · bấm để 1 cột';
+  }
+  compBtn.addEventListener('click', () => {
+    app.classList.toggle('comp-compact');
+    localStorage.setItem('bibo-canvas-comp-compact', app.classList.contains('comp-compact') ? '1' : '0');
+    syncCompBtn();
+  });
+  syncCompBtn();
+
+  // ---- Object selection → Tools + Inspector ----
+  const actionsByType = {
+    pdf: [['i-star','Extract'],['i-command','Cite'],['i-note','Tạo note'],['i-external','Mở nguồn']],
+    table: [['i-chart','Compare'],['i-zap','Normalize'],['i-note','Tạo note'],['i-command','More']],
+    compare: [['i-star','Variance'],['i-note','Tạo note'],['i-external','Vào memo'],['i-command','More']],
+    finding: [['i-star','Giải thích'],['i-note','Tạo note'],['i-external','Vào memo'],['i-command','More']],
+  };
+  const chipByType = { pdf: ['destructive','PDF'], table: ['primary','TABLE'], compare: ['primary','COMPARE'], finding: ['warning','FINDING'] };
+
+  // Single click = chọn object (sidebar Tools). Double click = mở Inspector (trừ Board).
+  function selectCard(card) {
+    board.querySelectorAll('.card-node').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    app.classList.add('has-selection');
+    const type = card.dataset.type;
+    document.getElementById('objActions').innerHTML = (actionsByType[type] || [])
+      .map(([ic,name]) => `<button class="tool-btn2"><svg class="icon"><use href="#${ic}"/></svg>${name}</button>`).join('');
+  }
+  function openInspector(card) {
+    app.classList.remove('show-unsort'); // Inspector và Unsort thay phiên
+    const type = card.dataset.type;
+    const title = card.querySelector('.card-title').textContent;
+    const [tone, label] = chipByType[type] || ['primary','OBJECT'];
+    document.getElementById('inspTitle').innerHTML = `<span class="chip ${tone}">${label}</span> ${title}`;
+    app.classList.add('show-inspector');
+  }
+  function clearSelection() {
+    board.querySelectorAll('.card-node').forEach(c => c.classList.remove('selected'));
+    app.classList.remove('has-selection', 'show-inspector');
+  }
+  board.querySelectorAll('.card-node').forEach(card => {
+    card.addEventListener('click', (e) => { e.stopPropagation(); selectCard(card); });
+    card.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      selectCard(card);
+      if (card.dataset.type !== 'board') openInspector(card); // board: double click không mở inspector
+    });
+  });
+  board.addEventListener('click', clearSelection);
+  document.getElementById('backBtn').addEventListener('click', clearSelection);
+
+  // ---- Unsort (thay phiên Inspector) ----
+  document.getElementById('unsortBtn').addEventListener('click', () => { clearSelection(); app.classList.add('show-unsort'); });
+  document.getElementById('unsortCloseBtn').addEventListener('click', () => app.classList.remove('show-unsort'));
+
+  // ---- Theme ----
+  const saved = localStorage.getItem('bibo-mockup-theme');
+  if (saved) document.documentElement.dataset.theme = saved;
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = t; localStorage.setItem('bibo-mockup-theme', t);
+    setTimeout(draw, 50);
+  });
+
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { clearSelection(); app.classList.remove('show-unsort'); unstickWorkspace(); } });
+
+  // ---- Connectors ----
+  const links = [["doc2024","table"],["table","compare"],["compare","finding"]];
+  const svg = document.getElementById('connectors');
+  function draw() {
+    svg.innerHTML = '';
+    const stroke = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#007acc';
+    links.forEach(([a,b]) => {
+      const ea = board.querySelector(`[data-id="${a}"]`), eb = board.querySelector(`[data-id="${b}"]`);
+      if (!ea || !eb) return;
+      const p1 = { x: ea.offsetLeft + ea.offsetWidth, y: ea.offsetTop + ea.offsetHeight/2 };
+      const p2 = { x: eb.offsetLeft, y: eb.offsetTop + eb.offsetHeight/2 };
+      const dx = Math.max(40, (p2.x - p1.x)/2);
+      const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('d', `M ${p1.x} ${p1.y} C ${p1.x+dx} ${p1.y}, ${p2.x-dx} ${p2.y}, ${p2.x} ${p2.y}`);
+      path.setAttribute('fill','none'); path.setAttribute('stroke',stroke); path.setAttribute('stroke-opacity','0.4'); path.setAttribute('stroke-width','1.5');
+      svg.appendChild(path);
+      const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      dot.setAttribute('cx',p2.x); dot.setAttribute('cy',p2.y); dot.setAttribute('r','3'); dot.setAttribute('fill',stroke); dot.setAttribute('fill-opacity','0.7');
+      svg.appendChild(dot);
+    });
+  }
+  draw(); window.addEventListener('resize', draw);
+</script>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bibo — Settings</title>
+<link rel="stylesheet" href="shared.css" />
+<script src="icons.js"></script>
+<style>
+  .settings-layout { display: grid; grid-template-columns: 200px 1fr; gap: 28px; align-items: start; }
+  .settings-nav { display: grid; gap: 2px; position: sticky; top: 76px; }
+  .settings-nav a { display: flex; align-items: center; gap: 9px; padding: 8px 12px; border-radius: 7px; color: var(--muted-foreground); font-size: 13px; text-decoration: none; }
+  .settings-nav a:hover { background: var(--muted); color: var(--foreground); }
+  .settings-nav a.active { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+  .settings-section { margin-bottom: 32px; }
+  .settings-section h2 { font-size: 16px; margin: 0 0 4px; letter-spacing: -0.02em; }
+  .settings-section > p { margin: 0 0 16px; color: var(--muted-foreground); font-size: 13px; }
+  .setting-row { display: flex; align-items: center; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .setting-row:last-child { border: 0; }
+  .setting-info { flex: 1; }
+  .setting-info strong { font-size: 13.5px; }
+  .setting-info p { margin: 3px 0 0; color: var(--muted-foreground); font-size: 12px; }
+  .toggle { width: 42px; height: 24px; border-radius: 999px; background: var(--muted); position: relative; border: 0; flex-shrink: 0; transition: background var(--duration-normal) var(--easing-standard); }
+  .toggle.on { background: var(--primary); }
+  .toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform var(--duration-normal) var(--easing-standard); }
+  .toggle.on::after { transform: translateX(18px); }
+  .theme-opts { display: flex; gap: 10px; }
+  .theme-opt { flex: 1; border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: center; cursor: pointer; }
+  .theme-opt.active { border-color: var(--primary); background: var(--primary-soft); }
+  .theme-swatch { height: 48px; border-radius: 7px; margin-bottom: 8px; border: 1px solid var(--border); }
+  .theme-opt span { font-size: 12px; }
+  .perm-plugin { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .perm-plugin:last-child { border: 0; }
+  .perm-icon { width: 36px; height: 36px; border-radius: 8px; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-mark"><svg class="icon"><use href="#i-grid"/></svg></span><span class="brand-name">bibo</span></div>
+    <nav class="nav-section">
+      <div class="nav-label">Workspace</div>
+      <div class="nav-list">
+        <a class="nav-item" href="02-app-home.html"><svg class="icon"><use href="#i-home"/></svg><span>Home</span></a>
+        <a class="nav-item" href="04-canvas.html"><svg class="icon"><use href="#i-canvas"/></svg><span>Canvas</span></a>
+        <a class="nav-item" href="07-notes.html"><svg class="icon"><use href="#i-note"/></svg><span>Notes</span></a>
+      </div>
+    </nav>
+    <nav class="nav-section">
+      <div class="nav-label">Manage</div>
+      <div class="nav-list">
+        <a class="nav-item" href="03-workspaces.html"><svg class="icon"><use href="#i-users"/></svg><span>Workspaces</span></a>
+        <a class="nav-item" href="05-plugin-store.html"><svg class="icon"><use href="#i-store"/></svg><span>Plugin Store</span></a>
+        <a class="nav-item active" href="10-settings.html"><svg class="icon"><use href="#i-settings"/></svg><span>Settings</span></a>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="main-shell">
+    <header class="topbar">
+      <div class="breadcrumb" style="color: var(--muted-foreground);">Settings</div>
+      <div class="topbar-spacer"></div>
+      <a href="index.html" class="top-action"><svg class="icon icon-sm"><use href="#i-grid"/></svg> Index</a>
+      <div class="avatar">BN</div>
+    </header>
+
+    <div class="content">
+      <section class="page-intro" style="margin-bottom: 16px;">
+        <div>
+          <div class="eyebrow"><svg class="icon icon-sm"><use href="#i-settings"/></svg> Cài đặt</div>
+          <h1>Settings</h1>
+        </div>
+      </section>
+
+      <div class="settings-layout">
+        <nav class="settings-nav">
+          <a href="#appearance" class="active"><svg class="icon icon-sm"><use href="#i-moon"/></svg> Giao diện</a>
+          <a href="#notif"><svg class="icon icon-sm"><use href="#i-bell"/></svg> Thông báo</a>
+          <a href="#plugins"><svg class="icon icon-sm"><use href="#i-package"/></svg> Plugin permission</a>
+          <a href="#privacy"><svg class="icon icon-sm"><use href="#i-shield"/></svg> Riêng tư</a>
+          <a href="#account"><svg class="icon icon-sm"><use href="#i-users"/></svg> Tài khoản</a>
+        </nav>
+
+        <div>
+          <section class="settings-section" id="appearance">
+            <h2>Giao diện</h2>
+            <p>Tuỳ chỉnh cách bibo hiển thị.</p>
+            <div style="margin-bottom: 16px;">
+              <strong style="font-size: 13.5px; display: block; margin-bottom: 10px;">Theme</strong>
+              <div class="theme-opts">
+                <div class="theme-opt active"><div class="theme-swatch" style="background: #1e1e1e;"></div><span>Tối</span></div>
+                <div class="theme-opt"><div class="theme-swatch" style="background: #f8f9fb;"></div><span>Sáng</span></div>
+                <div class="theme-opt"><div class="theme-swatch" style="background: linear-gradient(90deg, #1e1e1e 50%, #f8f9fb 50%);"></div><span>Theo hệ thống</span></div>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info"><strong>Animation mượt</strong><p>Bật transition 60ms cho drag, layout, page. Tắt nếu máy yếu.</p></div>
+              <button class="toggle on"></button>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info"><strong>Sidebar thu gọn mặc định</strong><p>Chỉ hiện icon, mở rộng khi hover.</p></div>
+              <button class="toggle"></button>
+            </div>
+          </section>
+
+          <section class="settings-section" id="notif">
+            <h2>Thông báo</h2>
+            <p>Chọn loại thông báo bạn muốn nhận.</p>
+            <div class="setting-row">
+              <div class="setting-info"><strong>Finding mới</strong><p>Khi plugin tạo finding cần review.</p></div>
+              <button class="toggle on"></button>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info"><strong>Xử lý hoàn tất</strong><p>Khi extract, OCR, so sánh chạy xong.</p></div>
+              <button class="toggle on"></button>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info"><strong>Cập nhật plugin</strong><p>Khi plugin đã cài có version mới.</p></div>
+              <button class="toggle"></button>
+            </div>
+          </section>
+
+          <section class="settings-section" id="plugins">
+            <h2>Plugin permission</h2>
+            <p>Kiểm soát quyền của từng plugin trong workspace này.</p>
+            <div class="perm-plugin">
+              <div class="perm-icon"><svg class="icon icon-sm"><use href="#i-file"/></svg></div>
+              <div class="setting-info"><strong>PDF Research</strong><p>Đọc file · Tạo object trên Canvas</p></div>
+              <button class="btn"><svg class="icon icon-sm"><use href="#i-settings"/></svg> Chi tiết</button>
+            </div>
+            <div class="perm-plugin">
+              <div class="perm-icon" style="background: var(--warning-soft); color: var(--warning);"><svg class="icon icon-sm"><use href="#i-chart"/></svg></div>
+              <div class="setting-info"><strong>Financial Analysis <span class="chip warning" style="margin-left: 6px;">Beta</span></strong><p>Đọc báo cáo · Gọi dịch vụ trích bảng</p></div>
+              <button class="btn"><svg class="icon icon-sm"><use href="#i-settings"/></svg> Chi tiết</button>
+            </div>
+          </section>
+
+          <section class="settings-section" id="privacy">
+            <h2>Riêng tư</h2>
+            <p>Data ở local mặc định. Sync là tuỳ chọn.</p>
+            <div class="setting-row">
+              <div class="setting-info"><strong>Đồng bộ đám mây</strong><p>Sao lưu workspace lên server bibo. Mã hoá đầu cuối.</p></div>
+              <button class="toggle"></button>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info"><strong>Gửi thống kê sử dụng ẩn danh</strong><p>Giúp cải thiện sản phẩm. Không gồm nội dung tài liệu.</p></div>
+              <button class="toggle"></button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  document.querySelectorAll('.toggle').forEach(t => t.addEventListener('click', () => t.classList.toggle('on')));
+  document.querySelectorAll('.theme-opt').forEach(o => o.addEventListener('click', () => {
+    document.querySelectorAll('.theme-opt').forEach(x => x.classList.remove('active'));
+    o.classList.add('active');
+  }));
+</script>
+</body>
+</html>

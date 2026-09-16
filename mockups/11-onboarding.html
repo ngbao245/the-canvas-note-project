@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bibo — Onboarding</title>
+<link rel="stylesheet" href="shared.css" />
+<script src="icons.js"></script>
+<style>
+  body { display: grid; place-items: center; min-height: 100vh; background: radial-gradient(ellipse at top, var(--primary-soft), transparent 55%), var(--background); }
+  .onb { width: min(760px, calc(100vw - 32px)); }
+  .onb-steps { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 32px; }
+  .step-dot { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; border: 1px solid var(--border); color: var(--muted-foreground); background: var(--card); }
+  .step-dot.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .step-dot.done { background: var(--primary-soft); color: var(--primary); border-color: color-mix(in srgb, var(--primary) 50%, var(--border)); }
+  .step-line { width: 40px; height: 2px; background: var(--border); }
+  .step-line.done { background: var(--primary); }
+  .onb-card { border: 1px solid var(--border); border-radius: 16px; background: var(--card); padding: 36px; box-shadow: var(--shadow); }
+  .onb-card h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.03em; text-align: center; }
+  .onb-card > p { margin: 0 0 28px; color: var(--muted-foreground); text-align: center; }
+  .use-cases { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 28px; }
+  .use-case { border: 1px solid var(--border); border-radius: 12px; padding: 20px; cursor: pointer; display: flex; gap: 14px; align-items: flex-start; transition: border-color var(--duration-normal) var(--easing-standard); }
+  .use-case:hover { border-color: var(--border-strong); }
+  .use-case.selected { border-color: var(--primary); background: var(--primary-soft); }
+  .uc-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; flex-shrink: 0; }
+  .use-case.selected .uc-icon { background: var(--primary); color: #fff; }
+  .uc-body strong { font-size: 14px; }
+  .uc-body p { margin: 4px 0 0; color: var(--muted-foreground); font-size: 12px; line-height: 1.5; }
+  .onb-actions { display: flex; justify-content: space-between; align-items: center; }
+</style>
+</head>
+<body>
+
+<div class="onb">
+  <div class="onb-steps">
+    <div class="step-dot done"><svg class="icon icon-sm"><use href="#i-check"/></svg></div>
+    <div class="step-line done"></div>
+    <div class="step-dot active">2</div>
+    <div class="step-line"></div>
+    <div class="step-dot">3</div>
+    <div class="step-line"></div>
+    <div class="step-dot">4</div>
+  </div>
+
+  <div class="onb-card">
+    <h1>Bạn dùng bibo cho việc gì?</h1>
+    <p>Chọn use case chính. bibo sẽ gợi ý pack plugin phù hợp, bạn đổi được sau.</p>
+
+    <div class="use-cases">
+      <div class="use-case selected">
+        <div class="uc-icon"><svg class="icon icon-lg"><use href="#i-chart"/></svg></div>
+        <div class="uc-body"><strong>Nghiên cứu & phân tích</strong><p>PDF, BCTC, tài liệu. Gợi ý: PDF Research, Financial Analysis, Markdown.</p></div>
+      </div>
+      <div class="use-case">
+        <div class="uc-icon"><svg class="icon icon-lg"><use href="#i-briefcase"/></svg></div>
+        <div class="uc-body"><strong>Agency & creative</strong><p>Brief, asset, campaign. Gợi ý: Agency Workflow, Image Tools, Translate.</p></div>
+      </div>
+      <div class="use-case">
+        <div class="uc-icon"><svg class="icon icon-lg"><use href="#i-code"/></svg></div>
+        <div class="uc-body"><strong>Developer</strong><p>JSON, JWT, code utilities. Gợi ý: Developer Toolkit, Markdown.</p></div>
+      </div>
+      <div class="use-case">
+        <div class="uc-icon"><svg class="icon icon-lg"><use href="#i-home"/></svg></div>
+        <div class="uc-body"><strong>Cá nhân</strong><p>Đọc sách, journal, dịch. Gợi ý: Translate, Markdown, Image Tools.</p></div>
+      </div>
+    </div>
+
+    <div class="onb-actions">
+      <button class="btn btn-ghost">Bỏ qua</button>
+      <button class="btn btn-primary">Tiếp tục <svg class="icon icon-sm"><use href="#i-arrow-right"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.use-case').forEach(uc => uc.addEventListener('click', () => {
+    document.querySelectorAll('.use-case').forEach(x => x.classList.remove('selected'));
+    uc.classList.add('selected');
+  }));
+</script>
+</body>
+</html>

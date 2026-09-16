@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bibo — Mockup Index</title>
+<link rel="stylesheet" href="shared.css" />
+<script src="icons.js"></script>
+<style>
+  .hero {
+    padding: 60px 32px 40px;
+    text-align: center;
+    background: radial-gradient(ellipse at top, var(--primary-soft), transparent 60%);
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 11px; border-radius: 999px;
+    background: var(--primary-soft); color: var(--primary);
+    font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .hero h1 {
+    font-size: clamp(32px, 4vw, 52px);
+    line-height: 1.1; letter-spacing: -0.04em;
+    margin: 0 0 12px;
+  }
+  .hero p {
+    max-width: 640px; margin: 0 auto;
+    color: var(--muted-foreground); font-size: 15px;
+  }
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px; padding: 32px;
+    max-width: 1440px; margin: 0 auto;
+  }
+  .mockup-card {
+    display: block; padding: 20px;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--card);
+    text-decoration: none; color: inherit;
+    transition: border-color var(--duration-normal) var(--easing-standard), box-shadow var(--duration-normal) var(--easing-standard);
+  }
+  .mockup-card:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-soft);
+  }
+  .mockup-num {
+    display: inline-flex; width: 32px; height: 32px;
+    border-radius: 8px; background: var(--primary-soft); color: var(--primary);
+    align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 750; margin-bottom: 12px;
+  }
+  .mockup-card h3 {
+    margin: 0 0 6px; font-size: 15px; letter-spacing: -0.01em;
+  }
+  .mockup-card p {
+    margin: 0; color: var(--muted-foreground); font-size: 12.5px; line-height: 1.5;
+  }
+  .theme-toggle {
+    position: fixed; top: 16px; right: 16px;
+    width: 40px; height: 40px;
+    display: grid; place-items: center;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--card); color: var(--muted-foreground);
+    cursor: pointer; z-index: 30;
+  }
+  .theme-toggle:hover { color: var(--foreground); border-color: var(--border-strong); }
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" onclick="const t=document.documentElement.dataset.theme==='light'?'dark':'light';document.documentElement.dataset.theme=t;localStorage.setItem('bibo-mockup-theme',t);"
+  aria-label="Đổi giao diện">
+  <svg class="icon"><use href="#i-moon"/></svg>
+</button>
+
+<section class="hero">
+  <span class="hero-badge"><svg class="icon icon-sm"><use href="#i-grid"/></svg> Mockup Preview</span>
+  <h1>bibo — Hình dung dự án</h1>
+  <p>12 trang mockup để hình dung workspace, canvas, plugin store và các flow chính. Click 1 card để mở, dùng Alt+← để quay lại.</p>
+</section>
+
+<div class="grid">
+  <a class="mockup-card" href="01-landing.html">
+    <span class="mockup-num">01</span>
+    <h3>Landing công khai</h3>
+    <p>Trang giới thiệu dự án cho công chúng. Hero, feature, footer.</p>
+  </a>
+  <a class="mockup-card" href="02-app-home.html">
+    <span class="mockup-num">02</span>
+    <h3>App Home / Dashboard</h3>
+    <p>Màn hình đầu sau khi login. Workspace switcher, activity, quick actions.</p>
+  </a>
+  <a class="mockup-card" href="03-workspaces.html">
+    <span class="mockup-num">03</span>
+    <h3>Workspace Manager</h3>
+    <p>Danh sách workspace, tạo mới, phân quyền, active plugin.</p>
+  </a>
+  <a class="mockup-card" href="04-canvas.html">
+    <span class="mockup-num">04</span>
+    <h3>Canvas Workspace</h3>
+    <p>Canvas tương tác với sidebar, board, inspector. Object + connector + provenance.</p>
+  </a>
+  <a class="mockup-card" href="05-plugin-store.html">
+    <span class="mockup-num">05</span>
+    <h3>Plugin Store</h3>
+    <p>Catalog plugin. Filter, search, install per workspace.</p>
+  </a>
+  <a class="mockup-card" href="06-plugin-detail.html">
+    <span class="mockup-num">06</span>
+    <h3>Plugin Detail</h3>
+    <p>Chi tiết plugin: permission, object contract, changelog, screenshot.</p>
+  </a>
+  <a class="mockup-card" href="07-notes.html">
+    <span class="mockup-num">07</span>
+    <h3>Notes Browser</h3>
+    <p>Duyệt note, tag, filter, quick create.</p>
+  </a>
+  <a class="mockup-card" href="08-sources.html">
+    <span class="mockup-num">08</span>
+    <h3>Sources Library</h3>
+    <p>Kho nguồn: PDF, ảnh, web clip. Metadata, provenance link.</p>
+  </a>
+  <a class="mockup-card" href="09-command-palette.html">
+    <span class="mockup-num">09</span>
+    <h3>Command Palette</h3>
+    <p>Ctrl+K overlay. Search, contextual action, recent.</p>
+  </a>
+  <a class="mockup-card" href="10-settings.html">
+    <span class="mockup-num">10</span>
+    <h3>Settings</h3>
+    <p>Workspace + user settings: theme, notification, plugin permission.</p>
+  </a>
+  <a class="mockup-card" href="11-onboarding.html">
+    <span class="mockup-num">11</span>
+    <h3>Onboarding</h3>
+    <p>Flow đầu tiên: chọn use case, install pack, tạo workspace.</p>
+  </a>
+  <a class="mockup-card" href="12-inspector.html">
+    <span class="mockup-num">12</span>
+    <h3>Object Inspector</h3>
+    <p>Panel chi tiết object: provenance, relation, contextual action.</p>
+  </a>
+</div>
+
+<script>
+  const t = localStorage.getItem('bibo-mockup-theme');
+  if (t) document.documentElement.dataset.theme = t;
+</script>
+</body>
+</html>
