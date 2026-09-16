@@ -1,6 +1,11 @@
-import { AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { AlertCircle, RotateCw } from 'lucide-react';
+
+/**
+ * ErrorState — khi query/mutation fail.
+ * message: mô tả lỗi (thường lấy error.message)
+ * onRetry: bấm retry, thường là refetch
+ * compact: dùng inline hoặc trong panel nhỏ
+ */
 
 interface ErrorStateProps {
   message: string;
@@ -9,24 +14,43 @@ interface ErrorStateProps {
   className?: string;
 }
 
-export function ErrorState({ message, onRetry, compact = false, className }: ErrorStateProps) {
+export function ErrorState({ message, onRetry, compact, className = '' }: ErrorStateProps) {
+  if (compact) {
+    return (
+      <div
+        className={`flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive-soft px-3 py-2 text-xs text-destructive ${className}`}
+      >
+        <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+        <span className="flex-1">{message}</span>
+        {onRetry ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="rounded p-1 hover:bg-destructive/10"
+            aria-label="Thử lại"
+          >
+            <RotateCw className="h-3 w-3" />
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div
-      className={cn(
-        'flex flex-col items-center justify-center gap-3 text-center',
-        compact ? 'py-4' : 'py-12',
-        className,
-      )}
-      role="alert"
+      className={`flex flex-col items-center justify-center gap-3 py-12 text-center ${className}`}
     >
-      <AlertCircle
-        className={cn('text-destructive', compact ? 'h-5 w-5' : 'h-8 w-8')}
-      />
-      <p className={cn('text-destructive', compact ? 'text-sm' : 'text-base')}>{message}</p>
+      <AlertCircle className="h-10 w-10 text-destructive" strokeWidth={1.5} />
+      <div className="text-base font-semibold">Đã có lỗi</div>
+      <p className="max-w-sm text-sm text-muted-foreground">{message}</p>
       {onRetry ? (
-        <Button size="sm" variant="outline" onClick={onRetry}>
-          Thử lại
-        </Button>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-sm hover:bg-muted"
+        >
+          <RotateCw className="h-3.5 w-3.5" /> Thử lại
+        </button>
       ) : null}
     </div>
   );
