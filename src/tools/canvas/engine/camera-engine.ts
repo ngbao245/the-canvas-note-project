@@ -29,7 +29,7 @@ import {
 
 // --- Constants ---
 
-const GRID_SIZE = 48;
+const GRID_SIZE = 32;
 
 /** Ramp alpha per frame — 0.35 → convergence ~5 frame (~83ms @ 60Hz). */
 const ZOOM_RAMP_ALPHA = 0.35;

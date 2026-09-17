@@ -181,7 +181,7 @@ export function CanvasSurface({ boardId }: { boardId: string | null }) {
         className="pointer-events-none absolute inset-0"
         style={{
           backgroundImage:
-            'radial-gradient(circle at 4px 4px, color-mix(in srgb, var(--foreground) 15%, transparent) 3px, transparent 3.75px)',
+            'radial-gradient(circle at 4px 4px, color-mix(in srgb, var(--foreground) 9%, transparent) 3px, transparent 3.75px)',
           backgroundSize: '36px 36px',
           backgroundPosition: '0 0',
           opacity: 1,
@@ -192,7 +192,7 @@ export function CanvasSurface({ boardId }: { boardId: string | null }) {
         className="pointer-events-none absolute inset-0"
         style={{
           backgroundImage:
-            'radial-gradient(circle at 4px 4px, color-mix(in srgb, var(--foreground) 15%, transparent) 3px, transparent 3.75px)',
+            'radial-gradient(circle at 4px 4px, color-mix(in srgb, var(--foreground) 9%, transparent) 3px, transparent 3.75px)',
           backgroundSize: '72px 72px',
           backgroundPosition: '0 0',
           opacity: 0,
