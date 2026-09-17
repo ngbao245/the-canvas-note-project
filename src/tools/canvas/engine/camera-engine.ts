@@ -31,12 +31,50 @@ import {
 
 const GRID_SIZE = 32;
 
-/** Ramp alpha per frame — 0.35 → convergence ~5 frame (~83ms @ 60Hz). */
+/**
+ * Ramp alpha per frame — tỉ lệ current chase target mỗi frame.
+ * Áp cho cả pan (tuyến tính) và zoom (log-space) trong ramp chase-target
+ * (dùng cho fit/reset/keyboard — nơi có target rõ ràng).
+ */
 const ZOOM_RAMP_ALPHA = 0.35;
 
-/** Snap threshold: |delta| dưới ngưỡng → snap current = target, kết thúc ramp. */
-const ZOOM_SNAP_THRESHOLD = 0.0005;
+/**
+ * Snap threshold zoom trên LOG-space (log2). |Δlog2(zoom)| dưới ngưỡng → snap.
+ * ~0.004 ≈ 0.28% zoom → mắt không phân biệt, đuôi ramp cắt gọn không "dính".
+ */
+const ZOOM_LOG_SNAP_THRESHOLD = 0.004;
 const XY_SNAP_THRESHOLD = 0.1;
+
+// --- Step-based zoom (wheel notch, Milanote parity) ---
+//
+// Model (đo từ Milanote): zoom nhảy theo NẤC NHÂN cố định per notch, KHÔNG
+// momentum tự do. targetRef.zoom = nấc kế tiếp, rampStep chase mượt log-space
+// tới đó. Notch dồn dập → target nhảy nhiều nấc, ramp chase liên tục 1 lần →
+// vẫn "trượt" mượt (2A).
+//
+//   Zoom in:  target ×= 1.25 mỗi notch (40→50→63→78→98→...→300)
+//   Zoom out: target ×= 0.75 mỗi notch (bước to hơn, out nhanh thoát — 1A)
+//
+// KHÔNG đối xứng: 1/1.25 = 0.8 nhưng out dùng 0.75 để zoom out dứt khoát hơn,
+// khớp data Milanote đo được.
+
+/** Nhân zoom mỗi notch khi zoom IN. log2(1.25) ≈ 0.322. */
+const ZOOM_STEP_IN = 1.25;
+
+/** Nhân zoom mỗi notch khi zoom OUT. Nhỏ hơn 1/1.25 → out nhanh hơn (Milanote). */
+const ZOOM_STEP_OUT = 0.75;
+
+// --- Detent tại 100% (zoom = 1.0), time-gated ---
+//
+// 100% = mốc 1:1 pixel quan trọng. Khi 1 notch làm zoom băng qua 1.0 → kẹp về
+// đúng 1.0 (khựng). Để VƯỢT qua 100%, user phải NGỪNG lăn 1 nhịp rồi lăn lại.
+//
+// Milanote parity: lăn LIÊN TỤC → đứng ở 100%, các notch bị nuốt. Ngừng >
+// DETENT_RELEASE_MS (user "nhả tay") → notch kế tiếp mới vượt. Cơ chế time-gate,
+// không phải notch-gate — vì lăn liên tục = 1 ý định, ngừng-rồi-lăn = ý định mới.
+
+/** Ngừng lăn >= ngưỡng này (ms) mới nhả detent để vượt 100%. */
+const DETENT_RELEASE_MS = 250;
 
 /** Debounce persist camera state ra IndexedDB. */
 const PERSIST_DEBOUNCE_MS = 500;
@@ -92,6 +130,12 @@ export class CameraEngine {
   private rampRafId: number | null = null;
   private renderRafId: number | null = null;
   private renderDirty = false;
+
+  // Step zoom state (wheel notch).
+  // Detent: true = target đang kẹp tại 100%, chờ user ngừng lăn 1 nhịp mới vượt.
+  private detentHeld = false;
+  // Timestamp notch zoom gần nhất (ms) — đo gap để phát hiện "ngừng lăn".
+  private lastZoomNotchAt = 0;
 
   private listeners = new Set<CameraListener>();
   private persistCb: PersistCallback | null = null;
@@ -185,6 +229,8 @@ export class CameraEngine {
     this.currentRef = clamped;
     this.lastPersistedRef = clamped;
     this.cancelRamp();
+    this.detentHeld = false; // reset detent, tránh kẹt sau load
+    this.lastZoomNotchAt = 0;
     this.scheduleRender();
   }
 
@@ -226,10 +272,70 @@ export class CameraEngine {
     this.schedulePersist();
   }
 
-  /** Zoom theo factor (wheel notch). Compound trên target. */
+  /** Zoom theo factor (compound trên target) + ramp chase. Cho keyboard/programmatic. */
   zoomByAt(pointer: Point, factor: number): void {
     this.targetRef = clampCameraToBounds(
       zoomByFactor(this.targetRef, pointer, factor, this.dynamicMin, this.maxZoom),
+      this.panBoundsRef,
+      this.viewportRef,
+    );
+    this.scheduleRamp();
+    this.schedulePersist();
+  }
+
+  /**
+   * Zoom step (wheel notch, Milanote parity). 1 notch = đúng 1 nấc, KHÔNG phụ
+   * thuộc độ lớn deltaY (lăn mạnh/nhẹ không đổi bước — chỉ đổi tần suất event).
+   * rampStep chase mượt tới nấc mới.
+   *   deltaY < 0 (scroll up)   → zoom in  → target ×= ZOOM_STEP_IN.
+   *   deltaY > 0 (scroll down)  → zoom out → target ×= ZOOM_STEP_OUT.
+   *
+   * Detent 100% time-gated: nấc mới băng qua 1.0 → kẹp về 1.0 (khựng). Để vượt,
+   * user phải NGỪNG lăn >= DETENT_RELEASE_MS rồi lăn lại. Lăn liên tục → notch
+   * bị nuốt, giữ 100%.
+   */
+  zoomImpulse(pointer: Point, deltaY: number): void {
+    if (deltaY === 0) return;
+
+    const now = performance.now();
+    const gap = now - this.lastZoomNotchAt;
+    this.lastZoomNotchAt = now;
+
+    const zoomingIn = deltaY < 0;
+    const current = this.targetRef.zoom;
+
+    // Đang kẹp detent tại 100%. Chỉ vượt nếu user đã NGỪNG lăn 1 nhịp (gap đủ
+    // lớn = nhả tay rồi lăn lại). Lăn liên tục (gap nhỏ) → nuốt notch, giữ 100%.
+    if (this.detentHeld) {
+      if (gap < DETENT_RELEASE_MS) return; // vẫn đang lăn liên tục → nuốt
+      this.detentHeld = false;
+      const escaped = clampZoom(
+        1 * (zoomingIn ? ZOOM_STEP_IN : ZOOM_STEP_OUT),
+        this.dynamicMin,
+        this.maxZoom,
+      );
+      this.applyStepTarget(pointer, escaped);
+      return;
+    }
+
+    const next = current * (zoomingIn ? ZOOM_STEP_IN : ZOOM_STEP_OUT);
+
+    // Detent: nấc mới băng qua 1.0 (đổi phía) → kẹp về đúng 1.0. 100% là mốc
+    // 1:1, luôn khựng lại dù đang ở nấc nào.
+    const crosses = (current > 1 && next < 1) || (current < 1 && next > 1);
+    if (crosses) {
+      this.detentHeld = true;
+      this.applyStepTarget(pointer, 1);
+      return;
+    }
+
+    this.applyStepTarget(pointer, clampZoom(next, this.dynamicMin, this.maxZoom));
+  }
+
+  /** Set target zoom quanh anchor + kick ramp + persist. Dùng bởi zoomImpulse. */
+  private applyStepTarget(pointer: Point, targetZoom: number): void {
+    this.targetRef = clampCameraToBounds(
+      zoomAroundPoint(this.targetRef, pointer, targetZoom, this.dynamicMin, this.maxZoom),
       this.panBoundsRef,
       this.viewportRef,
     );
@@ -347,15 +453,22 @@ export class CameraEngine {
     }
   }
 
+  // Ramp: pan (x, y) lerp tuyến tính vì không gian phẳng. Zoom lerp trên
+  // LOG-space (log2) vì zoom là đại lượng nhân — 100%→200% "cảm giác" bằng
+  // 200%→400%. Lerp tuyến tính trên zoom làm zoom-in nhanh, zoom-out chậm
+  // không đều. Lerp log-space → zoom-in/out đối xứng, mượt đều (Figma feel).
   private rampStep(): void {
     this.rampRafId = null;
 
     const dx = this.targetRef.x - this.currentRef.x;
     const dy = this.targetRef.y - this.currentRef.y;
-    const dz = this.targetRef.zoom - this.currentRef.zoom;
+
+    const logCurrent = Math.log2(this.currentRef.zoom);
+    const logTarget = Math.log2(this.targetRef.zoom);
+    const dLog = logTarget - logCurrent;
 
     const done =
-      Math.abs(dz) < ZOOM_SNAP_THRESHOLD &&
+      Math.abs(dLog) < ZOOM_LOG_SNAP_THRESHOLD &&
       Math.abs(dx) < XY_SNAP_THRESHOLD &&
       Math.abs(dy) < XY_SNAP_THRESHOLD;
 
@@ -366,10 +479,11 @@ export class CameraEngine {
       return;
     }
 
+    const nextZoom = Math.pow(2, logCurrent + dLog * ZOOM_RAMP_ALPHA);
     this.currentRef = {
       x: this.currentRef.x + dx * ZOOM_RAMP_ALPHA,
       y: this.currentRef.y + dy * ZOOM_RAMP_ALPHA,
-      zoom: this.currentRef.zoom + dz * ZOOM_RAMP_ALPHA,
+      zoom: nextZoom,
     };
     this.applyTransforms();
     this.notifyListeners();

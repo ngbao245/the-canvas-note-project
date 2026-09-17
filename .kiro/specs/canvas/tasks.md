@@ -96,6 +96,22 @@ Reference donor: `bibo-hub/src/tools/canvas/` (chỉ đọc, không sửa). Đ�
 
 Sau Task 12: `npm run build` pass, mở `/canvas` thao tác toàn bộ US-1 đến US-13 chạy đúng.
 
+## Deviations from design.md (đã ship khác spec — KHÔNG phải drift)
+
+Ghi lại các điểm code khác `design.md` để audit sau không hiểu nhầm là lỗi. Đều là cải tiến/quyết định trong lúc làm.
+
+- **File naming**: `design.md` ghi `Renderer.tsx`, `Grid.tsx`, `commands.ts`, `useWheelZoom.ts` riêng. Thực tế:
+  - `RectRenderer` là hàm nội trong `ObjectsLayer.tsx` (Phase A chỉ 1 type, chưa cần file riêng).
+  - Grid inline trong `CanvasSurface.tsx` + logic LOD trong `camera-engine.ts`.
+  - Command tách thành `engine/actions.ts` (action) + `store/history-store.ts` (stack).
+  - Wheel inline trong `CanvasSurface.tsx`, camera math trong `engine/camera-engine.ts` + `engine/camera.ts`.
+- **ContextMenu**: spec ghi Radix DropdownMenu, thực tế dùng custom `ContextMenu.tsx` (không cài Radix — giữ lean, ít dependency).
+- **Camera debounce**: spec 300ms, thực tế 500ms.
+- **Undo stack**: spec min 50, thực tế `MAX_STACK = 100`.
+- **CameraEngine imperative**: design.md không mô tả engine imperative với rAF ramp — đây là port từ donor P6 Motion Overhaul, thêm để pan/zoom mượt 60Hz không re-render React.
+- **Zoom model polish (vượt scope Phase A "MVP")**: step-based zoom (1 notch = 1 nấc, in ×1.25, out ×0.75), detent 100% time-gate 250ms, grid LOD cross-fade, dynamic zoom min content-aware (baseline 40%). Làm theo yêu cầu chủ động của user để đạt Milanote parity, không phải scope creep tự phát. Chi tiết ở `docs/canvas.md`.
+- **Test coord (Vitest)**: spec Task 4 yêu cầu unit test coord math — CHƯA làm. Verify zoom-around-cursor bằng mắt. Nợ kỹ thuật, có thể thêm sau nếu cần.
+
 ## Ghi chú
 
 - Ước lượng: 12 task chia 4 phase nhỏ. Task 4 (coord + hooks) và Task 7 (selection) là 2 chỗ khó nhất, dễ mất thời gian nhất — đọc kỹ code donor tương ứng khi làm.

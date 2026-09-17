@@ -22,17 +22,17 @@ import { ContextMenu } from './ContextMenu';
  *   - Wheel = pan (dọc). Shift+wheel = pan ngang. Ctrl+wheel = zoom around cursor.
  *   - Trackpad pinch trên Mac tự có ctrlKey=true (browser convention) → zoom.
  *
- * Constants:
- *   - WHEEL_ZOOM_K = 600 → factor = exp(-deltaY/600), deltaY=100 ≈ -15% per notch.
- *   - WHEEL_ZOOM_CLAMP = 50 → cap deltaY tránh trackpad flick jump zoom nhiều bậc.
- *   - WHEEL_PAN_SPEED = 0.5 → giảm khoảng cách pan per notch (deltaY=100 → 50px).
+ * Zoom momentum (xem CameraEngine.zoomImpulse):
+ *   - Mỗi notch bơm impulse vào zoomVelocity, friction kéo tắt dần.
+ *   - Notch dồn dập → cộng dồn velocity → đà mượt. Notch thưa → glide liên tục,
+ *     không "khựng" từng nấc. Ngừng scroll → "luôn trượt đi" rồi tắt.
+ *
+ * WHEEL_PAN_SPEED = 0.5 → giảm khoảng cách pan per notch (deltaY=100 → 50px).
  *
  * ResizeObserver track viewport, recompute dynamic zoom min + pan bounds mỗi khi
  * objects hoặc viewport đổi.
  */
 
-const WHEEL_ZOOM_K = 600;
-const WHEEL_ZOOM_CLAMP = 50;
 const WHEEL_PAN_SPEED = 0.5;
 
 function normalizeWheelDelta(e: WheelEvent): { dx: number; dy: number } {
@@ -121,11 +121,10 @@ export function CanvasSurface({ boardId }: { boardId: string | null }) {
       const { dx: rawDx, dy: rawDy } = normalizeWheelDelta(e);
 
       // Ctrl+wheel (hoặc pinch trackpad Mac = ctrlKey=true) → zoom around cursor.
+      // Momentum: mỗi notch bơm impulse, engine tự glide liên tục.
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
-        const clampedDy = Math.max(-WHEEL_ZOOM_CLAMP, Math.min(WHEEL_ZOOM_CLAMP, rawDy));
-        const factor = Math.exp(-clampedDy / WHEEL_ZOOM_K);
-        engine.zoomByAt(pointer, factor);
+        engine.zoomImpulse(pointer, rawDy);
         return;
       }
 

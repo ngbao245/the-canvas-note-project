@@ -86,3 +86,12 @@ Map vào Tailwind qua `tailwind.config.ts` với format `hsl(var(--x) / <alpha-v
 
 - `vite.config.ts` — cho runtime bundler
 - `tsconfig.app.json` (paths) — cho TS type check
+
+## Tài liệu theo tool/domain
+
+Doc canonical cho từng tool/domain. Đọc trước khi sửa tool tương ứng.
+
+| Domain | Spec | Doc |
+|---|---|---|
+| Canvas | `.kiro/specs/canvas/` | `docs/canvas.md` |
+| Design system | `.kiro/specs/design-system/` | `.kiro/notes/design-system.md` |
