@@ -34,6 +34,50 @@
     --drawably-fill: var(--primary);
     --drawably-paper: var(--background);
     --drawably-width: 2;
+
+    /*
+     * Z-index scale — đặt tên tầng thay magic number.
+     * Học từ Milanote naming (canvas thấp, modal cao, tooltip trên cùng).
+     * Cách nhau bội số 100/1000 để chèn tầng mới không xáo trộn.
+     */
+    --z-canvas: 100;
+    --z-canvas-object: 300;
+    --z-canvas-selection: 500;
+    --z-canvas-drag-preview: 700;
+    --z-toolbar: 20000;
+    --z-header: 30000;
+    --z-drag-layer: 40000;
+    --z-modal: 50000;
+    --z-tooltip: 60000;
+
+    /*
+     * Elevation shadow — 3 mức nâng chuẩn cho object.
+     *   1: idle card                (subtle rim)
+     *   2: hover / lifted           (rõ hơn, ambient)
+     *   3: dragging / floating over (mạnh, nổi bật)
+     * Dùng qua Tailwind utilities: shadow-elevation-1/2/3 (map trong tailwind.config).
+     */
+    --shadow-elevation-1: 0 1px 2px 0 rgba(0, 0, 0, 0.18);
+    --shadow-elevation-2:
+      0 2px 4px 0 rgba(0, 0, 0, 0.18),
+      0 4px 10px -2px rgba(0, 0, 0, 0.12);
+    --shadow-elevation-3:
+      0 8px 16px -4px rgba(0, 0, 0, 0.24),
+      0 16px 32px -8px rgba(0, 0, 0, 0.18);
+  }
+
+  /*
+   * Light theme dịu shadow vì nền sáng, opacity cao trông "bẩn".
+   * Dark giữ nguyên default.
+   */
+  [data-theme='light'] {
+    --shadow-elevation-1: 0 1px 2px 0 rgba(28, 33, 45, 0.08);
+    --shadow-elevation-2:
+      0 2px 4px 0 rgba(28, 33, 45, 0.08),
+      0 4px 10px -2px rgba(28, 33, 45, 0.05);
+    --shadow-elevation-3:
+      0 8px 16px -4px rgba(28, 33, 45, 0.12),
+      0 16px 32px -8px rgba(28, 33, 45, 0.08);
   }
 
   /* Theme mặc định = dark. Áp dụng khi chưa set data-theme hoặc data-theme='dark'. */

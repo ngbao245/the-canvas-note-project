@@ -61,6 +61,21 @@ const config: Config = {
       boxShadow: {
         DEFAULT: 'var(--shadow)',
         soft: 'var(--shadow-soft)',
+        // Elevation scale — 1 idle, 2 hover, 3 dragging (xem index.css).
+        'elevation-1': 'var(--shadow-elevation-1)',
+        'elevation-2': 'var(--shadow-elevation-2)',
+        'elevation-3': 'var(--shadow-elevation-3)',
+      },
+      zIndex: {
+        canvas: 'var(--z-canvas)',
+        'canvas-object': 'var(--z-canvas-object)',
+        'canvas-selection': 'var(--z-canvas-selection)',
+        'canvas-drag-preview': 'var(--z-canvas-drag-preview)',
+        toolbar: 'var(--z-toolbar)',
+        header: 'var(--z-header)',
+        'drag-layer': 'var(--z-drag-layer)',
+        modal: 'var(--z-modal)',
+        tooltip: 'var(--z-tooltip)',
       },
       transitionTimingFunction: {
         standard: 'var(--easing-standard)',
