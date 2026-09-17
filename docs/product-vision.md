@@ -75,9 +75,10 @@ Lưu ý cho agent: mockup thể hiện "cái gì" và "trông thế nào". Khi m
 ## Trạng thái hiện tại
 
 - Foundation React đã scaffold xong (Vite + React + Router + Tailwind + shadcn primitives). Build và lint pass.
-- Chưa có tool/tính năng thật nào trong `src/tools/`. Mới có trang Landing.
+- **Design system đã thống nhất và ship** (spec `design-system` Task 1-8): primary xanh #007acc, Plus Jakarta Sans, token theo `[data-theme]` (dark + light), 2 trục theme + phong cách vẽ tay/phẳng. Xem `.kiro/notes/design-system.md`.
+- **Canvas Phase A đã ship** (spec `canvas` Task 1-12): route `/canvas`, camera engine (pan/zoom-at-cursor mượt, dynamic zoom min content-aware), object CRUD rect, select/marquee/resize, undo/redo, Fit/Reset view, grid dot LOD. Persist IndexedDB.
+- Các tool khác trong `src/tools/` chưa làm. Object types (Note/Text/Image/Link) là Canvas Phase B tiếp theo.
 - Mockup HTML đã dựng đủ để hình dung. Canvas và plugin store làm kỹ nhất.
-- Design system chưa thống nhất: token app (primary gần đen) và token mockup (primary xanh #007acc) đang lệch. Đang chờ chốt — xem `.kiro/notes/design-system.md`.
 - Backend, auth, deploy: chưa quyết.
 
 ## KHÔNG suy diễn ngoài tài liệu này
