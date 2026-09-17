@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { Moon, Sun, FileText, Search } from 'lucide-react';
 import { Button, Card, Badge } from '@/components/style';
 import {
@@ -8,6 +7,7 @@ import {
   ErrorState,
 } from '@/components/shared';
 import { useUiStyleStore } from '@/stores/ui-style-store';
+import { useThemeStore } from '@/stores/theme-store';
 
 /**
  * Trang demo phong cách hiển thị nội bộ.
@@ -19,23 +19,9 @@ import { useUiStyleStore } from '@/stores/ui-style-store';
 export default function StyleDemo() {
   const uiStyle = useUiStyleStore((s) => s.style);
   const toggleStyle = useUiStyleStore((s) => s.toggle);
-
-  // Toggle theme cục bộ (chưa có store theme). Đọc/ghi data-theme trên <html>.
-  const currentTheme = document.documentElement.getAttribute('data-theme') ?? 'dark';
-
-  useEffect(() => {
-    // Đảm bảo có data-theme khi mount (chưa có store theme toàn cục).
-    if (!document.documentElement.getAttribute('data-theme')) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    }
-  }, []);
-
-  function toggleTheme() {
-    const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-    document.documentElement.setAttribute('data-theme', next);
-  }
-
-  const isDark = currentTheme === 'dark';
+  const theme = useThemeStore((s) => s.theme);
+  const toggleTheme = useThemeStore((s) => s.toggle);
+  const isDark = theme === 'dark';
 
   return (
     <main className="min-h-screen bg-background p-8 text-foreground">
