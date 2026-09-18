@@ -77,6 +77,14 @@ const config: Config = {
         modal: 'var(--z-modal)',
         tooltip: 'var(--z-tooltip)',
       },
+      fontFamily: {
+        serif: [
+          'Fraunces',
+          'Georgia',
+          'Times New Roman',
+          'serif',
+        ],
+      },
       transitionTimingFunction: {
         standard: 'var(--easing-standard)',
       },

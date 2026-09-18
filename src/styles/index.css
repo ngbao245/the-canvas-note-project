@@ -1,3 +1,6 @@
+/* Fraunces — modern serif free, dùng cho title canvas card (Milanote parity thay Tiempos proprietary). */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -199,4 +202,12 @@
 body.canvas-drag-invalid,
 body.canvas-drag-invalid * {
   cursor: not-allowed !important;
+}
+
+/* Ẩn scrollbar nhưng vẫn scroll được (mockup 04 .side-scroll pattern) */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

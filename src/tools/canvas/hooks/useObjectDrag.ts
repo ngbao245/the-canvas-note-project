@@ -269,7 +269,7 @@ export function useObjectDrag(objectId: string) {
     updateZone(e.clientX, e.clientY);
   };
 
-  const onUp = (_e: PointerEvent) => {
+  const onUp = () => {
     const start = startRef.current;
     if (!start) {
       teardown();

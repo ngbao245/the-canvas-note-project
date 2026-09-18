@@ -7,13 +7,17 @@ import { applyResize, commitResize } from '../engine/actions';
 import { MIN_OBJECT_SIZE } from '../types';
 
 /**
- * Render outline + 8 resize handles quanh mỗi object đang select.
- * Phase A resize 1 object 1 lần (multi-resize để Phase C).
- * Handles nằm trong world layer nên tự scale theo camera — bù kích thước qua 1/zoom
- * để handles giữ size cố định trên màn hình.
+ * SelectionLayer — Milanote-style. Khi 1 object selected, render:
+ *   - Outline box quanh card (ring primary, bù zoom)
+ *   - QuickLineDot top-right (visual placeholder — drag logic Phase C, xem
+ *     `.kiro/notes/canvas-backlog.md` mục 1)
+ *   - Corner resize handle SVG bottom-right (SE only, Milanote parity):
+ *     drag = resize width + height. Cạnh trên/trái/phải không có handle
+ *     (đúng Milanote). Muốn thu nhỏ = drag corner về trong.
+ *
+ * Trade-off khi bỏ 7 handle: mất resize từ cạnh riêng. User đã confirm OK.
+ * Multi-select resize: Phase C (chưa hỗ trợ ở đây).
  */
-
-const HANDLES: ResizeHandle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
 export function SelectionLayer() {
   const selectedIds = useSelectionStore((s) => s.selectedIds);
@@ -48,11 +52,15 @@ function SelectionBox({
   zoom: number;
   single: boolean;
 }) {
+  // border 2/zoom → luôn 2px screen. Handle/dot size cũng bù zoom để giữ constant screen.
   const border = 2 / zoom;
-  const handleSize = 10 / zoom;
 
   return (
     <div
+      // data-canvas-overlay: canvas surface pointerdown listener (usePointerInteraction)
+      // guard check attribute này để KHÔNG kích marquee mode khi user click vào
+      // handle/dot bên trong. Native listener không tôn trọng React stopPropagation.
+      data-canvas-overlay="true"
       className="pointer-events-none absolute"
       style={{
         left: geometry.x - border,
@@ -60,64 +68,61 @@ function SelectionBox({
         width: geometry.width + border * 2,
         height: geometry.height + border * 2,
         border: `${border}px solid var(--primary)`,
+        borderRadius: `${6 / zoom}px`, // match rounded-sm của ObjectShell
       }}
     >
-      {/* Chỉ hiện resize handle khi có 1 object select (đơn giản Phase A) */}
-      {single &&
-        HANDLES.map((h) => (
-          <Handle key={h} handle={h} objectId={id} size={handleSize} zoom={zoom} />
-        ))}
+      {/* Chỉ hiện handle + dot khi 1 object select (Phase A single-resize). */}
+      {single ? (
+        <>
+          <QuickLineDot zoom={zoom} />
+          <CornerResizeHandle objectId={id} zoom={zoom} />
+        </>
+      ) : null}
     </div>
   );
 }
 
-const CURSOR_BY_HANDLE: Record<ResizeHandle, string> = {
-  n: 'ns-resize',
-  s: 'ns-resize',
-  e: 'ew-resize',
-  w: 'ew-resize',
-  ne: 'nesw-resize',
-  sw: 'nesw-resize',
-  nw: 'nwse-resize',
-  se: 'nwse-resize',
-};
+/**
+ * QuickLineDot — chấm nhỏ top-right, hint kéo tạo line/arrow (Milanote pattern).
+ * Phase B: visual only. Drag logic + LineObject → Phase C (xem backlog).
+ * White circle 12px screen-space, subtle drop shadow. pointer-events-none.
+ */
+function QuickLineDot({ zoom }: { zoom: number }) {
+  const size = 12 / zoom;
+  const offset = 6 / zoom; // nhô ra ngoài SelectionBox góc NE
+  return (
+    <div
+      className="pointer-events-none absolute rounded-full bg-card"
+      style={{
+        top: -offset,
+        right: -offset,
+        width: size,
+        height: size,
+        border: `${2 / zoom}px solid var(--primary)`,
+        boxShadow: 'var(--shadow-elevation-1)',
+      }}
+      aria-hidden="true"
+    />
+  );
+}
 
-function Handle({
-  handle,
-  objectId,
-  size,
-  zoom,
-}: {
-  handle: ResizeHandle;
-  objectId: string;
-  size: number;
-  zoom: number;
-}) {
-  // Position handle theo compass point trên border của SelectionBox.
-  const pos: React.CSSProperties = {
-    width: size,
-    height: size,
-    background: 'var(--primary)',
-    border: `${1 / zoom}px solid var(--card)`,
-    borderRadius: '50%',
-    cursor: CURSOR_BY_HANDLE[handle],
-    position: 'absolute',
-    pointerEvents: 'auto',
-  };
-  const half = size / 2;
-  if (handle.includes('n')) pos.top = -half;
-  else if (handle.includes('s')) pos.bottom = -half;
-  else pos.top = `calc(50% - ${half}px)`;
-  if (handle.includes('w')) pos.left = -half;
-  else if (handle.includes('e')) pos.right = -half;
-  else pos.left = `calc(50% - ${half}px)`;
+/**
+ * CornerResizeHandle — SVG grip Milanote-style góc phải dưới. Drag resize
+ * width + height (chỉ SE direction). x/y không đổi khi drag → card growth
+ * from top-left corner.
+ *
+ * SVG: 3 đường chéo dark 50% + 3 đường trắng 70% offset → hiệu ứng grip 3D.
+ */
+function CornerResizeHandle({ objectId, zoom }: { objectId: string; zoom: number }) {
+  const size = 16 / zoom;
+  const offset = 4 / zoom; // 4px screen từ cạnh card
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.stopPropagation();
     const target = e.currentTarget;
     target.setPointerCapture(e.pointerId);
     useInteractionStore.getState().setMode('resizing');
-    useInteractionStore.getState().setResizeHandle(handle);
+    useInteractionStore.getState().setResizeHandle('se' as ResizeHandle);
 
     const startClientX = e.clientX;
     const startClientY = e.clientY;
@@ -128,32 +133,14 @@ function Handle({
     const onMove = (ev: PointerEvent) => {
       const dx = (ev.clientX - startClientX) / zoom;
       const dy = (ev.clientY - startClientY) / zoom;
-
-      let x = g0.x;
-      let y = g0.y;
-      let w = g0.width;
-      let h = g0.height;
-
-      if (handle.includes('e')) w = Math.max(MIN_OBJECT_SIZE, g0.width + dx);
-      if (handle.includes('s')) h = Math.max(MIN_OBJECT_SIZE, g0.height + dy);
-      if (handle.includes('w')) {
-        const newW = Math.max(MIN_OBJECT_SIZE, g0.width - dx);
-        x = g0.x + (g0.width - newW);
-        w = newW;
-      }
-      if (handle.includes('n')) {
-        const newH = Math.max(MIN_OBJECT_SIZE, g0.height - dy);
-        y = g0.y + (g0.height - newH);
-        h = newH;
-      }
-
-      applyResize(objectId, { x, y, width: w, height: h });
+      const w = Math.max(MIN_OBJECT_SIZE, g0.width + dx);
+      const h = Math.max(MIN_OBJECT_SIZE, g0.height + dy);
+      applyResize(objectId, { x: g0.x, y: g0.y, width: w, height: h });
     };
     const onUp = (ev: PointerEvent) => {
       target.releasePointerCapture(ev.pointerId);
       useInteractionStore.getState().setMode('idle');
       useInteractionStore.getState().setResizeHandle(null);
-      // Push ResizeCommand.
       const end = useObjectsStore.getState().objects.get(objectId);
       if (end) commitResize(objectId, g0, end.geometry);
       window.removeEventListener('pointermove', onMove);
@@ -165,5 +152,33 @@ function Handle({
     window.addEventListener('pointercancel', onUp);
   };
 
-  return <div style={pos} onPointerDown={onPointerDown} />;
+  return (
+    <div
+      onPointerDown={onPointerDown}
+      style={{
+        position: 'absolute',
+        bottom: offset,
+        right: offset,
+        width: size,
+        height: size,
+        cursor: 'nwse-resize',
+        pointerEvents: 'auto',
+      }}
+    >
+      <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" aria-hidden>
+        {/* Layer dưới: dark path, opacity 50% — bóng đổ */}
+        <path
+          d="M13.146 12.146a.5.5 0 0 1 .708.708l-1 1a.5.5 0 0 1-.708-.708zm0-4a.5.5 0 0 1 .708.708l-5 5a.5.5 0 0 1-.708-.708zm0-4a.5.5 0 0 1 .708.708l-9 9a.5.5 0 0 1-.708-.708z"
+          fill="var(--foreground)"
+          fillOpacity="0.5"
+        />
+        {/* Layer trên: light path, opacity 70% offset 1px — highlight 3D */}
+        <path
+          d="M13.146 6.146a.5.5 0 0 1 .708.708l-7 7a.5.5 0 0 1-.708-.708zm0-4a.5.5 0 0 1 .708.708l-11 11a.5.5 0 0 1-.708-.708zm0 8a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708-.708z"
+          fill="var(--card)"
+          fillOpacity="0.7"
+        />
+      </svg>
+    </div>
+  );
 }

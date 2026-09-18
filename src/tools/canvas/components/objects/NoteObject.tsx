@@ -28,14 +28,21 @@ function NoteView({ data }: { data: NoteData }) {
   const emptyTitle = data.title.trim() === '';
   const emptyBody = data.body.trim() === '';
   return (
-    <div className="flex h-full w-full flex-col gap-1 p-3">
+    // pt-5 pl-5 pr-5 pb-5 = padding 20px đều (Milanote element-padding-default = 24px,
+    // Kiro chọn 20 vì bibo card mặc định 220x140 nhỏ hơn Milanote 338w — 24 sẽ chật).
+    // pt-6 để chừa 4px cho ColorBar top (h-1 = 4px) + 20px content padding.
+    <div className="flex h-full w-full flex-col gap-2 pl-5 pr-5 pb-5 pt-6">
       <div
-        className={`text-sm font-semibold leading-snug ${emptyTitle ? 'text-muted-foreground/50' : 'text-foreground'}`}
+        className={`font-serif text-base font-semibold leading-tight tracking-tight ${
+          emptyTitle ? 'text-muted-foreground/50' : 'text-foreground'
+        }`}
       >
         {emptyTitle ? 'Tiêu đề' : data.title}
       </div>
       <div
-        className={`flex-1 overflow-hidden whitespace-pre-wrap text-xs leading-relaxed ${emptyBody ? 'text-muted-foreground/40' : 'text-muted-foreground'}`}
+        className={`flex-1 overflow-hidden whitespace-pre-wrap text-sm leading-relaxed ${
+          emptyBody ? 'text-muted-foreground/40' : 'text-muted-foreground'
+        }`}
       >
         {emptyBody ? 'Nội dung...' : data.body}
       </div>
@@ -83,7 +90,7 @@ function NoteEditor({
   };
 
   return (
-    <div className="flex h-full w-full flex-col gap-1 p-3">
+    <div className="flex h-full w-full flex-col gap-2 pl-5 pr-5 pb-5 pt-6">
       <input
         ref={titleRef}
         value={title}
@@ -98,9 +105,7 @@ function NoteEditor({
           }
         }}
         onBlur={(e) => {
-          // Blur sang body trong cùng note → không đóng.
           if ((e.relatedTarget as Node | null) === bodyRef.current) return;
-          // Blur giả lúc mới mount (do double-click) → re-focus, không đóng.
           if (!ready.current) {
             titleRef.current?.focus();
             return;
@@ -108,7 +113,7 @@ function NoteEditor({
           commitAndClose();
         }}
         placeholder="Tiêu đề"
-        className="w-full bg-transparent text-sm font-semibold leading-snug text-foreground outline-none placeholder:text-muted-foreground/50"
+        className="w-full bg-transparent font-serif text-base font-semibold leading-tight tracking-tight text-foreground outline-none placeholder:text-muted-foreground/50"
       />
       <textarea
         ref={bodyRef}
@@ -124,9 +129,7 @@ function NoteEditor({
           }
         }}
         onBlur={(e) => {
-          // Blur sang title trong cùng note → không đóng.
           if ((e.relatedTarget as Node | null) === titleRef.current) return;
-          // Blur giả lúc mới mount → re-focus, không đóng.
           if (!ready.current) {
             bodyRef.current?.focus();
             return;
@@ -134,7 +137,7 @@ function NoteEditor({
           commitAndClose();
         }}
         placeholder="Nội dung..."
-        className="flex-1 resize-none bg-transparent text-xs leading-relaxed text-muted-foreground outline-none placeholder:text-muted-foreground/40"
+        className="flex-1 resize-none bg-transparent text-sm leading-relaxed text-muted-foreground outline-none placeholder:text-muted-foreground/40"
       />
     </div>
   );
@@ -143,17 +146,25 @@ function NoteEditor({
 registerObjectType({
   type: 'note',
   renderer: NoteRenderer,
-  defaultGeometry: { width: 220, height: 140, rotation: 0, zIndex: 0 },
+  // Milanote parity: card 260x160 gần Milanote 338x default nhưng gọn hơn để bibo
+  // toolbar drag preview không quá lớn. Padding 20px + ColorBar 4px cần space.
+  defaultGeometry: { width: 260, height: 160, rotation: 0, zIndex: 0 },
   defaultData: (): NoteData => ({ title: '', body: '' }),
   label: 'Note',
   showInToolbar: true,
   renderPreview: () => {
+    // Preview toolbar: mimic ObjectShell contrast shadow + ColorBar + padding.
     const el = document.createElement('div');
     el.className =
-      'h-full w-full rounded-md border border-border bg-card p-3 shadow-lg overflow-hidden';
+      'relative h-full w-full rounded-sm bg-card shadow-elevation-2 overflow-hidden';
+    el.style.boxShadow =
+      'inset 0 0 0 1px var(--background), var(--shadow-elevation-2)';
     el.innerHTML =
-      '<div class="text-sm font-semibold leading-snug text-muted-foreground/60">Tiêu đề</div>' +
-      '<div class="mt-1 text-xs leading-relaxed text-muted-foreground/40">Nội dung...</div>';
+      '<div class="absolute inset-x-0 top-0 h-1 bg-primary/60"></div>' +
+      '<div class="flex h-full w-full flex-col gap-2 pl-5 pr-5 pb-5 pt-6">' +
+      '  <div class="font-serif text-base font-semibold leading-tight tracking-tight text-muted-foreground/60">Tiêu đề</div>' +
+      '  <div class="text-sm leading-relaxed text-muted-foreground/40">Nội dung...</div>' +
+      '</div>';
     return el;
   },
 });
