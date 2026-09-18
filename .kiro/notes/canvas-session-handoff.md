@@ -57,14 +57,17 @@ Liên quan: `.kiro/notes/canvas-backlog.md` (backlog feature chưa làm).
 
 ```
 engine/
-  camera-engine.ts (551) — CameraEngine class: target/current ref, ramp tween,
-    anchor lock zoom, grid LOD, pan bounds, persist debounce. TO NHẤT.
+  camera-engine.ts (~470) — CameraEngine class: target/current ref, ramp tween,
+    anchor lock zoom, persist debounce, DOM write. Import pan-bounds + grid-lod.
   camera.ts (110) — pure math zoom/pan/fit (clampZoom, zoomAroundPoint...)
-  coord.ts (42) — screenToCanvas / canvasToScreen
+  pan-bounds.ts — clampCameraToBounds(camera, bounds, viewport) pure
+  grid-lod.ts — computeGridLod(camera) pure, trả dense+sparse layer info
+  coord.ts — screenToCanvas / canvasToScreen / clientToCanvas / aabbIntersect
   actions.ts (238) — createObjectAt, updateObjectData, deleteObjects, resize
     commit — tất cả undo-able qua history-store
 hooks/
-  useObjectDrag.ts (355) — drag item canvas + edge-pan + trash + invalid zone. Hay sửa.
+  useObjectDrag.ts (~280) — drag item canvas + trash + invalid zone. Edge-pan tách ra useEdgePan.
+  useEdgePan.ts (~110) — createEdgePanLoop: edge auto-pan rAF loop khi drag gần rìa.
   useToolbarDrag.ts (169) — drag từ toolbar + ghost preview (floating overlay)
   usePointerInteraction.ts (148) — pan + marquee + click-empty-clear trên surface
   useCanvasBootstrap.ts (55) — load board/object IDB, hydrate camera
@@ -79,8 +82,9 @@ store/ (Zustand)
   interaction-store.ts (37) — mode + marqueeRect + resizeHandle + editingId
 components/
   CanvasSurface.tsx (214) — surface DOM, wheel handler, grid 2-layer, mount overlays
-  route.tsx (321) — CanvasRoute + Header 2-row + subcomponents inline
-  Toolbar.tsx (286) — palette 8 tiles + SVG icons inline
+  CanvasHeader.tsx (~300) — header 2-row (IconButton, ToolsRow, BoardRow, ViewMenu, ZoomBadge...)
+  TileIcons.tsx (~130) — TileType + TileIcon (8 SVG palette)
+  Toolbar.tsx (~150) — palette layout + drag (icon ở TileIcons)
   SelectionLayer.tsx (171) — selection box + corner resize + QuickLineDot
   ObjectsLayer.tsx (62) — render objects qua registry
   CanvasApp.tsx (30) — root: Surface + ConfirmDialog + useDeleteKey
@@ -95,6 +99,8 @@ components/
 api.ts (75) — CanvasRepository interface + IndexedDB adapter (idb-keyval)
 types.ts (112) — Zod schema object/board/geometry
 lib/content-bounds.ts (59) — dynamic zoom min + pan bounds
+lib/dom.ts — isEditableTarget (shared)
+lib/hit-test.ts — hitZone(clientX, clientY) → trash|overlay|canvas|outside (shared)
 ```
 
 ## Gotcha cần nhớ
@@ -106,17 +112,28 @@ lib/content-bounds.ts (59) — dynamic zoom min + pan bounds
 - **updateObjectData đọc snapshot**: dùng `useObjectsStore.getState()` lại sau mutation, không đọc closure cũ (bug đã fix Phase B).
 - **Object root board boardId=null**: object trên root lưu `boardId: null`, không phải rootBoard.id.
 
-## Refactor cần làm (session mới, task đầu tiên — user chốt B2)
+## Refactor B2 — ĐÃ LÀM (session 2026-09-18)
 
-Code chưa "dơ" nghiêm trọng (file to nhất 551 dòng, cohesive). Nhưng tách để đọc target hơn, tiết kiệm credit:
+Tách file + rút helper reuse. Build + lint pass, 0 error (5 warning react-refresh cũ).
 
-1. **route.tsx (321)** → tách Header ra `components/CanvasHeader.tsx` (ToolsRow + BoardRow + ViewMenu + ZoomBadge). route còn ~60 dòng.
-2. **Toolbar.tsx (286)** → tách SVG icons ra `components/TileIcons.tsx` (~150 dòng icon). Toolbar còn ~130.
-3. **useObjectDrag.ts (355)** → tách edge-pan ra `hooks/useEdgePan.ts` (~80 dòng).
-4. **camera-engine.ts (551)** → tách grid LOD math ra `engine/grid-lod.ts` (~80 dòng) + pan-bounds helper. Optional, để cuối vì cohesive.
+Util mới (dùng chung):
+- `lib/dom.ts` — `isEditableTarget` (trước copy 3 lần trong usePointerInteraction / useCanvasKeys / useDeleteKey).
+- `lib/hit-test.ts` — `hitZone(clientX, clientY)` trả `'trash' | 'overlay' | 'canvas' | 'outside'`. Gom logic `elementFromPoint + closest` từ useObjectDrag / useToolbarDrag / useEdgePan.
+- `engine/coord.ts` thêm `clientToCanvas(clientX, clientY, camera)` — tự lấy surface rect + convert, thay công thức tính tay rải rác.
 
-Làm 1-3 trước (giá trị cao, low risk). #4 optional.
-Verify sau mỗi tách: `npm run build` + `npm run lint`.
+Component/hook tách ra:
+- `components/CanvasHeader.tsx` — toàn bộ header 2 row (IconButton, ToolsRow, StyleToggle, Breadcrumb, UndoRedoCluster, BoardRow, ObjectCountBadge, ViewMenu, ViewMenuItem, ZoomBadge). route.tsx còn ~70 dòng chỉ lo bootstrap + fit/reset.
+- `components/TileIcons.tsx` — `TileType` + `TileIcon` (8 SVG). Toolbar.tsx còn layout + drag.
+- `hooks/useEdgePan.ts` — `createEdgePanLoop({ isDragging, getCursor, getDraggingIds, reposition })` trả `{ start, stop }`. useObjectDrag gọi thay cho panLoopStep inline.
+
+Gom UI trùng:
+- `IconButton` (trong CanvasHeader) — gom class nút icon 28px lặp 6 chỗ (theme/style/settings/undo/redo/back).
+- `TileButton` + `ToolTile` (Toolbar) — gộp ToolButton + PlaceholderButton cũ (chỉ khác optional onPointerDown).
+
+Camera-engine cũng đã tách:
+- `engine/pan-bounds.ts` — `clampCameraToBounds(camera, bounds, viewport)` pure.
+- `engine/grid-lod.ts` — `computeGridLod(camera, base?)` pure, trả `{ dense, sparse }` layer info. `GRID_BASE = 32` const.
+- `camera-engine.ts` (~470) giữ class + rAF ramp + DOM write orchestration, import 2 helper.
 
 ## Next feature (sau refactor)
 

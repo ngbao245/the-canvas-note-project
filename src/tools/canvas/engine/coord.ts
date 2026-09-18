@@ -36,6 +36,21 @@ export function canvasToScreen(pointer: Point, camera: Camera): Point {
   };
 }
 
+/**
+ * Convert toạ độ client (clientX/clientY từ pointer event) → canvas coord.
+ * Tự lấy rect của surface (`[data-canvas-surface]`) + camera hiện tại, nên
+ * caller không phải tính tay công thức `(client - rect.left - cam.x) / zoom`.
+ *
+ * Trả null nếu chưa mount surface. Không kiểm tra client có nằm trong surface
+ * hay không — caller tự lo nếu cần (xem hit-test.ts).
+ */
+export function clientToCanvas(clientX: number, clientY: number, camera: Camera): Point | null {
+  const surface = document.querySelector('[data-canvas-surface]');
+  if (!(surface instanceof HTMLElement)) return null;
+  const rect = surface.getBoundingClientRect();
+  return screenToCanvas({ x: clientX - rect.left, y: clientY - rect.top }, camera);
+}
+
 /** AABB test giữa 2 rectangle (cùng coord space). */
 export function aabbIntersect(a: Bounds, b: Bounds): boolean {
   return !(

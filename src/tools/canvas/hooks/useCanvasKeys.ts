@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useHistoryStore } from '../store/history-store';
+import { isEditableTarget } from '../lib/dom';
 
 /**
  * Keyboard shortcut chung của canvas:
@@ -48,10 +49,4 @@ export function useCanvasKeys({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onFit, onReset]);
-}
-
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
 }

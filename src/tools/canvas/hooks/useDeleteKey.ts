@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useSelectionStore } from '../store/selection-store';
+import { isEditableTarget } from '../lib/dom';
 
 /**
  * Bắt phím Delete/Backspace khi có object select và focus không ở input.
@@ -18,10 +19,4 @@ export function useDeleteKey(onTrigger: (ids: string[]) => void) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onTrigger]);
-}
-
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
 }

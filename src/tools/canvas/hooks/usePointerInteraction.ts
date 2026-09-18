@@ -4,6 +4,7 @@ import { useObjectsStore } from '../store/objects-store';
 import { useInteractionStore } from '../store/interaction-store';
 import { getCameraEngine } from '../engine/camera-engine';
 import { screenToCanvas, aabbIntersect } from '../engine/coord';
+import { isEditableTarget } from '../lib/dom';
 
 /**
  * Pointer interaction trên canvas surface. Object tự xử pointerdown trong
@@ -152,10 +153,4 @@ export function usePointerInteraction(ref: RefObject<HTMLElement | null>) {
       el.removeEventListener('pointercancel', onPointerUp);
     };
   }, [ref]);
-}
-
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
 }

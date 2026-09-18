@@ -39,20 +39,16 @@ Muốn đổi stack thì sửa spec `bibo-foundation` trước, không tự đ�
 - Không tự commit hay push, trừ khi bạn yêu cầu.
 - Không `--force`, không amend commit của bạn.
 
-## Rule màu và theme
+## Rule code và theme — tóm tắt
 
-Dùng token trong `src/styles/index.css`: `primary`, `foreground`, `background`, `card`, `muted`, `muted-foreground`, `border`, `input`, `ring`, `destructive`, `success`, `warning`.
+Đây là mức tối thiểu Kiro phải nhớ mọi lúc. Chi tiết + ví dụ đúng/sai ở `.kiro/steering/coding-style.md` (tự load khi Kiro đọc file `src/`).
 
-Đúng: `bg-primary text-foreground border-border`, `bg-success/10 text-success`.  
-Sai: `bg-blue-500`, `text-slate-100`, `bg-green-500/10` (đã có `success`).
-
-## Rule code
-
-- TypeScript strict, không `any`. Kiểm tra kiểu trước khi dùng.
-- Alias `@/` trỏ `src/`.
-- File component: `PascalCase.tsx`. File util: `kebab-case.ts`.
-- Tool mới đặt trong `src/tools/{tên-tool}/`, gồm `route.tsx`, `api.ts`, `types.ts`, `components/`, `lib/`.
-- Không `console.log`. Chỉ `console.warn` hoặc `console.error` khi cần, kèm `// eslint-disable-next-line no-console`.
+- TypeScript strict, cấm `any`. Alias `@/` trỏ `src/`.
+- Dùng token theme (`primary`, `foreground`, `background`, `card`, `muted`, `muted-foreground`, `border`, `destructive`, `success`, `warning`). Cấm màu Tailwind cứng như `bg-blue-500`.
+- File component `PascalCase.tsx`, util `kebab-case.ts`, hook `useCamelCase.ts`.
+- Tool trong `src/tools/{tên}/`.
+- Không `console.log` trong commit.
+- UI state → Zustand. Server state → TanStack Query.
 
 ## Rule giới hạn output lệnh (tiết kiệm token)
 
@@ -71,12 +67,40 @@ Kiro làm việc theo 3 mode. **Không load rule mode ở đây** — chỉ đ�
 
 Kiro thông báo trước khi chuyển mode, dạng: `[mode: planner] Bắt đầu hỏi rõ yêu cầu tool X.`
 
+## Handoff theo tool
+
+Trước khi làm việc với một tool đã có handoff, Kiro tự đọc file handoff của tool đó để nắm ngữ cảnh, không chờ bạn đính kèm:
+
+- Canvas (`src/tools/canvas/`) → đọc `.kiro/notes/canvas-session-handoff.md` (state đã ship, kiến trúc, gotcha) + `.kiro/notes/canvas-backlog.md` (feature chưa làm).
+
+Handoff là nguồn chuẩn cho trạng thái tool. Nếu handoff lệch với code thực tế thì tin code, rồi báo bạn để cập nhật handoff.
+
 ## Rule cứng khi hỏi
 
 Kiro hỏi tối đa 3 câu mỗi lượt. Câu hỏi phải là MCQ (A/B/C + Other), mỗi option 1 dòng. Không hỏi lại cái đã có trong stack đã chốt, đã có trong spec, hoặc bạn đã trả lời turn trước.
 
+## Trước khi implement — báo cáo 1 dòng
+
+Trước khi sửa code hoặc viết doc lớn, Kiro báo 1 dòng ngắn: "Đọc {file rule/handoff} để làm {việc}." Bạn thấy Kiro có tra đúng rule không. Không cần cho task nhỏ (typo, đổi tên biến).
+
+Ví dụ:
+- "Đọc `canvas-session-handoff.md` + `coding-style.md` để tách file useObjectDrag."
+- "Đọc `mode-fix.md` để fix bug zoom bị nhảy."
+
+Bạn thấy Kiro đọc thiếu thì báo, Kiro bổ sung trước khi làm.
+
+## Skill
+
+Bộ skill đặt trong `.kiro/skills/{tên-skill}/SKILL.md`. Kiro chỉ load khi bạn gọi tên hoặc khi câu hỏi khớp trigger phrase trong nội dung skill. Skill không auto load mỗi lượt.
+
+Chưa có skill nào — khi bạn import bộ skill vào folder này thì Kiro sẽ đọc và biết cách dùng.
+
 ## Trạng thái hiện tại
 
-- Foundation đã xong (Task 1-10 của `bibo-foundation` pass). App scaffold, build + lint đều pass.
-- Chưa `git init`. Chưa có tool cụ thể nào.
-- Bước tiếp: bạn quyết định port tool đầu tiên từ donor sang, hoặc `git init` để commit foundation.
+Cập nhật 2026-09-18.
+
+- Foundation xong (`bibo-foundation`). Build + lint pass, 0 error (5 warning react-refresh cũ, không blocking).
+- Đã `git init`. Chưa commit lần nào.
+- Tool đang làm: **Canvas** (`src/tools/canvas/`). Chi tiết state + kiến trúc ở `.kiro/notes/canvas-session-handoff.md`.
+- Refactor B2 (tách file cho dễ đọc + rút helper reuse) đã xong toàn bộ 4 nhóm. Handoff cập nhật.
+- Bước tiếp: soạn nốt bộ rule + doc (đang làm), rồi sang feature mới hoặc object type.

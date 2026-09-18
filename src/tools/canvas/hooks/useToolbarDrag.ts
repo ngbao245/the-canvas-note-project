@@ -1,5 +1,6 @@
 import { useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import { getCameraEngine } from '../engine/camera-engine';
+import { hitZone } from '../lib/hit-test';
 import type { DefaultGeometry } from './useObjectRegistry';
 
 /**
@@ -26,15 +27,11 @@ const POP_SCALE = 1.15;
 
 export type DropZone = 'canvas' | 'invalid';
 
+// Từ toolbar chỉ tạo object khi thả trên vùng canvas trống. Thả trên overlay
+// (toolbar/trash) hoặc ngoài canvas đều tính invalid — khác với drag object đã
+// tồn tại (trash mới là valid drop = delete).
 function detectZone(clientX: number, clientY: number): DropZone {
-  const target = document.elementFromPoint(clientX, clientY);
-  if (!(target instanceof Element)) return 'invalid';
-  // Trên overlay (toolbar/trash) → vẫn tính "invalid" cho việc TẠO object.
-  // (Khác với drag object trên canvas — trash mới là valid drop = delete.
-  //  Từ toolbar không có ý nghĩa "kéo vào trash để xoá vì chưa tồn tại object".)
-  if (target.closest('[data-canvas-overlay]')) return 'invalid';
-  if (target.closest('[data-canvas-surface]')) return 'canvas';
-  return 'invalid';
+  return hitZone(clientX, clientY) === 'canvas' ? 'canvas' : 'invalid';
 }
 
 export function useToolbarDrag(opts: {

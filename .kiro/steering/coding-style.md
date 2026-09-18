@@ -1,0 +1,164 @@
+---
+inclusion: fileMatch
+fileMatchPattern: 'src/**/*.{ts,tsx}'
+---
+
+# Coding Style — bibo
+
+Chỉ load khi Kiro đọc file trong `src/`. Rule ngắn + ví dụ.
+
+## TypeScript
+
+- `strict: true`. Không `any`. Không unused locals.
+- Kiểm tra kiểu trước khi dùng (narrow bằng `typeof`, `in`, guard).
+- Alias `@/` trỏ `src/`. Dùng thay relative dài.
+
+Đúng:
+```ts
+function parse(input: unknown): Result {
+  if (typeof input !== 'string') throw new Error('...');
+  // narrow xong mới xài input như string
+  return { text: input };
+}
+```
+
+Sai:
+```ts
+function parse(input: any): any {
+  return input.toString();
+}
+```
+
+## Đặt tên file
+
+- Component React: `PascalCase.tsx` (`NoteObject.tsx`, `CanvasHeader.tsx`).
+- Hook: `useCamelCase.ts` (`useObjectDrag.ts`).
+- Util/lib: `kebab-case.ts` (`hit-test.ts`, `pan-bounds.ts`).
+- Route: `PascalCase.tsx` hoặc `route.tsx` khi trong `src/tools/{name}/`.
+
+## Folder tool
+
+Tool đặt trong `src/tools/{tên}/`. Cấu trúc chuẩn:
+
+```
+src/tools/{tên}/
+  route.tsx       — entry route
+  api.ts          — repository / adapter
+  types.ts        — Zod schema + types
+  components/     — UI
+  hooks/          — hook riêng của tool
+  engine/         — pure logic (nếu tool phức tạp)
+  lib/            — util nội bộ tool
+  store/          — Zustand store riêng
+```
+
+Import vào `App.tsx` bằng lazy: `lazy(() => import('./tools/{tên}/route'))`.
+
+## Theme token
+
+Dùng token trong `src/styles/index.css`:
+
+- `primary` — CTA, brand highlight
+- `foreground` / `muted-foreground` — text
+- `background` / `card` / `popover` / `muted` — surface
+- `border` / `input` / `ring` — outline
+- `destructive` — error, delete
+- `success` — completed, ok
+- `warning` — cảnh báo pending
+
+Đúng:
+```tsx
+<div className="bg-primary text-foreground border-border" />
+<span className="bg-success/10 text-success">Xong</span>
+<span className="text-destructive">Lỗi</span>
+```
+
+Sai:
+```tsx
+<div className="bg-blue-500 text-slate-100" />
+<div className="bg-emerald-400" />
+<span className="bg-green-500/10 text-green-500" />  // dùng success
+<span className="bg-yellow-500/10 text-yellow-500" /> // dùng warning
+```
+
+Data màu do user chọn (highlight vàng/xanh/đỏ, diff added/removed) là ngoại lệ — hard-code được vì là data, không phải theme.
+
+## Console
+
+- Không `console.log` trong commit.
+- Chỉ `console.warn` / `console.error` khi thật cần, kèm comment:
+
+```ts
+// eslint-disable-next-line no-console
+console.warn('[canvas] persist failed', err);
+```
+
+## State
+
+- UI state → Zustand store.
+- Server state → TanStack Query v5.
+- Không dùng Redux, không dùng Context cho global state mới.
+- Store đặt trong `src/stores/` (global) hoặc `src/tools/{tên}/store/` (riêng tool).
+
+## Hook rule
+
+- `useCallback` / `useMemo` chỉ khi có lý do rõ (deps của effect khác, prop truyền xuống child memoized). Không dùng "phòng hờ".
+- Hook deps đầy đủ. Nếu cố ý bỏ deps thì kèm `// eslint-disable-next-line react-hooks/exhaustive-deps` + comment lý do.
+
+## Component pattern
+
+- Cấu trúc file component:
+  1. Import
+  2. Type / interface local
+  3. Constant
+  4. Export component chính
+  5. Subcomponent (nếu có)
+  6. Helper (nếu có)
+
+- Prop dùng inline object type nếu ≤ 4 field, tách interface nếu > 4:
+
+```tsx
+// Nhỏ, inline
+function Badge({ tone, children }: { tone: 'default' | 'primary'; children: ReactNode }) {}
+
+// Lớn, tách
+interface CanvasHeaderProps {
+  board: Board;
+  onFit: () => void;
+  onReset: () => void;
+  onSettings?: () => void;
+  onExport?: () => void;
+}
+function CanvasHeader(props: CanvasHeaderProps) {}
+```
+
+## Comment
+
+- Comment tiếng Việt. Ngắn, đi vào lý do (why), không mô tả code (what).
+- File có logic phức tạp → header comment ở đầu file mô tả kiến trúc/luồng.
+- Comment lỗi thời phải xóa (không giữ comment không còn đúng).
+
+Đúng:
+```ts
+// Anchor lock: derive x/y từ zoom(t) để cursor không drift ~12px trong ramp.
+```
+
+Sai:
+```ts
+// Set zoom
+this.zoom = newZoom;
+```
+
+## Shared components
+
+Import từ `@/components/shared` cho loading / empty / error:
+
+```tsx
+import { LoadingState, EmptyState, ErrorState } from '@/components/shared';
+```
+
+- Loading async data → `<LoadingState variant="skeleton" />` match footprint content thật.
+- Empty state → `<EmptyState icon={...} title="..." description="..." action={...} />`.
+- Error → `<ErrorState message={...} onRetry={...} />`.
+
+Không tự viết inline copy-paste. Xem trực tiếp `src/components/shared/{LoadingState,EmptyState,ErrorState}.tsx` để biết props có sẵn.

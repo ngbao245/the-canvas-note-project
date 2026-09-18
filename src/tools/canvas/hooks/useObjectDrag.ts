@@ -5,10 +5,8 @@ import { useCameraStore } from '../store/camera-store';
 import { useInteractionStore } from '../store/interaction-store';
 import { getCameraEngine } from '../engine/camera-engine';
 import { applyMoveDelta, commitMove, deleteObjects } from '../engine/actions';
-import { computeContentBounds } from '../lib/content-bounds';
-
-const EDGE_ZONE = 60; // px từ rìa surface bắt đầu auto-pan
-const EDGE_MAX_SPEED = 8; // px/frame ở rìa tuyệt đối
+import { hitZone } from '../lib/hit-test';
+import { createEdgePanLoop } from './useEdgePan';
 
 /**
  * Drag object trên canvas theo pattern Milanote (motion-rules Paradigm 2):
@@ -46,13 +44,11 @@ export function useObjectDrag(objectId: string) {
   const hoverTrashRef = useRef(false);
   const invalidZoneRef = useRef(false);
   const lastClientRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const panRafRef = useRef<number | null>(null);
+  const edgePanRef = useRef<ReturnType<typeof createEdgePanLoop> | null>(null);
 
   const cleanup = useCallback(() => {
-    if (panRafRef.current !== null) {
-      cancelAnimationFrame(panRafRef.current);
-      panRafRef.current = null;
-    }
+    edgePanRef.current?.stop();
+    edgePanRef.current = null;
     // Restore lift effect trên tất cả object đang drag.
     for (const el of sourceElsRef.current) {
       el.style.transform = '';
@@ -103,80 +99,6 @@ export function useObjectDrag(objectId: string) {
     applyMoveDelta(start.ids, dx, dy);
   };
 
-  /**
-   * Edge auto-pan loop: khi cursor gần rìa surface (< EDGE_ZONE) và KHÔNG trên
-   * overlay (toolbar/trash), pan camera theo hướng đó. Item tự bám cursor qua
-   * reposition() vì camera đổi thay đổi mapping screen→canvas.
-   * Cursor trong overlay → skip pan (để user thả vào trash được).
-   */
-  const panLoopStep = () => {
-    const start = startRef.current;
-    if (!start || !draggingRef.current) {
-      panRafRef.current = null;
-      return;
-    }
-    const surface = document.querySelector('[data-canvas-surface]');
-    const cursor = lastClientRef.current;
-    if (!(surface instanceof HTMLElement)) {
-      panRafRef.current = requestAnimationFrame(panLoopStep);
-      return;
-    }
-    // Edge-pan CHỈ chạy khi cursor trực tiếp trên vùng canvas trống:
-    //   - Phải trong surface (không phải header/workspace-bar).
-    //   - Không trên overlay (toolbar/trash).
-    // Ngoài các case đó → skip, không đẩy canvas theo hướng cursor.
-    const target = document.elementFromPoint(cursor.x, cursor.y);
-    const onSurface = target instanceof Element && target.closest('[data-canvas-surface]');
-    const onOverlay = target instanceof Element && target.closest('[data-canvas-overlay]');
-    if (!onSurface || onOverlay) {
-      panRafRef.current = requestAnimationFrame(panLoopStep);
-      return;
-    }
-    const rect = surface.getBoundingClientRect();
-    let panDx = 0;
-    let panDy = 0;
-    const dxLeft = cursor.x - rect.left;
-    const dxRight = rect.right - cursor.x;
-    const dyTop = cursor.y - rect.top;
-    const dyBottom = rect.bottom - cursor.y;
-    if (dxLeft < EDGE_ZONE) panDx = -((EDGE_ZONE - dxLeft) / EDGE_ZONE) * EDGE_MAX_SPEED;
-    else if (dxRight < EDGE_ZONE) panDx = ((EDGE_ZONE - dxRight) / EDGE_ZONE) * EDGE_MAX_SPEED;
-    if (dyTop < EDGE_ZONE) panDy = -((EDGE_ZONE - dyTop) / EDGE_ZONE) * EDGE_MAX_SPEED;
-    else if (dyBottom < EDGE_ZONE) panDy = ((EDGE_ZONE - dyBottom) / EDGE_ZONE) * EDGE_MAX_SPEED;
-
-    // Milanote-style: chỉ pan trục có content vượt viewport bên phía đó. Nếu tất cả
-    // content fit trong viewport theo trục nào → skip pan trục đó. Loại item đang
-    // kéo khỏi bounds check để hành vi không phụ thuộc chính item đang kéo.
-    const excludeIds = new Set(start.ids);
-    const others = Array.from(useObjectsStore.getState().objects.values()).filter(
-      (o) => !excludeIds.has(o.id),
-    );
-    const bounds = computeContentBounds(others);
-    const cam = getCameraEngine().getCamera();
-    if (bounds) {
-      const contentLeft = bounds.x * cam.zoom + cam.x; // screen coord, relative surface origin
-      const contentRight = (bounds.x + bounds.width) * cam.zoom + cam.x;
-      const contentTop = bounds.y * cam.zoom + cam.y;
-      const contentBottom = (bounds.y + bounds.height) * cam.zoom + cam.y;
-      const viewW = rect.width;
-      const viewH = rect.height;
-      if (panDx < 0 && contentLeft >= 0) panDx = 0; // không có content bên trái → skip pan left
-      if (panDx > 0 && contentRight <= viewW) panDx = 0;
-      if (panDy < 0 && contentTop >= 0) panDy = 0;
-      if (panDy > 0 && contentBottom <= viewH) panDy = 0;
-    } else {
-      // Không có content khác → skip pan (chỉ có item đang kéo).
-      panDx = 0;
-      panDy = 0;
-    }
-
-    if (panDx !== 0 || panDy !== 0) {
-      getCameraEngine().pan({ x: -panDx, y: -panDy });
-      reposition();
-    }
-    panRafRef.current = requestAnimationFrame(panLoopStep);
-  };
-
   const beforeRef = useRef<Map<string, { x: number; y: number }> | null>(null);
 
   const startDrag = (start: DragStart) => {
@@ -204,7 +126,15 @@ export function useObjectDrag(objectId: string) {
     }
     sourceElsRef.current = sourceEls;
 
-    panRafRef.current = requestAnimationFrame(panLoopStep);
+    // Edge auto-pan: item bám cursor qua reposition() khi camera pan.
+    const loop = createEdgePanLoop({
+      isDragging: () => draggingRef.current,
+      getCursor: () => lastClientRef.current,
+      getDraggingIds: () => startRef.current?.ids ?? [],
+      reposition,
+    });
+    edgePanRef.current = loop;
+    loop.start();
   };
 
   /** Detect vùng cursor:
@@ -214,16 +144,10 @@ export function useObjectDrag(objectId: string) {
    *   - Ngoài toàn bộ (header/document): invalid → revert
    */
   const updateZone = (clientX: number, clientY: number) => {
-    const target = document.elementFromPoint(clientX, clientY);
-    let overTrash = false;
-    let invalid = false;
-    if (target instanceof Element) {
-      if (target.closest('[data-trash-drop]')) overTrash = true;
-      else if (target.closest('[data-canvas-overlay]')) invalid = true;
-      else if (!target.closest('[data-canvas-surface]')) invalid = true;
-    } else {
-      invalid = true;
-    }
+    const zone = hitZone(clientX, clientY);
+    // trash = drop xoá; canvas = drop move (valid); overlay/outside = invalid revert.
+    const overTrash = zone === 'trash';
+    const invalid = zone === 'overlay' || zone === 'outside';
 
     if (overTrash !== hoverTrashRef.current) {
       hoverTrashRef.current = overTrash;

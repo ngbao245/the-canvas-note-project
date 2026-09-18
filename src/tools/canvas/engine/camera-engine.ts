@@ -26,10 +26,10 @@ import {
   fitBounds,
   type Bounds,
 } from './camera';
+import { clampCameraToBounds } from './pan-bounds';
+import { computeGridLod } from './grid-lod';
 
 // --- Constants ---
-
-const GRID_SIZE = 32;
 
 /**
  * Ramp alpha per frame — tỉ lệ current chase target mỗi frame.
@@ -86,25 +86,6 @@ interface EngineElements {
   gridDense: HTMLElement | null;
   /** Grid layer với doc-size = BASE * 2^(level+1) (sparse band). Cross-fade với dense. */
   gridSparse: HTMLElement | null;
-}
-
-// --- Helper: clamp camera vào pan bounds ---
-// Model: viewport CENTER phải nằm trong bounds (world-space).
-function clampCameraToBounds(
-  camera: Camera,
-  bounds: Bounds | null,
-  viewport: { width: number; height: number },
-): Camera {
-  if (!bounds || viewport.width <= 0 || viewport.height <= 0) return camera;
-  const { zoom } = camera;
-  const camMaxX = viewport.width / 2 - bounds.x * zoom;
-  const camMinX = viewport.width / 2 - (bounds.x + bounds.width) * zoom;
-  const camMaxY = viewport.height / 2 - bounds.y * zoom;
-  const camMinY = viewport.height / 2 - (bounds.y + bounds.height) * zoom;
-  const clampedX = Math.max(camMinX, Math.min(camMaxX, camera.x));
-  const clampedY = Math.max(camMinY, Math.min(camMaxY, camera.y));
-  if (clampedX === camera.x && clampedY === camera.y) return camera;
-  return { zoom, x: clampedX, y: clampedY };
 }
 
 // --- CameraEngine class ---
@@ -539,22 +520,8 @@ export class CameraEngine {
 
   // --- Internal: DOM write ---
   //
-  // Grid LOD (level of detail):
-  //   Target: screen-space dot spacing luôn nằm trong [BASE, 2×BASE] px, không đổi
-  //   theo zoom (Milanote/Figma feel — dot không dày đặc khi zoom out, không thưa
-  //   khi zoom in).
-  //
-  //   Math: t = log2(1/zoom), level = floor(t), frac = t - level.
-  //   Dense doc-size = BASE × 2^level      → screen = BASE / 2^frac ∈ [BASE/2, BASE]
-  //   Sparse doc-size = BASE × 2^(level+1) → screen = 2×BASE / 2^frac ∈ [BASE, 2×BASE]
-  //
-  //   Cross-fade giữa 2 layer theo frac:
-  //     frac=0: dense opacity 1, sparse 0 → thấy dense ở BASE px (perfect).
-  //     frac→1: dense fade out (đang trở nên quá dense), sparse fade in.
-  //     Khi frac=1 = level+1 mới, dense mới = sparse cũ. Chuyển band mượt.
-  //
-  //   Fade extremes: zoom < 0.15 hoặc zoom > 3 → toàn bộ grid fade về 0.
-  //   Zoom cực out (overview) sạch không nhiễu; zoom cực in không cần grid nữa.
+  // Wrapper transform: translate + scale từ currentRef.
+  // Grid LOD math tách sang grid-lod.ts (pure), file này chỉ apply DOM.
   private applyTransforms(): void {
     const { x, y, zoom } = this.currentRef;
 
@@ -565,37 +532,16 @@ export class CameraEngine {
 
     if (!this.gridDenseEl && !this.gridSparseEl) return;
 
-    const BASE = GRID_SIZE;
-    const t = Math.log2(1 / zoom);
-    const level = Math.floor(t);
-    const frac = t - level;
-
-    const denseDoc = BASE * Math.pow(2, level);
-    const sparseDoc = BASE * Math.pow(2, level + 1);
-    const denseScreen = denseDoc * zoom;
-    const sparseScreen = sparseDoc * zoom;
-
-    // Chỉ fade khi zoom out cực (overview sạch). Zoom in KHÔNG fade — user
-    // zoom in = xem chi tiết, dot luôn hữu ích cho cảm nhận grid.
-    let extremeMul = 1;
-    if (zoom < 0.2) extremeMul = Math.max(0, (zoom - 0.15) / 0.05);
-
-    const denseOp = (1 - frac) * extremeMul;
-    const sparseOp = frac * extremeMul;
-
+    const lod = computeGridLod(this.currentRef);
     if (this.gridDenseEl) {
-      this.gridDenseEl.style.backgroundSize = `${denseScreen}px ${denseScreen}px`;
-      const posX = ((x % denseScreen) + denseScreen) % denseScreen;
-      const posY = ((y % denseScreen) + denseScreen) % denseScreen;
-      this.gridDenseEl.style.backgroundPosition = `${posX}px ${posY}px`;
-      this.gridDenseEl.style.opacity = String(denseOp);
+      this.gridDenseEl.style.backgroundSize = `${lod.dense.screenSize}px ${lod.dense.screenSize}px`;
+      this.gridDenseEl.style.backgroundPosition = `${lod.dense.posX}px ${lod.dense.posY}px`;
+      this.gridDenseEl.style.opacity = String(lod.dense.opacity);
     }
     if (this.gridSparseEl) {
-      this.gridSparseEl.style.backgroundSize = `${sparseScreen}px ${sparseScreen}px`;
-      const posX = ((x % sparseScreen) + sparseScreen) % sparseScreen;
-      const posY = ((y % sparseScreen) + sparseScreen) % sparseScreen;
-      this.gridSparseEl.style.backgroundPosition = `${posX}px ${posY}px`;
-      this.gridSparseEl.style.opacity = String(sparseOp);
+      this.gridSparseEl.style.backgroundSize = `${lod.sparse.screenSize}px ${lod.sparse.screenSize}px`;
+      this.gridSparseEl.style.backgroundPosition = `${lod.sparse.posX}px ${lod.sparse.posY}px`;
+      this.gridSparseEl.style.opacity = String(lod.sparse.opacity);
     }
   }
 
