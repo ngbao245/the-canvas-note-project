@@ -20,6 +20,19 @@ import { useSelectionStore } from '../store/selection-store';
 import { useHistoryStore } from '../store/history-store';
 import { getObjectTypeDefinition } from '../hooks/useObjectRegistry';
 
+/**
+ * Update geometry của 1 object rồi persist snapshot mới ra repo. Gom pattern
+ * lặp 6 chỗ trong undo/redo/applyResize/applyMoveDelta. Đọc snapshot LẠI sau
+ * mutation (store.getState) để lấy object đã cập nhật, không phải closure cũ.
+ */
+function mutateGeometryAndPersist(id: string, geometry: Partial<Geometry>): void {
+  const s = useObjectsStore.getState();
+  if (!s.objects.get(id)) return;
+  s.updateGeometry(id, geometry);
+  const upd = s.objects.get(id);
+  if (upd) void getCanvasRepository().saveObject(upd);
+}
+
 // --- Create ---
 
 /**
@@ -115,14 +128,10 @@ export function updateObjectData(id: string, nextData: unknown): void {
 // --- Move (live during drag) ---
 /** Apply delta trong drag, không push history. Gọi mỗi pointermove. */
 export function applyMoveDelta(ids: string[], dx: number, dy: number): void {
-  const store = useObjectsStore.getState();
-  const repo = getCanvasRepository();
   for (const id of ids) {
-    const cur = store.objects.get(id);
+    const cur = useObjectsStore.getState().objects.get(id);
     if (!cur) continue;
-    store.updateGeometry(id, { x: cur.geometry.x + dx, y: cur.geometry.y + dy });
-    const updated = store.objects.get(id);
-    if (updated) void repo.saveObject(updated);
+    mutateGeometryAndPersist(id, { x: cur.geometry.x + dx, y: cur.geometry.y + dy });
   }
 }
 
@@ -143,47 +152,26 @@ export function commitMove(
   }
   if (!moved) return;
 
-  const repo = getCanvasRepository();
-  const store = useObjectsStore.getState();
-
   useHistoryStore.getState().push({
     label: 'Move objects',
     undo: () => {
-      const s = useObjectsStore.getState();
-      for (const [id, pos] of before) {
-        const cur = s.objects.get(id);
-        if (!cur) continue;
-        s.updateGeometry(id, { x: pos.x, y: pos.y });
-        const upd = s.objects.get(id);
-        if (upd) void repo.saveObject(upd);
-      }
+      for (const [id, pos] of before) mutateGeometryAndPersist(id, { x: pos.x, y: pos.y });
     },
     redo: () => {
-      const s = useObjectsStore.getState();
-      for (const [id, pos] of after) {
-        const cur = s.objects.get(id);
-        if (!cur) continue;
-        s.updateGeometry(id, { x: pos.x, y: pos.y });
-        const upd = s.objects.get(id);
-        if (upd) void repo.saveObject(upd);
-      }
+      for (const [id, pos] of after) mutateGeometryAndPersist(id, { x: pos.x, y: pos.y });
     },
   });
-  void store; // giữ reference để tránh unused nếu TS strict
 }
 
 // --- Resize (live during drag) ---
 /** Apply resize trong drag, không push history. Gọi mỗi pointermove. */
 export function applyResize(id: string, geometry: Partial<Geometry>): void {
-  const store = useObjectsStore.getState();
-  const cur = store.objects.get(id);
+  const cur = useObjectsStore.getState().objects.get(id);
   if (!cur) return;
   const next = { ...cur.geometry, ...geometry };
   if (next.width < MIN_OBJECT_SIZE) next.width = MIN_OBJECT_SIZE;
   if (next.height < MIN_OBJECT_SIZE) next.height = MIN_OBJECT_SIZE;
-  store.updateGeometry(id, next);
-  const updated = store.objects.get(id);
-  if (updated) void getCanvasRepository().saveObject(updated);
+  mutateGeometryAndPersist(id, next);
 }
 
 /** Commit resize sau drag end: push ResizeCommand. */
@@ -196,26 +184,10 @@ export function commitResize(id: string, before: Geometry, after: Geometry): voi
   ) {
     return;
   }
-  const repo = getCanvasRepository();
-
   useHistoryStore.getState().push({
     label: 'Resize object',
-    undo: () => {
-      const s = useObjectsStore.getState();
-      const cur = s.objects.get(id);
-      if (!cur) return;
-      s.updateGeometry(id, before);
-      const upd = s.objects.get(id);
-      if (upd) void repo.saveObject(upd);
-    },
-    redo: () => {
-      const s = useObjectsStore.getState();
-      const cur = s.objects.get(id);
-      if (!cur) return;
-      s.updateGeometry(id, after);
-      const upd = s.objects.get(id);
-      if (upd) void repo.saveObject(upd);
-    },
+    undo: () => mutateGeometryAndPersist(id, before),
+    redo: () => mutateGeometryAndPersist(id, after),
   });
 }
 

@@ -4,6 +4,7 @@ import { useSelectionStore } from '../store/selection-store';
 import { useCameraStore } from '../store/camera-store';
 import { useInteractionStore } from '../store/interaction-store';
 import { getCameraEngine } from '../engine/camera-engine';
+import { clientToCanvas } from '../engine/coord';
 import { applyMoveDelta, commitMove, deleteObjects } from '../engine/actions';
 import { hitZone } from '../lib/hit-test';
 import { createEdgePanLoop } from './useEdgePan';
@@ -82,15 +83,11 @@ export function useObjectDrag(objectId: string) {
   const reposition = () => {
     const start = startRef.current;
     if (!start) return;
-    const surface = document.querySelector('[data-canvas-surface]');
-    if (!(surface instanceof HTMLElement)) return;
-    const rect = surface.getBoundingClientRect();
     const cursor = lastClientRef.current;
-    const cam = getCameraEngine().getCamera();
-    const cursorCanvasX = (cursor.x - rect.left - cam.x) / cam.zoom;
-    const cursorCanvasY = (cursor.y - rect.top - cam.y) / cam.zoom;
-    const targetPrimaryX = cursorCanvasX - start.grabOffsetCanvasX;
-    const targetPrimaryY = cursorCanvasY - start.grabOffsetCanvasY;
+    const p = clientToCanvas(cursor.x, cursor.y, getCameraEngine().getCamera());
+    if (!p) return;
+    const targetPrimaryX = p.x - start.grabOffsetCanvasX;
+    const targetPrimaryY = p.y - start.grabOffsetCanvasY;
     const primary = useObjectsStore.getState().objects.get(start.primaryId);
     if (!primary) return;
     const dx = targetPrimaryX - primary.geometry.x;
@@ -287,18 +284,14 @@ export function useObjectDrag(objectId: string) {
       // Absolute logic → cursor luôn giữ đúng grab point suốt drag.
       const primary = useObjectsStore.getState().objects.get(objectId);
       if (!primary) return;
-      const surface = document.querySelector('[data-canvas-surface]');
-      if (!(surface instanceof HTMLElement)) return;
-      const sRect = surface.getBoundingClientRect();
-      const cam = useCameraStore.getState().camera;
-      const cursorCanvasX = (e.clientX - sRect.left - cam.x) / cam.zoom;
-      const cursorCanvasY = (e.clientY - sRect.top - cam.y) / cam.zoom;
+      const p = clientToCanvas(e.clientX, e.clientY, useCameraStore.getState().camera);
+      if (!p) return;
 
       startRef.current = {
         clientX: e.clientX,
         clientY: e.clientY,
-        grabOffsetCanvasX: cursorCanvasX - primary.geometry.x,
-        grabOffsetCanvasY: cursorCanvasY - primary.geometry.y,
+        grabOffsetCanvasX: p.x - primary.geometry.x,
+        grabOffsetCanvasY: p.y - primary.geometry.y,
         primaryId: objectId,
         ids,
       };
