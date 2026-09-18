@@ -33,15 +33,11 @@ const GRID_SIZE = 32;
 
 /**
  * Ramp alpha per frame — tỉ lệ current chase target mỗi frame.
- * Áp cho cả pan (tuyến tính) và zoom (log-space) trong ramp chase-target
- * (dùng cho fit/reset/keyboard — nơi có target rõ ràng).
+ * 0.20 → settle ~333ms, overlap với wheel notch tự nhiên (150-250ms/notch)
+ * → notch mới đến khi ramp cũ còn chạy → luôn "on the move", không gap.
+ * Alpha 0.35 cũ settle 183ms → có gap "đứng yên" giữa notch → khực khựng.
  */
-const ZOOM_RAMP_ALPHA = 0.35;
-
-/**
- * Snap threshold zoom trên LOG-space (log2). |Δlog2(zoom)| dưới ngưỡng → snap.
- * ~0.004 ≈ 0.28% zoom → mắt không phân biệt, đuôi ramp cắt gọn không "dính".
- */
+const ZOOM_RAMP_ALPHA = 0.2;
 const ZOOM_LOG_SNAP_THRESHOLD = 0.004;
 const XY_SNAP_THRESHOLD = 0.1;
 
@@ -130,6 +126,18 @@ export class CameraEngine {
   private rampRafId: number | null = null;
   private renderRafId: number | null = null;
   private renderDirty = false;
+
+  // Anchor lock cho zoom around point. Cache tại lúc kick zoom → trong ramp
+  // derive x, y từ zoom(t) giữ điểm dưới cursor cố định world. KHÔNG lerp x, y
+  // riêng vì log-space zoom + linear x/y = progress khác nhau → cursor drift.
+  // Data đo: 5 notch nhanh → drift 12px screen giữa ramp (visible pulse).
+  // Null = không có anchor (pan/fit/reset) → x, y lerp linear như cũ.
+  private zoomAnchor: {
+    screenX: number;
+    screenY: number;
+    worldX: number;
+    worldY: number;
+  } | null = null;
 
   // Step zoom state (wheel notch).
   // Detent: true = target đang kẹp tại 100%, chờ user ngừng lăn 1 nhịp mới vượt.
@@ -231,11 +239,31 @@ export class CameraEngine {
     this.cancelRamp();
     this.detentHeld = false; // reset detent, tránh kẹt sau load
     this.lastZoomNotchAt = 0;
+    this.zoomAnchor = null;
     this.scheduleRender();
+  }
+
+  /**
+   * Cache anchor screen + world tại thời điểm zoom kick. Trong rampStep, x, y
+   * sẽ derive từ zoom(t) qua công thức screen = anchor.world * zoom + camera.xy
+   * → giữ điểm dưới cursor cố định world suốt ramp, không drift.
+   *
+   * Dùng CURRENT camera (không phải target) làm reference vì current là snapshot
+   * DOM đang render — đảm bảo tại thời điểm anchor cache, invariant đang giữ.
+   */
+  private cacheZoomAnchor(pointer: Point): void {
+    const cam = this.currentRef;
+    this.zoomAnchor = {
+      screenX: pointer.x,
+      screenY: pointer.y,
+      worldX: (pointer.x - cam.x) / cam.zoom,
+      worldY: (pointer.y - cam.y) / cam.zoom,
+    };
   }
 
   /** Pan immediate: cả 2 refs update sync. Dùng cho pointer drag. */
   pan(delta: Point): void {
+    this.zoomAnchor = null; // pan phá anchor cursor
     this.targetRef = clampCameraToBounds(
       panBy(this.targetRef, delta),
       this.panBoundsRef,
@@ -252,6 +280,7 @@ export class CameraEngine {
 
   /** Pan smoothed qua ramp. Dùng cho wheel/trackpad scroll. */
   panSmooth(delta: Point): void {
+    this.zoomAnchor = null; // pan phá anchor cursor
     this.targetRef = clampCameraToBounds(
       panBy(this.targetRef, delta),
       this.panBoundsRef,
@@ -263,6 +292,7 @@ export class CameraEngine {
 
   /** Zoom tới zoom cụ thể quanh 1 điểm screen. */
   zoomAt(pointer: Point, newZoom: number): void {
+    this.cacheZoomAnchor(pointer);
     this.targetRef = clampCameraToBounds(
       zoomAroundPoint(this.targetRef, pointer, newZoom, this.dynamicMin, this.maxZoom),
       this.panBoundsRef,
@@ -274,6 +304,7 @@ export class CameraEngine {
 
   /** Zoom theo factor (compound trên target) + ramp chase. Cho keyboard/programmatic. */
   zoomByAt(pointer: Point, factor: number): void {
+    this.cacheZoomAnchor(pointer);
     this.targetRef = clampCameraToBounds(
       zoomByFactor(this.targetRef, pointer, factor, this.dynamicMin, this.maxZoom),
       this.panBoundsRef,
@@ -334,6 +365,7 @@ export class CameraEngine {
 
   /** Set target zoom quanh anchor + kick ramp + persist. Dùng bởi zoomImpulse. */
   private applyStepTarget(pointer: Point, targetZoom: number): void {
+    this.cacheZoomAnchor(pointer);
     this.targetRef = clampCameraToBounds(
       zoomAroundPoint(this.targetRef, pointer, targetZoom, this.dynamicMin, this.maxZoom),
       this.panBoundsRef,
@@ -353,6 +385,7 @@ export class CameraEngine {
   setZoom(zoom: number, viewport?: { width: number; height: number }): void {
     const vp = viewport ?? this.viewportRef;
     const anchor = { x: vp.width / 2, y: vp.height / 2 };
+    this.cacheZoomAnchor(anchor);
     this.targetRef = clampCameraToBounds(
       zoomAroundPoint(this.targetRef, anchor, zoom, this.dynamicMin, this.maxZoom),
       this.panBoundsRef,
@@ -363,6 +396,7 @@ export class CameraEngine {
   }
 
   fit(bounds: Bounds, viewport: { width: number; height: number }): void {
+    this.zoomAnchor = null; // fit đổi cả x, y, zoom — không quanh cursor
     const target = fitBounds(bounds, viewport);
     this.targetRef = clampCameraToBounds(
       {
@@ -378,6 +412,7 @@ export class CameraEngine {
   }
 
   reset(): void {
+    this.zoomAnchor = null;
     const initial = resetCamera();
     initial.zoom = clampZoom(1, this.dynamicMin, this.maxZoom);
     this.targetRef = clampCameraToBounds(initial, this.panBoundsRef, this.viewportRef);
@@ -453,10 +488,6 @@ export class CameraEngine {
     }
   }
 
-  // Ramp: pan (x, y) lerp tuyến tính vì không gian phẳng. Zoom lerp trên
-  // LOG-space (log2) vì zoom là đại lượng nhân — 100%→200% "cảm giác" bằng
-  // 200%→400%. Lerp tuyến tính trên zoom làm zoom-in nhanh, zoom-out chậm
-  // không đều. Lerp log-space → zoom-in/out đối xứng, mượt đều (Figma feel).
   private rampStep(): void {
     this.rampRafId = null;
 
@@ -474,17 +505,32 @@ export class CameraEngine {
 
     if (done) {
       this.currentRef = { ...this.targetRef };
+      this.zoomAnchor = null; // ramp settled → hết cần lock anchor
       this.applyTransforms();
       this.notifyListeners();
       return;
     }
 
     const nextZoom = Math.pow(2, logCurrent + dLog * ZOOM_RAMP_ALPHA);
-    this.currentRef = {
-      x: this.currentRef.x + dx * ZOOM_RAMP_ALPHA,
-      y: this.currentRef.y + dy * ZOOM_RAMP_ALPHA,
-      zoom: nextZoom,
-    };
+
+    if (this.zoomAnchor) {
+      // Zoom around cursor: derive x, y từ zoom(t) giữ anchor invariant.
+      // screen_at_cursor = anchor.worldX * zoom + camera.x → camera.x = screen - worldX*zoom.
+      // Bỏ qua targetRef.x/y linear lerp — anchor derive luôn chính xác.
+      this.currentRef = {
+        x: this.zoomAnchor.screenX - this.zoomAnchor.worldX * nextZoom,
+        y: this.zoomAnchor.screenY - this.zoomAnchor.worldY * nextZoom,
+        zoom: nextZoom,
+      };
+    } else {
+      // Pan/fit/reset không có anchor → lerp x, y linear như cũ.
+      this.currentRef = {
+        x: this.currentRef.x + dx * ZOOM_RAMP_ALPHA,
+        y: this.currentRef.y + dy * ZOOM_RAMP_ALPHA,
+        zoom: nextZoom,
+      };
+    }
+
     this.applyTransforms();
     this.notifyListeners();
 

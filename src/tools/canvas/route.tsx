@@ -21,12 +21,17 @@ import { CanvasApp } from './components/CanvasApp';
 export default function CanvasRoute() {
   const bootstrap = useCanvasBootstrap();
   const objectCount = useObjectsStore((s) => s.objects.size);
-  const zoom = useCameraStore((s) => s.camera.zoom);
+  // KHÔNG subscribe zoom ở đây — subscribe ở <ZoomBadge /> con để cô lập
+  // re-render 60Hz trong lúc ramp. Nếu subscribe tại route, toàn bộ subtree
+  // (CanvasApp → ObjectsLayer → mọi item) re-render mỗi frame → giật cả canvas.
   const resetCamera = useCameraStore((s) => s.reset);
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggle);
 
-  const boardId = bootstrap.state.phase === 'ready' ? bootstrap.state.rootBoard.id : null;
+  // Object trên root board lưu boardId=null (khớp loadObjects(null) trong bootstrap).
+  // rootBoard.id chỉ dùng cho persist camera, không phải cho boardId của object.
+  // Phase D nested boards: truyền board.id thật của board con.
+  const boardId = null;
 
   const handleFit = useCallback(() => {
     const bounds = computeContentBounds(useObjectsStore.getState().objects.values());
@@ -77,9 +82,7 @@ export default function CanvasRoute() {
         </Badge>
 
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs tabular-nums text-muted-foreground">
-            {Math.round(zoom * 100)}%
-          </span>
+          <ZoomBadge />
           <button
             type="button"
             onClick={handleFit}
@@ -110,5 +113,18 @@ export default function CanvasRoute() {
 
       <CanvasApp boardId={boardId} />
     </div>
+  );
+}
+
+/**
+ * Isolate zoom subscription. Component nhỏ này re-render 60Hz trong ramp,
+ * còn CanvasRoute + CanvasApp không bị đụng → không re-render subtree canvas.
+ */
+function ZoomBadge() {
+  const zoom = useCameraStore((s) => s.camera.zoom);
+  return (
+    <span className="text-xs tabular-nums text-muted-foreground">
+      {Math.round(zoom * 100)}%
+    </span>
   );
 }

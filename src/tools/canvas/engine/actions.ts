@@ -18,23 +18,39 @@ import { getCanvasRepository } from '../api';
 import { useObjectsStore } from '../store/objects-store';
 import { useSelectionStore } from '../store/selection-store';
 import { useHistoryStore } from '../store/history-store';
+import { getObjectTypeDefinition } from '../hooks/useObjectRegistry';
 
 // --- Create ---
-export function createRectAt(canvasX: number, canvasY: number, boardId: string | null): CanvasObject {
+
+/**
+ * Tạo object bất kỳ type tại vị trí canvas-space (x,y = TÂM object).
+ * Lấy defaultGeometry + defaultData từ registry. `dataOverride` cho phép truyền
+ * data đã dựng sẵn (Image có blobId, Link có url) thay cho defaultData.
+ */
+export function createObjectAt(
+  type: string,
+  canvasX: number,
+  canvasY: number,
+  boardId: string | null,
+  dataOverride?: unknown,
+): CanvasObject | null {
+  const def = getObjectTypeDefinition(type);
+  if (!def) return null;
   const now = new Date().toISOString();
+  const { width, height, rotation, zIndex } = def.defaultGeometry;
   const obj: CanvasObject = {
     id: crypto.randomUUID(),
-    type: 'rect',
+    type,
     boardId,
     geometry: {
-      x: canvasX - 100,
-      y: canvasY - 60,
-      width: 200,
-      height: 120,
-      rotation: 0,
-      zIndex: 0,
+      x: canvasX - width / 2,
+      y: canvasY - height / 2,
+      width,
+      height,
+      rotation,
+      zIndex,
     },
-    data: {},
+    data: dataOverride !== undefined ? dataOverride : def.defaultData(),
     createdAt: now,
     updatedAt: now,
   };
@@ -56,6 +72,44 @@ export function createRectAt(canvasX: number, canvasY: number, boardId: string |
     },
   });
   return obj;
+}
+
+/** Wrapper tương thích: tạo rect (context menu Phase A vẫn dùng). x,y = tâm. */
+export function createRectAt(canvasX: number, canvasY: number, boardId: string | null): CanvasObject | null {
+  return createObjectAt('rect', canvasX, canvasY, boardId);
+}
+
+// --- Update data (edit inline, undo-able) ---
+/** Cập nhật `data` của object + push command. Skip nếu data không đổi (deep-ish qua JSON). */
+export function updateObjectData(id: string, nextData: unknown): void {
+  const cur = useObjectsStore.getState().objects.get(id);
+  if (!cur) return;
+  const before = cur.data;
+  if (JSON.stringify(before) === JSON.stringify(nextData)) return;
+  const repo = getCanvasRepository();
+
+  useObjectsStore.getState().updateData(id, nextData);
+  // getState() LẠI để đọc snapshot MỚI sau mutation (biến snapshot cũ giữ Map cũ).
+  const updated = useObjectsStore.getState().objects.get(id);
+  if (updated) void repo.saveObject(updated);
+
+  useHistoryStore.getState().push({
+    label: 'Edit object',
+    undo: () => {
+      const s = useObjectsStore.getState();
+      if (!s.objects.get(id)) return;
+      s.updateData(id, before);
+      const u = s.objects.get(id);
+      if (u) void repo.saveObject(u);
+    },
+    redo: () => {
+      const s = useObjectsStore.getState();
+      if (!s.objects.get(id)) return;
+      s.updateData(id, nextData);
+      const u = s.objects.get(id);
+      if (u) void repo.saveObject(u);
+    },
+  });
 }
 
 // --- Move (live during drag) ---

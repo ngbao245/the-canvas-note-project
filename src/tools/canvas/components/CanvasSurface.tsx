@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
-import { Square } from 'lucide-react';
+import { StickyNote } from 'lucide-react';
 import { useObjectsStore } from '../store/objects-store';
 import { getCameraEngine } from '../engine/camera-engine';
 import { screenToCanvas } from '../engine/coord';
-import { createRectAt } from '../engine/actions';
+import { createObjectAt } from '../engine/actions';
 import { usePointerInteraction } from '../hooks/usePointerInteraction';
 import {
   computeContentBounds,
@@ -14,6 +14,8 @@ import { ObjectsLayer } from './ObjectsLayer';
 import { SelectionLayer } from './SelectionLayer';
 import { MarqueeOverlay } from './MarqueeOverlay';
 import { ContextMenu } from './ContextMenu';
+import { Toolbar } from './Toolbar';
+import './objects'; // side-effect: register mọi object type vào registry
 
 /**
  * CanvasSurface — khung nhận wheel/pointer, đăng ký DOM refs với CameraEngine.
@@ -210,6 +212,7 @@ export function CanvasSurface({ boardId }: { boardId: string | null }) {
 
       {/* Screen space overlays */}
       <MarqueeOverlay />
+      <Toolbar boardId={boardId} />
 
       {menu ? (
         <ContextMenu
@@ -217,9 +220,9 @@ export function CanvasSurface({ boardId }: { boardId: string | null }) {
           y={menu.screenY}
           items={[
             {
-              icon: Square,
-              label: 'Add rect',
-              onClick: () => createRectAt(menu.canvasX, menu.canvasY, boardId),
+              icon: StickyNote,
+              label: 'Thêm Note',
+              onClick: () => createObjectAt('note', menu.canvasX, menu.canvasY, boardId),
             },
           ]}
           onClose={() => setMenu(null)}

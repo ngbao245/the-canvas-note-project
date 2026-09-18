@@ -191,3 +191,12 @@
   padding: 3px 10px;
   color: var(--foreground);
 }
+
+/* Canvas drag invalid zone — override cursor cho MỌI element (kể cả button
+   có cursor-pointer, link có cursor riêng). Toggle từ useObjectDrag/useToolbarDrag
+   khi cursor rời canvas surface (header/toolbar/document). Trash drop zone
+   không kích invalid (drag object → xoá) nên vẫn nhận cursor mặc định. */
+body.canvas-drag-invalid,
+body.canvas-drag-invalid * {
+  cursor: not-allowed !important;
+}

@@ -6,6 +6,7 @@ interface ObjectsState {
   hydrate: (list: CanvasObject[]) => void;
   add: (obj: CanvasObject) => void;
   updateGeometry: (id: string, geometry: Partial<Geometry>) => void;
+  updateData: (id: string, data: unknown) => void;
   remove: (id: string) => void;
   removeMany: (ids: string[]) => void;
   get: (id: string) => CanvasObject | undefined;
@@ -37,6 +38,15 @@ export const useObjectsStore = create<ObjectsState>((set, get) => ({
         geometry: { ...cur.geometry, ...geometry },
         updatedAt: new Date().toISOString(),
       });
+      return { objects: map };
+    }),
+
+  updateData: (id, data) =>
+    set((s) => {
+      const cur = s.objects.get(id);
+      if (!cur) return s;
+      const map = new Map(s.objects);
+      map.set(id, { ...cur, data, updatedAt: new Date().toISOString() });
       return { objects: map };
     }),
 

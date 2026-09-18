@@ -41,6 +41,34 @@ export const canvasObjectSchema = z.object({
 });
 export type CanvasObject = z.infer<typeof canvasObjectSchema>;
 
+// --- Object data schemas per type (Phase B) ---
+// `CanvasObject.data` là `unknown` ở schema gốc. Mỗi renderer parse phần data
+// của type mình qua schema dưới đây. Engine core không đọc các field này.
+
+/** Note: ghi chữ plain (rich text hoãn sang Phase C). */
+export const noteDataSchema = z.object({
+  title: z.string().default(''),
+  body: z.string().default(''),
+});
+export type NoteData = z.infer<typeof noteDataSchema>;
+
+/** Image: pixel ảnh KHÔNG nằm trong object, chỉ giữ blobId trỏ tới blob store. */
+export const imageDataSchema = z.object({
+  blobId: z.string(),
+  mimeType: z.string(),
+  naturalWidth: z.number(),
+  naturalHeight: z.number(),
+});
+export type ImageData = z.infer<typeof imageDataSchema>;
+
+/** Link: favicon suy ra từ hostname lúc render (không lưu ảnh). */
+export const linkDataSchema = z.object({
+  url: z.string(),
+  title: z.string().default(''),
+  hostname: z.string().default(''),
+});
+export type LinkData = z.infer<typeof linkDataSchema>;
+
 // --- Camera ---
 // State pan + zoom của viewport. 1 camera / board.
 // Range schema permissive (0.01 - 20) để tolerate legacy data. Engine constants

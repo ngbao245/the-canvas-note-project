@@ -35,6 +35,16 @@ export function usePointerInteraction(ref: RefObject<HTMLElement | null>) {
     };
 
     const onPointerDown = (e: PointerEvent) => {
+      // Bỏ qua nếu pointerdown xuất phát từ object hoặc overlay screen-space
+      // (toolbar palette, pill...). React synthetic stopPropagation KHÔNG chặn
+      // được native listener này (surface nằm giữa target và React root), nên
+      // phải guard bằng target — nếu không, kéo object sẽ chạy song song marquee.
+      if (
+        e.target instanceof Element &&
+        e.target.closest('[data-object-id], [data-canvas-overlay]')
+      ) {
+        return;
+      }
       const isMiddle = e.button === 1;
       const isCtrl = e.ctrlKey || e.metaKey;
       const shouldPan = spacePressed || isMiddle || (isCtrl && e.button === 0);
