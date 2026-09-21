@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   ChevronRight,
@@ -20,6 +20,9 @@ import { Badge } from '@/components/style';
 import { useObjectsStore } from '../store/objects-store';
 import { useCameraStore } from '../store/camera-store';
 import { useHistoryStore } from '../store/history-store';
+import { useBoardsStore } from '../store/boards-store';
+import { renameBoard } from '../engine/actions';
+import { boardSlug } from '../lib/slug';
 import { isRootBoard, type Board } from '../types';
 
 /**
@@ -136,12 +139,65 @@ function StyleToggle() {
 }
 
 function Breadcrumb({ board }: { board: Board }) {
-  // Phase B: chỉ có root board — breadcrumb = board.name ("Home" mặc định).
-  // Phase D nested: build path chain root → ... → current.
+  const boards = useBoardsStore((s) => s.boards);
+
+  // Ancestry chain: walk parentId ngược lên root. Root = board có parentId=null.
+  const chain: Board[] = [];
+  let cursor: Board | undefined = board;
+  const seen = new Set<string>();
+  while (cursor && !seen.has(cursor.id)) {
+    chain.unshift(cursor);
+    seen.add(cursor.id);
+    cursor = cursor.parentId ? boards.get(cursor.parentId) : undefined;
+  }
+
+  // Root board = "Home". Nested giữ name.
+  const label = (b: Board) => (b.parentId === null ? 'Home' : b.name);
+  const linkTo = (b: Board) =>
+    b.parentId === null ? '/canvas' : `/canvas/${b.id}/${boardSlug(b.name)}`;
+
+  // Collapse ≥ 4 segments: `Home / ... / Parent / Current`.
+  const collapsed = chain.length >= 4;
+  const visible = collapsed
+    ? [chain[0], null, chain[chain.length - 2], chain[chain.length - 1]]
+    : chain;
+
   return (
     <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-xs">
-      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
-      <span className="font-medium text-foreground">{board.name}</span>
+      {visible.map((b, i) => {
+        // b === null → segment collapse "..." (không clickable ở MVP).
+        if (b === null) {
+          return (
+            <div key={`ellipsis-${i}`} className="flex items-center gap-1">
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+              <span
+                className="text-muted-foreground/70"
+                title="Còn segment ở giữa (chưa mở popover)"
+              >
+                ...
+              </span>
+            </div>
+          );
+        }
+        const isLast = i === visible.length - 1;
+        return (
+          <div key={b.id} className="flex items-center gap-1">
+            {i > 0 ? (
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+            ) : null}
+            {isLast ? (
+              <span className="font-medium text-foreground">{label(b)}</span>
+            ) : (
+              <Link
+                to={linkTo(b)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                {label(b)}
+              </Link>
+            )}
+          </div>
+        );
+      })}
     </nav>
   );
 }
@@ -185,8 +241,8 @@ function BoardRow({
   onFit: () => void;
   onReset: () => void;
 }) {
-  // Root board (Home) → ẩn title center (đã có breadcrumb ở row 1).
-  // Nested board → hiện board.name. Phase D editable inline.
+  // Root board → ẩn title center (đã có breadcrumb ở row 1).
+  // Nested → hiện board.name, editable inline (double-click → mở editor).
   const showTitle = !isRootBoard(board);
 
   return (
@@ -195,16 +251,72 @@ function BoardRow({
         <ObjectCountBadge />
       </div>
       <div className="flex items-center justify-center">
-        {showTitle ? (
-          <h1 className="text-sm font-medium tracking-tight text-foreground">
-            {board.name}
-          </h1>
-        ) : null}
+        {showTitle ? <TitleEditable board={board} /> : null}
       </div>
       <div className="flex items-center justify-end">
         <ViewMenu onFit={onFit} onReset={onReset} />
       </div>
     </div>
+  );
+}
+
+/** Title Row 2 khi nested. Double-click → editable inline, Enter/blur commit,
+ *  URL slug replace theo tên mới. Escape huỷ. */
+function TitleEditable({ board }: { board: Board }) {
+  const navigate = useNavigate();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(board.name);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) {
+      setValue(board.name);
+      setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 0);
+    }
+  }, [editing, board.name]);
+
+  const commit = () => {
+    const next = value.trim() || 'New Board';
+    if (next !== board.name) {
+      renameBoard(board.id, next);
+      // URL slug replace không push history mới (rename không phải navigation).
+      navigate(`/canvas/${board.id}/${boardSlug(next)}`, { replace: true });
+    }
+    setEditing(false);
+  };
+
+  if (!editing) {
+    return (
+      <h1
+        onDoubleClick={() => setEditing(true)}
+        className="cursor-text text-sm font-medium tracking-tight text-foreground hover:text-primary"
+        title="Double-click để đổi tên"
+      >
+        {board.name}
+      </h1>
+    );
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commit();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          setEditing(false);
+        }
+      }}
+      className="w-48 bg-transparent text-center text-sm font-medium tracking-tight text-foreground outline-none focus:ring-1 focus:ring-primary rounded-sm px-1"
+    />
   );
 }
 

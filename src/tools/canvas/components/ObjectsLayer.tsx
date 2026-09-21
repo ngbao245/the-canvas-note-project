@@ -14,7 +14,13 @@ import { useObjectDrag } from '../hooks/useObjectDrag';
  */
 export function ObjectsLayer() {
   const objectsMap = useObjectsStore((s) => s.objects);
-  const objects = Array.from(objectsMap.values());
+  // Chỉ render object trên canvas — object trong Unsort (unsortIndex !== null)
+  // được UnsortPanel render riêng. Sort theo zIndex ascending: DOM order khớp
+  // stacking order → paint order ổn định (khi zIndex bằng nhau, sau ổn định
+  // theo thứ tự Map insertion, không nhảy).
+  const objects = Array.from(objectsMap.values())
+    .filter((o) => o.unsortIndex === null)
+    .sort((a, b) => a.geometry.zIndex - b.geometry.zIndex);
   return (
     <>
       {objects.map((obj) => (

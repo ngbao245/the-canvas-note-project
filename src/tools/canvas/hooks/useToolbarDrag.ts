@@ -47,6 +47,8 @@ export function useToolbarDrag(opts: {
   const zoneRef = useRef<DropZone>('invalid');
 
   const buildGhost = (): HTMLElement => {
+    // Ghost size = geometry × camera zoom → user thấy "kích thước thật" object
+    // sẽ có trên canvas ở zoom hiện tại. Zoom 100% → full, 40% → 40%.
     const zoom = getCameraEngine().getCamera().zoom;
     const w = opts.defaultGeometry.width * zoom;
     const h = opts.defaultGeometry.height * zoom;
@@ -58,12 +60,16 @@ export function useToolbarDrag(opts: {
     wrapper.style.width = `${w}px`;
     wrapper.style.height = `${h}px`;
     wrapper.style.pointerEvents = 'none';
-    wrapper.style.zIndex = '9999';
+    // Tầng drag-layer (screen-space) — ghost nổi trên toolbar/header + overlay.
+    // Khớp UnsortDragPreview. Xem `.kiro/notes/z-index-tiers.md`.
+    wrapper.style.zIndex = 'var(--z-drag-layer)';
     wrapper.style.opacity = '0';
     wrapper.style.transformOrigin = 'center center';
     wrapper.style.transform = 'translate3d(-9999px,-9999px,0) scale(0.5)';
-    wrapper.style.transition =
-      'transform 120ms cubic-bezier(0.4, 0, 0.2, 1), opacity 120ms, filter 120ms';
+    // Chỉ transition opacity/filter — KHÔNG transform. Transform update mỗi
+    // frame theo cursor; transition trên transform → ghost lag theo cursor
+    // (di sau 120ms). User feedback: bỏ hẳn animation lift, snap instant.
+    wrapper.style.transition = 'opacity 120ms, filter 120ms';
     wrapper.style.filter = 'drop-shadow(0 12px 32px rgba(0,0,0,0.35))';
 
     if (opts.renderPreview) {

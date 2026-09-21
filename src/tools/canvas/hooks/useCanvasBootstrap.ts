@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getCanvasRepository } from '../api';
 import { makeDefaultBoard, type Board } from '../types';
-import { useCameraStore } from '../store/camera-store';
-import { useObjectsStore } from '../store/objects-store';
-import { getCameraEngine } from '../engine/camera-engine';
+import { useBoardsStore } from '../store/boards-store';
 
 type BootstrapState =
   | { phase: 'loading' }
@@ -11,8 +9,12 @@ type BootstrapState =
   | { phase: 'error'; message: string };
 
 /**
- * Bootstrap canvas: load boards + objects từ IndexedDB, tạo root board nếu chưa có,
- * hydrate camera + objects. Đăng ký persist callback cho engine (debounce 500ms).
+ * Bootstrap canvas 1 lần lúc mount: load toàn bộ Board records từ IDB → hydrate
+ * boards-store, ensure rootBoard tồn tại (parentId=null). Sau đó `useBoardSync`
+ * lo phần load objects + hydrate camera + persist callback theo currentBoardId.
+ *
+ * KHÔNG load objects ở đây — objects load lại mỗi lần switch board, thuộc trách
+ * nhiệm của useBoardSync.
  */
 export function useCanvasBootstrap(): { state: BootstrapState } {
   const [state, setState] = useState<BootstrapState>({ phase: 'loading' });
@@ -32,19 +34,8 @@ export function useCanvasBootstrap(): { state: BootstrapState } {
           boards = [rootBoard];
         }
 
-        // Hydrate camera qua store (delegate về engine.hydrate — snap không ramp).
-        useCameraStore.getState().hydrate(rootBoard.camera);
-
-        // Đăng ký persist callback: engine tự trailing-debounce 500ms.
-        const targetBoardId = rootBoard.id;
-        getCameraEngine().setPersistCallback((camera) => {
-          void repo.saveCamera(targetBoardId, camera);
-        });
-
-        const objects = await repo.loadObjects(null);
         if (cancelled) return;
-        useObjectsStore.getState().hydrate(objects);
-
+        useBoardsStore.getState().hydrate(boards);
         setState({ phase: 'ready', rootBoard });
       } catch (err) {
         if (cancelled) return;
@@ -57,8 +48,6 @@ export function useCanvasBootstrap(): { state: BootstrapState } {
 
     return () => {
       cancelled = true;
-      // Flush persist khi unmount, tránh mất state đang debounce.
-      getCameraEngine().flushPersist();
     };
   }, []);
 

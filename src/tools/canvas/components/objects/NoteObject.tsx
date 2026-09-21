@@ -146,9 +146,10 @@ function NoteEditor({
 registerObjectType({
   type: 'note',
   renderer: NoteRenderer,
-  // Milanote parity: card 260x160 gần Milanote 338x default nhưng gọn hơn để bibo
-  // toolbar drag preview không quá lớn. Padding 20px + ColorBar 4px cần space.
-  defaultGeometry: { width: 260, height: 160, rotation: 0, zIndex: 0 },
+  // Milanote parity: width 338 khớp Card Milanote (đo từ DOM thật). Height 180
+  // cố định — Milanote height DYNAMIC theo content (68 rỗng, auto-grow), bibo
+  // chưa hỗ trợ auto-grow height nên giữ fixed. Auto-grow là backlog riêng.
+  defaultGeometry: { width: 338, height: 180, rotation: 0, zIndex: 0 },
   defaultData: (): NoteData => ({ title: '', body: '' }),
   label: 'Note',
   showInToolbar: true,

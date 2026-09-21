@@ -6,22 +6,25 @@
  * ngữ nghĩa vùng rõ ràng.
  */
 
-export type HitZone = 'trash' | 'overlay' | 'canvas' | 'outside';
+export type HitZone = 'trash' | 'unsort' | 'overlay' | 'canvas' | 'outside';
 
 /**
  * Phân loại vùng tại toạ độ screen (clientX/clientY):
  *   - 'trash'   — trên nút thùng rác (data-trash-drop)
- *   - 'overlay' — trên overlay screen-space khác (toolbar body, data-canvas-overlay)
- *   - 'canvas'  — trên vùng canvas surface (data-canvas-surface)
- *   - 'outside' — ngoài tất cả (header, document, hoặc không có element)
+ *   - 'unsort'  — trên UnsortToggle hoặc UnsortPanel (data-unsort-drop-target). Valid drop.
+ *   - 'overlay' — trên overlay screen-space khác (toolbar body, data-canvas-overlay). Invalid.
+ *   - 'canvas'  — trên vùng canvas surface (data-canvas-surface). Valid.
+ *   - 'outside' — ngoài tất cả (header, document, hoặc không có element). Invalid.
  *
- * Lưu ý thứ tự ưu tiên: trash > overlay > canvas > outside. Vì nút trash nằm
- * trong toolbar (cũng là overlay), phải check trash trước.
+ * Thứ tự ưu tiên: trash > unsort > overlay > canvas > outside. UnsortToggle
+ * cũng có data-canvas-overlay (để chặn wheel), nên check unsort trước overlay
+ * để drop lên toggle được coi là valid drop, không phải invalid overlay.
  */
 export function hitZone(clientX: number, clientY: number): HitZone {
   const target = document.elementFromPoint(clientX, clientY);
   if (!(target instanceof Element)) return 'outside';
   if (target.closest('[data-trash-drop]')) return 'trash';
+  if (target.closest('[data-unsort-drop-target]')) return 'unsort';
   if (target.closest('[data-canvas-overlay]')) return 'overlay';
   if (target.closest('[data-canvas-surface]')) return 'canvas';
   return 'outside';

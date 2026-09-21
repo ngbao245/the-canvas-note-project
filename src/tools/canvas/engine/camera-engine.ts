@@ -163,6 +163,12 @@ export class CameraEngine {
     if (this.wrapperEl || this.gridDenseEl || this.gridSparseEl) this.applyTransforms();
   }
 
+  /** World layer wrapper (element engine ghi transform). Dùng để nâng z-index
+   *  cả world layer khi drag object (vượt stacking context lên trên Unsort tab). */
+  getWrapper(): HTMLElement | null {
+    return this.wrapperEl;
+  }
+
   setPersistCallback(cb: PersistCallback | null): void {
     this.persistCb = cb;
   }
@@ -171,15 +177,10 @@ export class CameraEngine {
     const clamped = Math.max(ZOOM_MIN, Math.min(1, min));
     if (clamped === this.dynamicMin) return;
     this.dynamicMin = clamped;
-    if (this.targetRef.zoom < clamped) {
-      this.targetRef = clampCameraToBounds(
-        { ...this.targetRef, zoom: clamped },
-        this.panBoundsRef,
-        this.viewportRef,
-      );
-      this.scheduleRamp();
-      this.schedulePersist();
-    }
+    // KHÔNG force clamp current zoom lên min. dynamicMin chỉ là constraint
+    // cho zoom action mới (wheel/pinch/zoomByAt). Bounds thay đổi nhất thời
+    // (VD drag 1 item duy nhất → bounds tạm null → min=0.4) không được kéo
+    // camera đang zoom < min về min. User đang xa content là chủ ý.
   }
 
   setPanBounds(bounds: Bounds | null): void {

@@ -41,7 +41,7 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-modal flex items-center justify-center"
       style={{ background: 'rgba(0,0,0,0.4)' }}
       onClick={onCancel}
     >

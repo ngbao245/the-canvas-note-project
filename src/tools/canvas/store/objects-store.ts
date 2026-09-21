@@ -7,6 +7,8 @@ interface ObjectsState {
   add: (obj: CanvasObject) => void;
   updateGeometry: (id: string, geometry: Partial<Geometry>) => void;
   updateData: (id: string, data: unknown) => void;
+  /** Chuyển object sang board khác. Dùng cho drop-onto-tile cross-board. */
+  updateBoardId: (id: string, boardId: string | null) => void;
   remove: (id: string) => void;
   removeMany: (ids: string[]) => void;
   get: (id: string) => CanvasObject | undefined;
@@ -47,6 +49,15 @@ export const useObjectsStore = create<ObjectsState>((set, get) => ({
       if (!cur) return s;
       const map = new Map(s.objects);
       map.set(id, { ...cur, data, updatedAt: new Date().toISOString() });
+      return { objects: map };
+    }),
+
+  updateBoardId: (id, boardId) =>
+    set((s) => {
+      const cur = s.objects.get(id);
+      if (!cur) return s;
+      const map = new Map(s.objects);
+      map.set(id, { ...cur, boardId, updatedAt: new Date().toISOString() });
       return { objects: map };
     }),
 

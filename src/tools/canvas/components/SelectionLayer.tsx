@@ -29,7 +29,9 @@ export function SelectionLayer() {
   const items: { id: string; g: { x: number; y: number; width: number; height: number } }[] = [];
   for (const id of selectedIds) {
     const o = objects.get(id);
-    if (o) items.push({ id, g: o.geometry });
+    // Skip object trong Unsort (unsortIndex !== null): không render selection
+    // box trên canvas. UnsortItem tự highlight qua ring primary trong panel.
+    if (o && o.unsortIndex === null) items.push({ id, g: o.geometry });
   }
 
   return (

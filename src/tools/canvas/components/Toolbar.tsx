@@ -4,7 +4,7 @@ import { getToolbarObjectTypes } from '../hooks/useObjectRegistry';
 import { getCameraEngine } from '../engine/camera-engine';
 import { screenToCanvas, clientToCanvas } from '../engine/coord';
 import { hitZone } from '../lib/hit-test';
-import { createObjectAt, deleteObjects } from '../engine/actions';
+import { createBoardAt, createObjectAt, deleteObjects } from '../engine/actions';
 import { useSelectionStore } from '../store/selection-store';
 import { useToolbarDrag } from '../hooks/useToolbarDrag';
 import { TileIcon, type TileType } from './TileIcons';
@@ -80,14 +80,21 @@ function ToolTile({
   boardId: string | null;
   def: ReturnType<typeof getToolbarObjectTypes>[number];
 }) {
+  // Board type có compound create (Board entity + BoardObject atomic). Route
+  // qua createBoardAt riêng — createObjectAt default flow không dựng Board entity.
+  const create = (x: number, y: number) => {
+    if (type === 'board') createBoardAt(x, y, boardId);
+    else createObjectAt(type, x, y, boardId);
+  };
+
   const { onPointerDown } = useToolbarDrag({
     onClick: () => {
       const c = viewportCenterCanvas();
-      createObjectAt(type, c.x, c.y, boardId);
+      create(c.x, c.y);
     },
     onDrop: (clientX, clientY) => {
       const c = dropPointToCanvas(clientX, clientY);
-      if (c) createObjectAt(type, c.x, c.y, boardId);
+      if (c) create(c.x, c.y);
     },
     defaultGeometry: def.defaultGeometry,
     renderPreview: def.renderPreview,
@@ -101,15 +108,15 @@ const PLACEHOLDER_TYPES: { label: string; tileType: TileType }[] = [
   { label: 'Link', tileType: 'link' },
   { label: 'Image', tileType: 'image' },
   { label: 'To-do', tileType: 'todo' },
-  { label: 'Board', tileType: 'board' },
   { label: 'Table', tileType: 'table' },
   { label: 'File', tileType: 'file' },
   { label: 'Line', tileType: 'line' },
 ];
 
-// Map từ registry type string → TileIcon type. Registry hiện chỉ có 'note'.
+// Map từ registry type string → TileIcon type.
 const REGISTRY_TO_TILE: Record<string, TileType> = {
   note: 'note',
+  board: 'board',
 };
 
 export function Toolbar({ boardId }: { boardId: string | null }) {
@@ -140,7 +147,7 @@ export function Toolbar({ boardId }: { boardId: string | null }) {
       data-canvas-overlay="true"
       // max-h calc viewport - header(~80px) - margin(~48px). Vượt max-h thì list
       // tile scroll bên trong, trash sticky ở đáy shell.
-      className="absolute left-3 top-1/2 z-20 flex max-h-[calc(100vh-8rem)] -translate-y-1/2 flex-col rounded-xl border border-border bg-card/90 shadow-lg backdrop-blur"
+      className="absolute left-3 top-1/2 z-toolbar flex max-h-[calc(100vh-8rem)] -translate-y-1/2 flex-col rounded-xl border border-border bg-card/90 shadow-lg backdrop-blur"
     >
       {/* List tile scroll khi dài (mockup 04 .side-scroll pattern) */}
       <div className="no-scrollbar flex flex-col gap-1.5 overflow-y-auto p-2">

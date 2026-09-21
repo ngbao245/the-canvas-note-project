@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { StickyNote } from 'lucide-react';
 import { useObjectsStore } from '../store/objects-store';
+import { useInteractionStore } from '../store/interaction-store';
+import { useSelectionStore } from '../store/selection-store';
 import { getCameraEngine } from '../engine/camera-engine';
 import { screenToCanvas } from '../engine/coord';
 import { createObjectAt } from '../engine/actions';
@@ -15,6 +17,7 @@ import { SelectionLayer } from './SelectionLayer';
 import { MarqueeOverlay } from './MarqueeOverlay';
 import { ContextMenu } from './ContextMenu';
 import { Toolbar } from './Toolbar';
+import { UnsortToggle } from './UnsortPanel';
 import './objects'; // side-effect: register mọi object type vào registry
 
 /**
@@ -96,20 +99,36 @@ export function CanvasSurface({ boardId }: { boardId: string | null }) {
     return () => observer.disconnect();
   }, []);
 
+  const mode = useInteractionStore((s) => s.mode);
+
   // --- Recompute dynamic zoom min + pan bounds khi objects đổi ---
+  //
+  // Trong lúc drag/resize, exclude object đang mutate khỏi bounds compute.
+  // Nếu không, bounds "trôi" theo item (khi 1 item duy nhất, camera clamp
+  // dõi theo item → mất biên chặn). Item đứng yên định biên là đúng semantics.
   const recomputeDynamicZoomMin = () => {
     const engine = getCameraEngine();
     const viewport = engine.getViewport();
     if (viewport.width === 0 || viewport.height === 0) return;
     const objects = useObjectsStore.getState().objects;
-    const bounds = computeContentBounds(objects.values());
+    const currentMode = useInteractionStore.getState().mode;
+    const isMutating = currentMode === 'dragging' || currentMode === 'resizing';
+    const selected = useSelectionStore.getState().selectedIds;
+    const iter = isMutating
+      ? Array.from(objects.values()).filter((o) => !selected.has(o.id))
+      : Array.from(objects.values());
+    const bounds = computeContentBounds(iter);
     engine.setDynamicZoomMin(computeDynamicZoomMin(bounds, viewport));
     engine.setPanBounds(computePanBounds(bounds));
   };
 
   useEffect(() => {
     recomputeDynamicZoomMin();
-  }, [objectsMap]);
+    // Cả 2 deps: objectsMap thay đổi khi drag (frame-by-frame),
+    // mode thay đổi khi vào/thoát drag → recompute sau drop để pan bounds
+    // ôm lại vị trí mới của item vừa move.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [objectsMap, mode]);
 
   // --- Wheel handler: pan mặc định, Ctrl+wheel zoom ---
   useEffect(() => {
@@ -213,6 +232,7 @@ export function CanvasSurface({ boardId }: { boardId: string | null }) {
       {/* Screen space overlays */}
       <MarqueeOverlay />
       <Toolbar boardId={boardId} />
+      <UnsortToggle boardId={boardId} />
 
       {menu ? (
         <ContextMenu

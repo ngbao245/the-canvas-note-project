@@ -61,3 +61,153 @@ Redundant với #1, giữ như subitem của #1 nếu tách nhỏ hơn.
 
 - Session này ship: Note polish (radius, contrast shadow, ColorBar, Fraunces serif, padding, ResizeGrip decor), zoom smoothness fix (anchor lock + isolate ZoomBadge + alpha 0.20)
 - Next session bắt đầu: Note polish part 2 (QuickLine visual dot + corner resize handle) → sau đó Phase B Task 5-9 (Image + Link)
+
+## Note auto-grow height (Milanote parity)
+
+**Trạng thái**: Bibo Note hiện `height: fixed` (default 180). Milanote thực tế `height: auto` — grow theo content, min ~68 khi rỗng, tự cao khi có body dài. Kiro giữ fixed vì chưa refactor.
+
+**Scope**:
+- ObjectShell + NoteObject dùng `height: auto`, min-height (VD 68), max-height cap (VD viewport 80%).
+- Corner resize handle hoạt động theo mode: kéo tay = fixed size (giữ nguyên), auto khi user không resize.
+- `applyResize` cần biết mode auto vs fixed để không ghi height sai.
+- Geometry.height meaning đổi: "hint" cho fixed mode, ignore cho auto mode. Cần field `heightMode: 'auto' | 'fixed'` trong data.
+- Persist mode qua data (không phải geometry).
+
+**Effort**: Medium (2-3 giờ). Cần đổi Zod schema note, ObjectShell layout, resize logic.
+
+**Ưu tiên**: Sau khi ship object types khác. User có thể chấp nhận fixed height ở MVP.
+
+## 5. Keyboard shortcuts
+
+**Trạng thái**: Bibo hiện chỉ có Ctrl+Z/Y/Shift+Z (undo/redo), Delete/Backspace, F (fit), 0 (reset), Space+drag (pan). Session 2026-09-18 discuss xong danh sách shortcut, user chốt scope làm dưới đây.
+
+**Ưu tiên**: Làm sau khi ship Image + Link object type (không blocking). Có thể xen kẽ theo mức phase.
+
+### Phase 1 — Cực thiết yếu (làm sớm)
+
+- **Ctrl+A** — Select all object trong board hiện tại.
+- **Ctrl+C** — Copy object đang chọn vào clipboard (JSON serialize).
+- **Ctrl+V** — Paste tại vị trí chuột trên canvas, hoặc tâm viewport nếu chuột ngoài canvas.
+- **Ctrl+X** — Cut = Copy + Delete.
+- **Ctrl+D** — Duplicate object đang chọn tại vị trí offset (VD +16px, +16px) để không đè.
+- **Escape** — Deselect nếu có selection. Nếu đang edit note → thoát edit trước, chưa deselect (2 lần Esc mới deselect).
+- **Enter** — Vào edit mode object đang chọn (thay double-click). Nếu > 1 object select → không làm gì hoặc chỉ vào edit primary.
+
+Effort: ~2-3 giờ. Cần Clipboard API + JSON serialize object schema + strategy chọn vị trí paste.
+
+### Phase 2 — Fine-tune (làm khi rảnh)
+
+- **Arrow ←→↑↓** — Nudge object đang chọn 1px canvas-space theo hướng phím.
+- **Shift+Arrow** — Nudge 10px.
+- ~~**Ctrl+]** / **Ctrl+[** — Bring forward / send backward~~ ĐÃ LÀM (2026-09-20, Phase 2 stacking).
+- ~~**Ctrl+Shift+]** / **Ctrl+Shift+[** — Bring to front / send to back~~ ĐÃ LÀM (2026-09-20).
+- **Ctrl++** / **Ctrl+=** — Zoom in quanh tâm viewport, dùng notch ZOOM_STEP_IN.
+- **Ctrl+-** — Zoom out quanh tâm viewport, dùng notch ZOOM_STEP_OUT.
+- **Shift+drag** — Constrain di chuyển theo trục ngang HOẶC dọc (theo trục cursor di lệch nhiều hơn tại thời điểm drag start).
+- **Ctrl+drag** — Duplicate + drag (giữ nguyên object cũ, kéo bản sao đi theo cursor).
+- **Ctrl+Shift+drag** — Duplicate + constrain axis (kết hợp 2 cái trên).
+
+Effort: ~2-3 giờ. Nudge + zIndex + zoom shortcut nhỏ, dễ. Ctrl+drag phức tạp hơn vì đụng flow drag hiện tại.
+
+**Cẩn thận Ctrl+drag conflict**:
+- `usePointerInteraction.ts` hiện dùng Ctrl+drag trên VÙNG TRỐNG = pan camera. Cần giữ.
+- `useObjectDrag.ts` hiện có `if (e.button === 1 || e.ctrlKey || e.metaKey) return;` — Ctrl+drag trên object hiện SKIP drag để nhường surface xử pan.
+- Muốn Ctrl+drag = duplicate object: đổi `useObjectDrag.onPointerDown` cho phép Ctrl+drag, phân biệt với pan bằng target (Ctrl+click object = duplicate flow, Ctrl+click trống = pan).
+- **Alternative chuẩn Figma/Miro: Alt+drag** thay Ctrl+drag. Bibo hiện chưa dùng Alt cho gì, không conflict. Khi implement nên hỏi user chốt: Ctrl+drag (Windows-style) hay Alt+drag (Figma-style).
+
+### Phase 3 — Tool shortcut (làm khi có object type mới)
+
+Bấm 1 phím = chọn công cụ, click canvas = tạo object đó tại điểm click, xong cursor về Select.
+
+- **V** — Select tool (mặc định).
+- **H** — Hand tool (drag = pan luôn, không cần giữ Space).
+- **N** — Add Note.
+- **I** — Add Image (khi có).
+- **L** — Add Link (khi có).
+- **T** — Add Todo (khi có).
+- **B** — Add sub-Board (khi có nested).
+- **/** — Add Line (khi có).
+
+Effort: ~1 giờ. Cần state `activeTool` trong interaction-store + cursor override khi tool khác Select.
+
+### Phase 4 — Power user (khi bibo lớn hơn)
+
+- **Ctrl+K** — Command palette / quick action search. Kiểu VS Code. Rất mạnh khi bibo có 20+ tool.
+- **Ctrl+F** — Search text trong board (tìm note theo nội dung).
+- **?** hoặc **Ctrl+/** — Overlay hiện danh sách phím tắt để user tự discover.
+- **Tab** / **Shift+Tab** — Cycle selection giữa các object.
+- **Home / End** — Scroll đến object đầu / cuối theo zIndex hoặc createdAt.
+- **Ctrl+G** / **Ctrl+Shift+G** — Group / ungroup (chỉ làm khi bibo có concept group ngoài nested board).
+
+Effort: Ctrl+K palette ~4-6 giờ nếu làm đàng hoàng. Còn lại ~30 phút mỗi cái.
+
+### Phase 5 — Nested board (khi có nested board tool)
+
+- **Backspace** (không có object select) hoặc **Ctrl+←** — Back về parent board.
+- **Ctrl+→** — Đi vào board đang chọn (nếu object là board type).
+- **Ctrl+Shift+←** — Về root board.
+
+Effort: ~30 phút sau khi nested board xong.
+
+### Rule chung khi implement
+
+1. Guard `isEditableTarget` — mọi shortcut check user không đang gõ input/textarea. Bibo có sẵn `lib/dom.ts::isEditableTarget`.
+2. Check `e.ctrlKey || e.metaKey` cho Mac cross-platform.
+3. Không override phím tắt browser hay dùng (Ctrl+W/T/R).
+4. Ưu tiên implement discoverability sớm — nếu có ≥ 10 shortcut, làm luôn overlay `?` help.
+5. Ctrl+0 vs `0`: bibo đang dùng `0` không modifier cho reset view. Có thể trùng ý người dùng với Ctrl+0 mặc định browser (reset zoom trang). Cân nhắc chuyển `0` → `Ctrl+0` (override browser default) khi làm zoom shortcut.
+
+### Gợi ý chưa chốt (để tham khảo sau)
+
+- **Alt+drag** thay Ctrl+drag cho duplicate (chuẩn Figma/Miro, không conflict Ctrl-drag-pan).
+- **S** — Save shortcut giả cho cảm giác "đã lưu" (bibo auto save qua IDB, không cần save thật). Tâm lý user.
+- **Ctrl+Shift+D** — Toggle dark mode nhanh (bibo đã có nút toggle).
+- **Ctrl+Shift+H** — Toggle hand-drawn / flat style.
+- **Ctrl+Shift+E** — Export board thành PNG/JSON.
+
+### Mac cross-platform
+
+Mọi shortcut phải handle Mac song song với Windows. Convention:
+
+**Modifier mapping**
+- `Ctrl` (Windows/Linux) ↔ `Cmd` / `⌘` (Mac) → check `e.ctrlKey || e.metaKey` trong handler.
+- `Alt` (Windows) ↔ `Option` / `⌥` (Mac) → check `e.altKey` (giống nhau, không cần map).
+- `Shift` → giống nhau.
+
+**Rule cứng**
+1. Mọi handler shortcut BẮT BUỘC dùng `const mod = e.ctrlKey || e.metaKey` rồi check `mod` thay vì `e.ctrlKey` riêng. Bibo đã làm đúng ở `useCanvasKeys.ts` (undo/redo), giữ pattern này khi thêm shortcut mới.
+2. Mac không có phím Delete riêng (bàn phím Apple), chỉ có Backspace. Bibo đã handle cả 2 phím trong `useDeleteKey.ts` → OK không cần đổi.
+3. Ctrl+Y (redo Windows-only): trên Mac, phím Y có thể conflict browser default. Chỉ giữ Ctrl+Y trên Windows, còn Mac dùng Cmd+Shift+Z. Handler hiện tại của bibo có cả 2 shortcut nên OK.
+
+**Detect OS trong UI (khi làm overlay `?` help hoặc tooltip)**
+
+Cần helper `isMac()` để hiển thị tooltip đúng convention:
+- Windows/Linux → "Ctrl+Z", "Ctrl+Shift+Z"
+- Mac → "⌘Z", "⌘⇧Z" (hoặc "Cmd+Z", "Cmd+Shift+Z")
+
+Đặt trong `src/tools/canvas/lib/dom.ts` hoặc `src/lib/os.ts` (shared toàn app):
+
+```ts
+export function isMac(): boolean {
+  return typeof navigator !== 'undefined'
+    && /Mac|iPhone|iPod|iPad/i.test(navigator.platform || navigator.userAgent);
+}
+
+export function modifierLabel(): string {
+  return isMac() ? '⌘' : 'Ctrl';
+}
+```
+
+Dùng: `title={`Undo (${modifierLabel()}+Z)`}`.
+
+**Cẩn thận Mac-specific**
+- `Cmd+W` đóng tab → không override.
+- `Cmd+Q` thoát app → không override.
+- `Cmd+H` ẩn app → không override (nếu định dùng H = Hand tool thì chỉ dùng khi không có modifier: `!mod && e.key === 'h'`).
+- `Cmd+M` minimize → không override.
+- `Ctrl` trên Mac thường dành cho terminal emulation, KHÔNG hijack Ctrl trên Mac cho shortcut app. Dùng Cmd.
+
+**Alt/Option drag trên Mac**
+- macOS Finder: Option+drag = copy file. Analog rất tốt cho canvas → chuẩn Figma/Miro cũng dùng Option+drag = duplicate.
+- Bibo hiện chưa dùng Alt cho gì → dùng Alt+drag làm duplicate là an toàn, cross-platform hoạt động cùng convention.
+- Nếu chọn Ctrl+drag (Windows-style) thì Mac tương ứng phải là Cmd+drag → nhưng Cmd+drag trên Mac có thể conflict với behavior khác. **Kiro nghiêng Alt+drag** khi implement để nhất quán 2 nền tảng.

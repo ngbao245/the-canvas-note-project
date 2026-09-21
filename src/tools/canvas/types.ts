@@ -32,10 +32,17 @@ export type Geometry = z.infer<typeof geometrySchema>;
 // `data: unknown` — renderer tự cast sang type của mình bằng Zod (Phase B).
 export const canvasObjectSchema = z.object({
   id: z.string(),
-  type: z.string(), // 'rect' Phase A; 'note' | 'text' | 'image' | 'link' Phase B
+  type: z.string(), // 'rect' Phase A; 'note' | 'text' | 'image' | 'link' Phase B; 'board' nested
   boardId: z.string().nullable(), // null = root board
   geometry: geometrySchema,
   data: z.unknown(),
+  /**
+   * Unsort placement (từ spec canvas-unsort):
+   *   null = trên canvas, render theo geometry.
+   *   ≥ 0 = trong Unsort của boardId, thứ tự tăng từ 0 (top).
+   * Object cũ (không có field) → default null, giữ trên canvas như hiện tại.
+   */
+  unsortIndex: z.number().int().min(0).nullable().default(null),
   createdAt: z.string(), // ISO
   updatedAt: z.string(), // ISO
 });
@@ -45,7 +52,8 @@ export type CanvasObject = z.infer<typeof canvasObjectSchema>;
 // `CanvasObject.data` là `unknown` ở schema gốc. Mỗi renderer parse phần data
 // của type mình qua schema dưới đây. Engine core không đọc các field này.
 
-/** Note: ghi chữ plain (rich text hoãn sang Phase C). */
+/** Note: ghi chữ plain (rich text hoãn sang Phase C).
+ *  Default geometry: xem `.kiro/notes/canvas-object-type-defaults.md`. */
 export const noteDataSchema = z.object({
   title: z.string().default(''),
   body: z.string().default(''),
@@ -69,6 +77,16 @@ export const linkDataSchema = z.object({
 });
 export type LinkData = z.infer<typeof linkDataSchema>;
 
+/**
+ * Board object (type='board' trên canvas cha): tile đại diện board con.
+ * Chỉ giữ ref sang Board entity — name/color/count đọc từ Board + objects store
+ * lúc render, không duplicate.
+ */
+export const boardDataSchema = z.object({
+  linkedBoardId: z.string(),
+});
+export type BoardData = z.infer<typeof boardDataSchema>;
+
 // --- Camera ---
 // State pan + zoom của viewport. 1 camera / board.
 // Range schema permissive (0.01 - 20) để tolerate legacy data. Engine constants
@@ -81,11 +99,15 @@ export const cameraSchema = z.object({
 export type Camera = z.infer<typeof cameraSchema>;
 
 // --- Board ---
-// Phase A chỉ có 1 root board "Home". Phase D nhiều board nested qua parentId.
+// Phase A chỉ có 1 root board "Home". Nested-boards nhiều board qua parentId.
+// `color` là hex "#RRGGBB", rotate qua BOARD_COLOR_PALETTE khi tạo mới. Board
+// record cũ (trước nested-boards) không có field này → default zinc neutral
+// để không break hydrate.
 export const boardSchema = z.object({
   id: z.string(),
   name: z.string(),
   parentId: z.string().nullable().default(null),
+  color: z.string().default('#71717a'),
   camera: cameraSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -105,6 +127,25 @@ export const ZOOM_MAX = 3;
 export const ZOOM_OUT_BASELINE = 0.4;
 export const MIN_OBJECT_SIZE = 40;
 
+// --- Board color palette ---
+// Milanote-inspired 6 màu. Rotate theo thứ tự Board tạo trong cùng parent để
+// consistent giữa các session (không random). Index 0 = neutral zinc cho root.
+export const BOARD_COLOR_PALETTE = [
+  '#71717a', // zinc — neutral default
+  '#cb997e', // tan
+  '#e9785e', // coral
+  '#a5b18d', // sage
+  '#7d9dc7', // sky
+  '#d48ea6', // rose
+] as const;
+
+/** Lấy màu từ palette theo index; wrap-around khi index vượt độ dài. */
+export function boardColorForIndex(index: number): string {
+  const len = BOARD_COLOR_PALETTE.length;
+  const i = ((index % len) + len) % len;
+  return BOARD_COLOR_PALETTE[i];
+}
+
 // --- Helpers ---
 export function makeDefaultBoard(): Board {
   const now = new Date().toISOString();
@@ -112,6 +153,7 @@ export function makeDefaultBoard(): Board {
     id: crypto.randomUUID(),
     name: 'Home',
     parentId: null,
+    color: BOARD_COLOR_PALETTE[0],
     camera: { x: 0, y: 0, zoom: 1 },
     createdAt: now,
     updatedAt: now,

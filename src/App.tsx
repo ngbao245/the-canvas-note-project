@@ -32,6 +32,8 @@ export default function App() {
           <Route path="/thu/drawably-canvas" element={<CanvasDraw />} />
           <Route path="/thu/style-demo" element={<StyleDemo />} />
           <Route path="/canvas" element={<Canvas />} />
+          <Route path="/canvas/:boardId" element={<Canvas />} />
+          <Route path="/canvas/:boardId/:slug" element={<Canvas />} />
           <Route path="*" element={<Landing />} />
         </Routes>
       </Suspense>

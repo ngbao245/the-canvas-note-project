@@ -5,24 +5,36 @@ import { useCameraStore } from '../store/camera-store';
 import { useInteractionStore } from '../store/interaction-store';
 import { getCameraEngine } from '../engine/camera-engine';
 import { clientToCanvas } from '../engine/coord';
-import { applyMoveDelta, commitMove, deleteObjects } from '../engine/actions';
+import {
+  applyMoveDelta,
+  bringToFront,
+  commitMove,
+  deleteObjects,
+  moveObjectsToUnsort,
+  moveToUnsortHere,
+} from '../engine/actions';
 import { hitZone } from '../lib/hit-test';
+import { boardDataSchema } from '../types';
 import { createEdgePanLoop } from './useEdgePan';
 
 /**
- * Drag object trên canvas theo pattern Milanote (motion-rules Paradigm 2):
- *   - pointerdown: ghi điểm bắt đầu + grab offset (cursor relative to object).
- *   - pointermove vượt threshold → START:
- *       + Source object: opacity 0.4 + scale 0.96 + brightness 0.9 (mờ tại chỗ).
- *       + Floating preview clone follow cursor với grab offset đúng.
- *   - pointermove tiếp: cập nhật preview position + check hover trash.
+ * Drag object trên canvas theo pattern Milanote — "cầm chính item lên":
+ *   - pointerdown: ghi grab offset canvas-space (cursor tới top-left object).
+ *   - pointermove vượt threshold → startDrag:
+ *       + Nâng z-index world wrapper lên --z-drag-layer → cả layer vượt Unsort
+ *         panel/tab ở cấp screen (wrapper có transform → stacking context riêng).
+ *       + Source elements: shadow lift + zIndex cao trong world + pointer-events:none
+ *         để hit-test nhìn xuyên xuống drop target.
+ *   - pointermove: reposition tất cả selected qua applyMoveDelta (item gốc chạy
+ *     trực tiếp theo cursor, size khớp zoom vì vẫn trong world layer).
  *   - pointerup:
- *       + Chưa vượt threshold → không phải drag (select đã xử trước).
- *       + Đang drag + hover trash → deleteObjects(selected).
- *       + Đang drag + không trash → move tất cả selected theo delta screen→canvas.
+ *       + trash → deleteObjects.
+ *       + Board tile → revert geometry + moveObjectsToUnsort (cross-board).
+ *       + Unsort target → revert geometry + moveToUnsortHere (same-board).
+ *       + Vùng invalid → revert (không commit).
+ *       + Canvas trống → commit MoveCommand từ before snapshot.
  *
- * Multi-select: preview chỉ hiện item chính (item được pointerdown), tất cả
- * selected mờ đi. Move/delete áp cho toàn bộ selected.
+ * Multi-select: tất cả selected cùng move, primary được bringToFront khi startDrag.
  */
 
 const DRAG_THRESHOLD = 5;
@@ -50,12 +62,17 @@ export function useObjectDrag(objectId: string) {
   const cleanup = useCallback(() => {
     edgePanRef.current?.stop();
     edgePanRef.current = null;
+    // Hạ z-index world wrapper về mặc định (đã nâng khi startDrag để item vượt overlay).
+    const wrapper = getCameraEngine().getWrapper();
+    if (wrapper) wrapper.style.zIndex = '';
     // Restore lift effect trên tất cả object đang drag.
     for (const el of sourceElsRef.current) {
       el.style.transform = '';
       el.style.boxShadow = '';
       el.style.transition = '';
       el.style.zIndex = '';
+      el.style.pointerEvents = '';
+      el.style.opacity = '';
     }
     sourceElsRef.current = [];
     const trash = document.querySelector('[data-trash-drop]');
@@ -67,6 +84,16 @@ export function useObjectDrag(objectId: string) {
 
     document.body.classList.remove('canvas-drag-invalid');
     invalidZoneRef.current = false;
+    // Clear board tile hover state — BoardObject bỏ ring highlight.
+    if (useInteractionStore.getState().hoveredBoardTileId !== null) {
+      useInteractionStore.getState().setHoveredBoardTileId(null);
+    }
+    hoveredBoardTileRef.current = null;
+    // Clear Unsort drop target hover.
+    if (useInteractionStore.getState().hoveredUnsortDropTarget) {
+      useInteractionStore.getState().setHoveredUnsortDropTarget(false);
+    }
+    hoveredUnsortTargetRef.current = false;
 
     startRef.current = null;
     draggingRef.current = false;
@@ -97,10 +124,20 @@ export function useObjectDrag(objectId: string) {
   };
 
   const beforeRef = useRef<Map<string, { x: number; y: number }> | null>(null);
+  /** BoardObject.id đang bị cursor hover khi drag object khác qua. Không phải
+   *  linkedBoardId — cần object.id để BoardObject subscribe interaction-store. */
+  const hoveredBoardTileRef = useRef<string | null>(null);
+  /** Cursor đang hover trên UnsortToggle hoặc UnsortPanel (data-unsort-drop-target). */
+  const hoveredUnsortTargetRef = useRef<boolean>(false);
 
   const startDrag = (start: DragStart) => {
     draggingRef.current = true;
     useInteractionStore.getState().setMode('dragging');
+
+    // Milanote parity: item được cầm lên luôn nổi trên các item khác. Raise
+    // geometry.zIndex của primary object (chỉ khi bắt đầu drag thật, không khi
+    // chỉ click). Push undo riêng — độc lập với move.
+    bringToFront(start.primaryId);
 
     // Snapshot vị trí ban đầu tất cả selected (dùng commit MoveCommand khi drop).
     const before = new Map<string, { x: number; y: number }>();
@@ -110,14 +147,28 @@ export function useObjectDrag(objectId: string) {
     }
     beforeRef.current = before;
 
-    // Lift effect: item chính scale up + shadow, nổi lên trên các item khác.
+    // "Cầm chính item lên" (Milanote parity, không clone):
+    //   - Nâng z-index world wrapper lên --z-drag-layer → cả world layer vượt
+    //     Unsort panel overlay (z-toolbar) + mọi overlay khác. Wrapper có transform
+    //     → tạo stacking context riêng, phải nâng ở CẤP wrapper mới vượt được.
+    //   - Trên từng source element: shadow + z-index cao trong world để nổi trên
+    //     object khác cùng board.
+    // Item gốc chạy trực tiếp theo cursor qua reposition() → cảm giác cầm thẳng
+    // item lên, size khớp zoom vì item vẫn ở trong world layer (scale theo camera).
+    const wrapper = getCameraEngine().getWrapper();
+    if (wrapper) wrapper.style.zIndex = 'var(--z-drag-layer)';
+
     const sourceEls: HTMLElement[] = [];
     for (const id of start.ids) {
       const el = document.querySelector(`[data-object-id="${id}"]`);
       if (el instanceof HTMLElement) {
-        el.style.transition = 'box-shadow 80ms, transform 80ms';
+        el.style.transition = 'box-shadow 80ms';
         el.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.35)';
-        el.style.zIndex = '9999';
+        el.style.zIndex = 'var(--z-drag-layer)';
+        // pointer-events: none để hit-test (elementFromPoint) nhìn xuyên source
+        // xuống drop target (Unsort panel/tab, Board tile) — không thì source
+        // che target ngay dưới cursor.
+        el.style.pointerEvents = 'none';
         sourceEls.push(el);
       }
     }
@@ -136,15 +187,52 @@ export function useObjectDrag(objectId: string) {
 
   /** Detect vùng cursor:
    *   - Trash: valid drop = delete
-   *   - Canvas surface: valid drop = move
+   *   - Canvas surface (over Board tile): valid drop = move cross-board
+   *   - Canvas surface (không tile): valid drop = move trong canvas hiện tại
    *   - Overlay khác trash (toolbar body): invalid → revert
    *   - Ngoài toàn bộ (header/document): invalid → revert
    */
   const updateZone = (clientX: number, clientY: number) => {
     const zone = hitZone(clientX, clientY);
-    // trash = drop xoá; canvas = drop move (valid); overlay/outside = invalid revert.
+    // trash = drop xoá; canvas/unsort = drop valid; overlay/outside = invalid.
     const overTrash = zone === 'trash';
     const invalid = zone === 'overlay' || zone === 'outside';
+
+    // Detect hover trên BoardObject: chỉ khi zone='canvas' và không phải chính
+    // object đang drag (không thể move object vào chính nó nếu là board).
+    let overBoardTile: string | null = null;
+    if (zone === 'canvas' && !overTrash) {
+      const target = document.elementFromPoint(clientX, clientY);
+      if (target instanceof Element) {
+        const tileEl = target.closest('[data-board-tile-id]');
+        if (tileEl instanceof HTMLElement) {
+          const tileObjectId = tileEl.getAttribute('data-board-tile-id');
+          const dragging = startRef.current?.ids ?? [];
+          if (tileObjectId && !dragging.includes(tileObjectId)) {
+            overBoardTile = tileObjectId;
+          }
+        }
+      }
+    }
+    if (overBoardTile !== hoveredBoardTileRef.current) {
+      hoveredBoardTileRef.current = overBoardTile;
+      useInteractionStore.getState().setHoveredBoardTileId(overBoardTile);
+    }
+
+    // Detect hover trên Unsort drop target (toggle tab hoặc panel). Chỉ khi
+    // KHÔNG hover Board tile (tile ưu tiên hơn để tránh conflict khi tile
+    // nằm trong panel — không xảy ra hiện tại nhưng safe).
+    let overUnsortTarget = false;
+    if (!overBoardTile && !overTrash) {
+      const target = document.elementFromPoint(clientX, clientY);
+      if (target instanceof Element) {
+        overUnsortTarget = target.closest('[data-unsort-drop-target]') !== null;
+      }
+    }
+    if (overUnsortTarget !== hoveredUnsortTargetRef.current) {
+      hoveredUnsortTargetRef.current = overUnsortTarget;
+      useInteractionStore.getState().setHoveredUnsortDropTarget(overUnsortTarget);
+    }
 
     if (overTrash !== hoverTrashRef.current) {
       hoverTrashRef.current = overTrash;
@@ -167,7 +255,7 @@ export function useObjectDrag(objectId: string) {
       // Toggle body class → CSS global override cursor cho MỌI element (kể cả
       // button có cursor-pointer riêng). Xem canvas-drag-invalid trong index.css.
       document.body.classList.toggle('canvas-drag-invalid', invalid);
-      // Item visual feedback: dim khi invalid.
+      // Dim source item khi vùng invalid.
       for (const el of sourceElsRef.current) {
         el.style.opacity = invalid ? '0.5' : '';
       }
@@ -178,6 +266,8 @@ export function useObjectDrag(objectId: string) {
     const start = startRef.current;
     if (!start) return;
 
+    lastClientRef.current = { x: e.clientX, y: e.clientY };
+
     if (!draggingRef.current) {
       const dx = e.clientX - start.clientX;
       const dy = e.clientY - start.clientY;
@@ -185,9 +275,31 @@ export function useObjectDrag(objectId: string) {
       startDrag(start);
     }
 
-    lastClientRef.current = { x: e.clientX, y: e.clientY };
     reposition();
     updateZone(e.clientX, e.clientY);
+  };
+
+  /** Revert geometry về snapshot trước drag. Dùng cho các drop path chuyển
+   *  object rời view (cross-board, Unsort) hoặc vùng invalid — không commit
+   *  MoveCommand vì user không muốn dịch chuyển tại chỗ. */
+  const revertToBefore = () => {
+    const before = beforeRef.current;
+    if (!before) return;
+    for (const [id, pos] of before) {
+      const cur = useObjectsStore.getState().objects.get(id);
+      if (!cur) continue;
+      const dx = pos.x - cur.geometry.x;
+      const dy = pos.y - cur.geometry.y;
+      if (dx !== 0 || dy !== 0) applyMoveDelta([id], dx, dy);
+    }
+  };
+
+  /** Kết thúc drag: cleanup DOM/refs + reset mode + gỡ window listeners.
+   *  Gom boilerplate lặp ở mọi drop path và onCancel. */
+  const finishDrag = () => {
+    cleanup();
+    useInteractionStore.getState().setMode('idle');
+    teardown();
   };
 
   const onUp = () => {
@@ -196,42 +308,49 @@ export function useObjectDrag(objectId: string) {
       teardown();
       return;
     }
-    const wasDragging = draggingRef.current;
-    const overTrash = hoverTrashRef.current;
-    const ids = start.ids;
-
-    if (!wasDragging) {
+    if (!draggingRef.current) {
       teardown();
       return;
     }
 
-    const invalidZone = invalidZoneRef.current;
+    const ids = start.ids;
     const before = beforeRef.current;
 
     // Drop trên trash → xoá.
-    if (overTrash) {
-      cleanup();
-      useInteractionStore.getState().setMode('idle');
+    if (hoverTrashRef.current) {
+      finishDrag();
       deleteObjects(ids);
-      teardown();
       return;
     }
 
-    // Drop vùng invalid (ngoài canvas, không phải trash) → REVERT về vị trí ban đầu.
-    // Không commit MoveCommand vì user không muốn dịch chuyển.
-    if (invalidZone) {
-      if (before) {
-        for (const [id, pos] of before) {
-          const cur = useObjectsStore.getState().objects.get(id);
-          if (!cur) continue;
-          const dx = pos.x - cur.geometry.x;
-          const dy = pos.y - cur.geometry.y;
-          if (dx !== 0 || dy !== 0) applyMoveDelta([id], dx, dy);
-        }
+    // Drop trên BoardObject tile (khác board hiện tại) → move cross-board.
+    // Revert geometry vì object rời view (giữ vị trí cũ trong canvas cha nếu undo).
+    const targetBoardTileObjectId = hoveredBoardTileRef.current;
+    if (targetBoardTileObjectId) {
+      const tileObj = useObjectsStore.getState().objects.get(targetBoardTileObjectId);
+      const parsed = tileObj ? boardDataSchema.safeParse(tileObj.data) : null;
+      const targetBoardId = parsed?.success ? parsed.data.linkedBoardId : null;
+      if (targetBoardId) {
+        revertToBefore();
+        finishDrag();
+        moveObjectsToUnsort(ids, targetBoardId);
+        return;
       }
-      cleanup();
-      useInteractionStore.getState().setMode('idle');
-      teardown();
+    }
+
+    // Drop trên Unsort target (toggle tab hoặc panel) — object vào Unsort của
+    // board hiện tại. Revert geometry trước khi move (object rời view).
+    if (hoveredUnsortTargetRef.current) {
+      revertToBefore();
+      finishDrag();
+      moveToUnsortHere(ids);
+      return;
+    }
+
+    // Drop vùng invalid → revert, không commit.
+    if (invalidZoneRef.current) {
+      revertToBefore();
+      finishDrag();
       return;
     }
 
@@ -242,16 +361,11 @@ export function useObjectDrag(objectId: string) {
       if (o) after.set(id, { x: o.geometry.x, y: o.geometry.y });
     }
     commitMove(before ?? new Map(), after);
-
-    cleanup();
-    useInteractionStore.getState().setMode('idle');
-    teardown();
+    finishDrag();
   };
 
   const onCancel = () => {
-    cleanup();
-    useInteractionStore.getState().setMode('idle');
-    teardown();
+    finishDrag();
   };
 
   const teardown = () => {

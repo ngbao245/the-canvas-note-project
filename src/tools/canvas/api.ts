@@ -14,9 +14,13 @@ import type { Board, CanvasObject, Camera } from './types';
 export interface CanvasRepository {
   loadBoards(): Promise<Board[]>;
   saveBoard(board: Board): Promise<void>;
+  /** Xoá 1 Board record. Không cascade — caller lo xoá objects/children. */
+  deleteBoard(id: string): Promise<void>;
   loadObjects(boardId: string | null): Promise<CanvasObject[]>;
   saveObject(obj: CanvasObject): Promise<void>;
   deleteObject(id: string): Promise<void>;
+  /** Batch xoá mọi object có boardId matching. Dùng cho cascade delete Board. */
+  deleteObjectsByBoard(boardId: string): Promise<void>;
   saveCamera(boardId: string, camera: Camera): Promise<void>;
 }
 
@@ -50,6 +54,10 @@ class IndexedDbCanvasRepository implements CanvasRepository {
     await set(board.id, board, this.boardsStore);
   }
 
+  async deleteBoard(id: string): Promise<void> {
+    await del(id, this.boardsStore);
+  }
+
   async loadObjects(boardId: string | null): Promise<CanvasObject[]> {
     const ids = await keys(this.objectsStore);
     const result: CanvasObject[] = [];
@@ -66,6 +74,14 @@ class IndexedDbCanvasRepository implements CanvasRepository {
 
   async deleteObject(id: string): Promise<void> {
     await del(id, this.objectsStore);
+  }
+
+  async deleteObjectsByBoard(boardId: string): Promise<void> {
+    const ids = await keys(this.objectsStore);
+    for (const id of ids) {
+      const o = await get<CanvasObject>(id, this.objectsStore);
+      if (o && o.boardId === boardId) await del(id, this.objectsStore);
+    }
   }
 
   async saveCamera(boardId: string, camera: Camera): Promise<void> {
