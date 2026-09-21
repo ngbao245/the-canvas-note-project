@@ -211,3 +211,43 @@ Dùng: `title={`Undo (${modifierLabel()}+Z)`}`.
 - macOS Finder: Option+drag = copy file. Analog rất tốt cho canvas → chuẩn Figma/Miro cũng dùng Option+drag = duplicate.
 - Bibo hiện chưa dùng Alt cho gì → dùng Alt+drag làm duplicate là an toàn, cross-platform hoạt động cùng convention.
 - Nếu chọn Ctrl+drag (Windows-style) thì Mac tương ứng phải là Cmd+drag → nhưng Cmd+drag trên Mac có thể conflict với behavior khác. **Kiro nghiêng Alt+drag** khi implement để nhất quán 2 nền tảng.
+
+## 6. activePanel = 'canvas' khi đóng Unsort
+
+**Trạng thái**: Session 2026-09-21 ship multi-select Unsort. Hiện `activePanel` chỉ có 2 state: `'unsort' | null`. Đóng panel → set null. Khi đó Ctrl+A trên canvas cũng không có "owner", nếu sau này thêm Ctrl+A cho canvas thì cần biết focus đang ở đâu.
+
+**Scope làm sau**:
+- Đổi type `activePanel: 'unsort' | 'canvas' | null` (default `'canvas'`).
+- Đóng panel Unsort (`setOpen(false)` hoặc `toggle` từ mở sang đóng) → set `'canvas'` thay vì `null`.
+- Click canvas surface → set `'canvas'` (thay listener document click hiện tại).
+- Ctrl+A khi `activePanel === 'canvas'` → chọn toàn bộ object canvas board hiện tại (chưa có, làm cùng lượt).
+
+**Effort**: Small. Chỉ 1-2 file (`unsort-store.ts` + keyboard handler ở route/CanvasSurface).
+
+**Ưu tiên**: Không blocking. Làm khi user muốn Ctrl+A trên canvas.
+
+## 7. Portal drag item ra body
+
+**Trạng thái**: Session 2026-09-21 phát hiện bug 2: item canvas khi drag lên gần header bị clip vì `CanvasApp` wrapper có `overflow-hidden`. Đã thử fix bằng nâng surface z-index + overflow visible → phá layout Unsort panel (bug 3: panel biến mất khi drag). Rollback.
+
+Preview toolbar/Unsort không có bug vì portal ra `document.body` — position fixed, thoát mọi stacking + overflow clip. Canvas drag item chưa portal (item DOM giữ nguyên vị trí trong `ObjectsLayer` để engine transform theo camera).
+
+**Scope làm sau**:
+- Khi drag start, portal item DOM sang `document.body` (position fixed).
+- Position tính bằng screen-space: cursor - grabOffset (không dùng camera transform).
+- Kích thước = geometry.width/height × camera.zoom.
+- Drop → un-portal, item về vị trí cũ trong ObjectsLayer với geometry đã update.
+- Edge auto-pan vẫn work qua reposition (chỉ điều chỉnh camera state, item screen-space theo cursor).
+
+**Effort**: Medium. Cần care về:
+- Cursor grab offset chuyển từ canvas-space → screen-space.
+- `applyMoveDelta` không đổi trực tiếp DOM (item DOM đã portal), thay vào đó chỉ update store; render trở lại chỉ khi drop.
+- Multi-select: nhiều item portal đồng thời, giữ relative position.
+
+**Trigger dọn**: Khi user complain header clip item lại, hoặc khi làm feature drag ra Unsort với "item bay tự nhiên" cần visual chuyển qua panel.
+
+**Cùng lượt**: convert z-index tokens về số nhỏ. Hiện dùng 20000-60000 (`--z-toolbar` tới `--z-tooltip`) — anti-pattern z-index inflation. Sau khi portal xong thì:
+- Modal/tooltip/drag layer portal ra body → paint order tự nhiên trên, không cần z-index cao.
+- Đổi 6 token trong `src/styles/index.css` xuống 1-9 (hoặc 100-600 nếu muốn gap cho tier mới).
+- CSS var names giữ nguyên → mọi component dùng var tự follow, không breakage.
+- Tránh Tailwind default z-0..z-50, dùng z-index custom mapping trong `tailwind.config.ts`.

@@ -23,8 +23,16 @@ export function SelectionLayer() {
   const selectedIds = useSelectionStore((s) => s.selectedIds);
   const objects = useObjectsStore((s) => s.objects);
   const zoom = useCameraStore((s) => s.camera.zoom);
+  const mode = useInteractionStore((s) => s.mode);
 
   if (selectedIds.size === 0) return null;
+  // Khi drag: viền không vẽ trong world (item hidden + geometry chạy ngầm theo
+  // cursor). Preview floating body đã có viền qua Renderer với isSelected=true.
+  // Nếu vẫn vẽ ở đây → viền world (transform scale) + viền preview (screen-space)
+  // hiện đôi, lệch nhau khi zoom ≠ 100%. Drop → mode='idle' → viền hiện lại
+  // quanh vị trí mới. RULE CỨNG: viền canvas selection luôn theo item, không
+  // được tồn tại "trần" trong world khi item hidden.
+  if (mode === 'dragging') return null;
 
   const items: { id: string; g: { x: number; y: number; width: number; height: number } }[] = [];
   for (const id of selectedIds) {
@@ -71,6 +79,10 @@ function SelectionBox({
         height: geometry.height + border * 2,
         border: `${border}px solid var(--primary)`,
         borderRadius: `${6 / zoom}px`, // match rounded-sm của ObjectShell
+        // z-canvas-selection (500) — trên object (geometry.zIndex 100-500 typical).
+        // Không set → default auto (0) → item card render lên trên → border/dot/
+        // resize SVG bị che. Token định nghĩa trong index.css.
+        zIndex: 'var(--z-canvas-selection)',
       }}
     >
       {/* Chỉ hiện handle + dot khi 1 object select (Phase A single-resize). */}

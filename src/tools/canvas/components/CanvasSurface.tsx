@@ -18,6 +18,7 @@ import { MarqueeOverlay } from './MarqueeOverlay';
 import { ContextMenu } from './ContextMenu';
 import { Toolbar } from './Toolbar';
 import { UnsortToggle } from './UnsortPanel';
+import { CanvasObjectDragPreview } from './CanvasObjectDragPreview';
 import './objects'; // side-effect: register mọi object type vào registry
 
 /**
@@ -233,6 +234,8 @@ export function CanvasSurface({ boardId }: { boardId: string | null }) {
       <MarqueeOverlay />
       <Toolbar boardId={boardId} />
       <UnsortToggle boardId={boardId} />
+      {/* Floating preview cho canvas object drag — portal body via subscribe store */}
+      <CanvasObjectDragPreview />
 
       {menu ? (
         <ContextMenu

@@ -153,19 +153,4 @@ registerObjectType({
   defaultData: (): NoteData => ({ title: '', body: '' }),
   label: 'Note',
   showInToolbar: true,
-  renderPreview: () => {
-    // Preview toolbar: mimic ObjectShell contrast shadow + ColorBar + padding.
-    const el = document.createElement('div');
-    el.className =
-      'relative h-full w-full rounded-sm bg-card shadow-elevation-2 overflow-hidden';
-    el.style.boxShadow =
-      'inset 0 0 0 1px var(--background), var(--shadow-elevation-2)';
-    el.innerHTML =
-      '<div class="absolute inset-x-0 top-0 h-1 bg-primary/60"></div>' +
-      '<div class="flex h-full w-full flex-col gap-2 pl-5 pr-5 pb-5 pt-6">' +
-      '  <div class="font-serif text-base font-semibold leading-tight tracking-tight text-muted-foreground/60">Tiêu đề</div>' +
-      '  <div class="text-sm leading-relaxed text-muted-foreground/40">Nội dung...</div>' +
-      '</div>';
-    return el;
-  },
 });

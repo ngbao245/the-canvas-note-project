@@ -27,5 +27,5 @@
 
     "skipLibCheck": true
   },
-  "include": ["src"]
+  "include": ["src", "../bibo-hub/src/tools/canvas/hooks/useToolbarDrag.tsx"]
 }

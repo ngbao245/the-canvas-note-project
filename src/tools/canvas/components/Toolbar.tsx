@@ -87,7 +87,8 @@ function ToolTile({
     else createObjectAt(type, x, y, boardId);
   };
 
-  const { onPointerDown } = useToolbarDrag({
+  const { onPointerDown, preview } = useToolbarDrag({
+    type,
     onClick: () => {
       const c = viewportCenterCanvas();
       create(c.x, c.y);
@@ -97,11 +98,15 @@ function ToolTile({
       if (c) create(c.x, c.y);
     },
     defaultGeometry: def.defaultGeometry,
-    renderPreview: def.renderPreview,
-    label,
+    defaultData: def.defaultData,
   });
 
-  return <TileButton tileType={tileType} label={label} onPointerDown={onPointerDown} />;
+  return (
+    <>
+      <TileButton tileType={tileType} label={label} onPointerDown={onPointerDown} />
+      {preview}
+    </>
+  );
 }
 
 const PLACEHOLDER_TYPES: { label: string; tileType: TileType }[] = [

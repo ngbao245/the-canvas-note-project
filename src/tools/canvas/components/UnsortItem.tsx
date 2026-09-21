@@ -21,10 +21,13 @@ import { useUnsortStore } from '../store/unsort-store';
 export function UnsortItem({
   object,
   index,
+  items,
   onPointerDown,
 }: {
   object: CanvasObject;
   index: number;
+  /** Toàn bộ item list Unsort ở board hiện tại. Dùng cho Shift+click range. */
+  items: CanvasObject[];
   onPointerDown: (
     e: ReactPointerEvent<HTMLDivElement>,
     object: CanvasObject,
@@ -55,10 +58,32 @@ export function UnsortItem({
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const store = useSelectionStore.getState();
-    if (e.ctrlKey || e.metaKey) store.toggle(object.id);
-    else if (e.shiftKey) store.addToSelection([object.id]);
-    else store.select(object.id);
+    const sel = useSelectionStore.getState();
+    const unsort = useUnsortStore.getState();
+
+    if (e.shiftKey && unsort.lastSelectedIndex !== null) {
+      // Shift+click: chọn range từ anchor tới index này (inclusive). Anchor
+      // giữ nguyên để user có thể mở rộng tiếp tục qua các Shift+click sau.
+      const a = Math.min(unsort.lastSelectedIndex, index);
+      const b = Math.max(unsort.lastSelectedIndex, index);
+      const rangeIds: string[] = [];
+      for (let i = a; i <= b; i++) {
+        const it = items[i];
+        if (it) rangeIds.push(it.id);
+      }
+      sel.replace(rangeIds);
+      return;
+    }
+
+    if (e.ctrlKey || e.metaKey) {
+      sel.toggle(object.id);
+      unsort.setLastSelectedIndex(index);
+      return;
+    }
+
+    // Click thường.
+    sel.select(object.id);
+    unsort.setLastSelectedIndex(index);
   };
 
   return (

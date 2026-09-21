@@ -105,6 +105,16 @@ lib/hit-test.ts — hitZone(clientX, clientY) → trash|overlay|canvas|outside (
 
 ## Gotcha cần nhớ
 
+- **RULE CỨNG: card selected LUÔN có viền đi kèm** — kể cả khi drag preview,
+  float ra body, portal, hover, hoặc bất cứ visual state nào. Card có 2 thứ đi
+  chung: card + viền ring primary. Không được tách rời. Cụ thể:
+  - FloatingObjectPreview có prop `selected` → pass true cho canvas drag +
+    unsort drag (item selected). Toolbar drag = false (item chưa tồn tại).
+  - Khi mode='dragging', SelectionLayer world skip render (viền đã theo preview
+    ở screen-space). Không được để 2 layer viền cùng vẽ, lệch khi zoom ≠ 100%.
+  - Nếu thêm case drag mới (Line, Image resize, group drag...) → phải kế thừa
+    rule này, không được ship preview trần.
+
 - **Native wheel listener**: surface attach `wheel` native passive:false + preventDefault. React synthetic `stopPropagation` KHÔNG chặn được → phải attach native listener (toolbar wheel fix dùng cách này).
 - **data-canvas-overlay**: element có attr này → surface pointerdown guard skip (không kích marquee). Toolbar + SelectionBox đều set.
 - **Drag không clone**: item canvas drag = source đi theo cursor + lift shadow (không tạo clone). Theo yêu cầu user.

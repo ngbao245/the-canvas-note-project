@@ -123,6 +123,12 @@ export function usePointerInteraction(ref: RefObject<HTMLElement | null>) {
           };
           const hits: string[] = [];
           for (const [id, obj] of useObjectsStore.getState().objects) {
+            // Skip Unsort items — chúng KHÔNG render trên canvas nhưng geometry
+            // vẫn giữ trong store (x/y cũ hoặc default). Nếu marquee rectangle
+            // bao (0,0) hoặc điểm khác trùng geometry, Unsort item sẽ bị "hit"
+            // ngoài ý muốn → selection leak sang panel, all items bị select.
+            // Marquee canvas chỉ chọn item hiển thị trên canvas (unsortIndex null).
+            if (obj.unsortIndex !== null) continue;
             if (aabbIntersect(canvasRect, obj.geometry)) hits.push(id);
           }
           if (marqueeStart.shift) useSelectionStore.getState().addToSelection(hits);

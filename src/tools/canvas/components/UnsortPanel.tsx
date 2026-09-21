@@ -1,14 +1,17 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Inbox, X } from 'lucide-react';
 import { useObjectsStore } from '../store/objects-store';
 import { useUnsortStore } from '../store/unsort-store';
 import { useInteractionStore } from '../store/interaction-store';
+import { useSelectionStore } from '../store/selection-store';
 import type { CanvasObject } from '../types';
 import { UnsortItem } from './UnsortItem';
 import { useUnsortDrag } from '../hooks/useUnsortDrag';
-import { getObjectTypeDefinition } from '../hooks/useObjectRegistry';
+import { useUnsortMarquee } from '../hooks/useUnsortMarquee';
 import { useCameraStore } from '../store/camera-store';
+import { isSecondaryZone } from '../lib/hit-test';
+import { FloatingObjectPreview } from './FloatingObjectPreview';
 
 function useHoveredUnsortDropTarget(): boolean {
   return useInteractionStore((s) => s.hoveredUnsortDropTarget);
@@ -54,40 +57,32 @@ function UnsortDragPreview({ items }: { items: CanvasObject[] }) {
   if (!drag) return null;
   const item = items[drag.sourceIndex];
   if (!item) return null;
-  const def = getObjectTypeDefinition(item.type);
-  if (!def) return null;
-  const Renderer = def.renderer;
 
+  // Grab offset scale: source Unsort item size (232 × ~140) khác preview canvas
+  // size (Note 338 × 180). Scale để cursor giữ đúng grab point trong preview.
   const previewW = item.geometry.width * zoom;
   const previewH = item.geometry.height * zoom;
   const scaleX = previewW / drag.sourceWidth;
   const scaleY = previewH / drag.sourceHeight;
-  const grabInPreviewX = drag.grabOffsetX * scaleX;
-  const grabInPreviewY = drag.grabOffsetY * scaleY;
+  const grabOffsetX = drag.grabOffsetX * scaleX;
+  const grabOffsetY = drag.grabOffsetY * scaleY;
+  // Dim khi cursor không ở canvas trống — trong panel, overlay, board tile, trash.
+  const dim = isSecondaryZone(drag.clientX, drag.clientY, [item.id]);
 
-  return createPortal(
-    <div
-      className="pointer-events-none fixed"
-      style={{
-        left: drag.clientX - grabInPreviewX,
-        top: drag.clientY - grabInPreviewY,
-        width: previewW,
-        height: previewH,
-        opacity: 0.9,
-        transition: 'none',
-        // Tầng drag-layer (screen-space) — preview phải nổi trên toolbar/header
-        // và mọi overlay. Khớp ghost trong useToolbarDrag. Xem `.kiro/notes/z-index-tiers.md`.
-        zIndex: 'var(--z-drag-layer)',
-        filter: 'drop-shadow(0 12px 32px rgba(0,0,0,0.35))',
-      }}
-    >
-      <Renderer object={item} isSelected={false} isEditing={false} onEditEnd={noop} />
-    </div>,
-    document.body,
+  return (
+    <FloatingObjectPreview
+      object={item}
+      clientX={drag.clientX}
+      clientY={drag.clientY}
+      grabOffsetX={grabOffsetX}
+      grabOffsetY={grabOffsetY}
+      dim={dim}
+      // Unsort item được select ngay khi drag start (useUnsortDrag ép select
+      // nếu chưa) → preview luôn có viền, đồng bộ với item thật.
+      selected
+    />
   );
 }
-
-function noop() {}
 
 /**
  * Panel Unsort bên phải canvas. Đẩy layout (grid): mở → chiếm 260px, đóng → 0px.
@@ -111,11 +106,61 @@ export function UnsortPanel({ boardId }: { boardId: string | null }) {
 
   const getListItems = useCallback(() => items, [items]);
   const { onPointerDown } = useUnsortDrag(getListItems);
+  const listContainerRef = useRef<HTMLDivElement>(null);
+  const { marquee, onPointerDown: onMarqueePointerDown } = useUnsortMarquee(listContainerRef);
+
+  // activePanel flag: set 'unsort' khi user click bất cứ đâu trong panel.
+  // Reset về null khi user click ngoài panel (dùng global pointerdown listener).
+  useEffect(() => {
+    const onDocPointerDown = (ev: PointerEvent) => {
+      const target = ev.target;
+      if (!(target instanceof Element)) return;
+      const insidePanel = target.closest('[data-unsort-panel="true"]');
+      if (!insidePanel && useUnsortStore.getState().activePanel === 'unsort') {
+        useUnsortStore.getState().setActivePanel(null);
+      }
+    };
+    window.addEventListener('pointerdown', onDocPointerDown, true);
+    return () => window.removeEventListener('pointerdown', onDocPointerDown, true);
+  }, []);
+
+  // Ctrl/Meta+A khi panel là active target + không đang focus input.
+  useEffect(() => {
+    const onKeyDown = (ev: KeyboardEvent) => {
+      if (!(ev.ctrlKey || ev.metaKey) || ev.key !== 'a') return;
+      if (useUnsortStore.getState().activePanel !== 'unsort') return;
+      // Bỏ qua nếu focus đang ở input/textarea/contenteditable.
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) {
+        const tag = active.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || active.isContentEditable) return;
+      }
+      const list = getListItems();
+      if (list.length === 0) return;
+      ev.preventDefault();
+      useSelectionStore.getState().replace(list.map((o) => o.id));
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [getListItems]);
+
+  const handlePanelPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLElement>) => {
+      if (useUnsortStore.getState().activePanel !== 'unsort') {
+        useUnsortStore.getState().setActivePanel('unsort');
+      }
+      // Delegate marquee cho toàn panel (header + list + footer). Hook tự
+      // exclude item + button, chỉ trigger trên vùng trống.
+      onMarqueePointerDown(e);
+    },
+    [onMarqueePointerDown],
+  );
 
   return (
     <aside
       data-unsort-panel="true"
       data-unsort-drop-target="true"
+      onPointerDown={handlePanelPointerDown}
       className={`flex h-full flex-col overflow-hidden border-l bg-card transition-colors ${
         hoveredDropTarget ? 'border-primary ring-2 ring-primary ring-inset' : 'border-border'
       }`}
@@ -148,21 +193,68 @@ export function UnsortPanel({ boardId }: { boardId: string | null }) {
             <Inbox className="h-5 w-5" />
           </div>
           <div className="text-xs text-muted-foreground">
-            Chưa có object nào chờ xếp. Kéo object thả lên Board tile để đưa vào Unsort của board đích.
+            Empty
           </div>
         </div>
       ) : (
-        <div className="no-scrollbar relative flex-1 overflow-y-auto p-3">
-          {items.map((obj, index) => (
-            <UnsortItem key={obj.id} object={obj} index={index} onPointerDown={onPointerDown} />
-          ))}
-          <DropIndicatorLine />
-          <div className="mt-2 rounded-lg border border-dashed border-border p-3 text-center text-[10.5px] text-muted-foreground">
-            Kéo 1 item ra canvas để đặt lên.
-          </div>
-        </div>
+        <UnsortList
+          items={items}
+          onItemPointerDown={onPointerDown}
+          containerRef={listContainerRef}
+        />
       )}
+      {marquee &&
+        createPortal(
+          <div
+            className="pointer-events-none fixed rounded-sm border border-dashed border-primary bg-primary/10"
+            style={{
+              left: marquee.left,
+              top: marquee.top,
+              width: marquee.width,
+              height: marquee.height,
+              zIndex: 'var(--z-drag-layer)',
+            }}
+          />,
+          document.body,
+        )}
     </aside>
+  );
+}
+
+/**
+ * List container Unsort. Tách ra để giữ ref cho marquee hook. Ngoài render
+ * item + drop indicator, còn nhận marquee drag từ vùng trống (giữa item,
+ * dưới item cuối, padding).
+ */
+function UnsortList({
+  items,
+  onItemPointerDown,
+  containerRef,
+}: {
+  items: CanvasObject[];
+  onItemPointerDown: (
+    e: React.PointerEvent<HTMLDivElement>,
+    object: CanvasObject,
+    index: number,
+  ) => void;
+  containerRef: React.RefObject<HTMLDivElement>;
+}) {
+  return (
+    <div ref={containerRef} className="no-scrollbar relative flex-1 overflow-y-auto p-3">
+      {items.map((obj, index) => (
+        <UnsortItem
+          key={obj.id}
+          object={obj}
+          index={index}
+          items={items}
+          onPointerDown={onItemPointerDown}
+        />
+      ))}
+      <DropIndicatorLine />
+      <div className="mt-2 rounded-lg border border-dashed border-border p-3 text-center text-[10.5px] text-muted-foreground">
+        Kéo 1 item ra canvas để đặt lên.
+      </div>
+    </div>
   );
 }
 

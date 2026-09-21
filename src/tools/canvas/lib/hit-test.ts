@@ -29,3 +29,47 @@ export function hitZone(clientX: number, clientY: number): HitZone {
   if (target.closest('[data-canvas-surface]')) return 'canvas';
   return 'outside';
 }
+
+/**
+ * Zone semantics chung cho 3 case drag (canvas / toolbar / unsort):
+ *   - 'canvas' / 'trash' / 'unsort' — valid drop (mỗi zone có ý nghĩa khác nhau
+ *     ở caller: canvas = move/create, trash = delete, unsort = move to unsort).
+ *   - 'overlay' / 'outside' — invalid → cursor block, drop silent revert.
+ *
+ * Dùng để toggle `body.canvas-drag-invalid` class thống nhất. Trước đó 3 case
+ * tự định nghĩa invalid khác nhau (toolbar coi unsort là invalid, canvas coi
+ * trash là valid, ...) — inconsistent feedback cho user.
+ */
+export function isInvalidZone(zone: HitZone): boolean {
+  return zone === 'overlay' || zone === 'outside';
+}
+
+/**
+ * True khi cursor KHÔNG ở "canvas trống" — nghĩa là đang hover:
+ *   - Trash / Unsort target / Overlay / Outside (zones khác 'canvas'), HOẶC
+ *   - Trên 1 BoardObject tile trong canvas (drop = move cross-board).
+ *
+ * Dùng cho preview dim feedback ở toolbar/unsort/object drag: khi cursor
+ * ở vùng có "hành động khác" hoặc bị block, giảm opacity preview → user
+ * biết drop tại đây sẽ không phải "drop vào canvas thường".
+ *
+ * @param excludeBoardTileIds — object ID đang drag, loại khỏi board tile check
+ *   để item không tự dim khi cursor hover chính nó (nếu là board tile).
+ */
+export function isSecondaryZone(
+  clientX: number,
+  clientY: number,
+  excludeBoardTileIds: string[] = [],
+): boolean {
+  const zone = hitZone(clientX, clientY);
+  if (zone !== 'canvas') return true;
+  const target = document.elementFromPoint(clientX, clientY);
+  if (target instanceof Element) {
+    const tileEl = target.closest('[data-board-tile-id]');
+    if (tileEl instanceof HTMLElement) {
+      const tileId = tileEl.getAttribute('data-board-tile-id');
+      if (tileId && !excludeBoardTileIds.includes(tileId)) return true;
+    }
+  }
+  return false;
+}

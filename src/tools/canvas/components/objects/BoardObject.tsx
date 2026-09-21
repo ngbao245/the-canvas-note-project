@@ -149,15 +149,4 @@ registerObjectType({
   defaultData: (): BoardData => ({ linkedBoardId: '' }),
   label: 'Board',
   showInToolbar: true,
-  renderPreview: () => {
-    const el = document.createElement('div');
-    el.className = 'flex h-full w-full flex-col items-center justify-start gap-2 pt-2';
-    el.innerHTML =
-      '<div class="h-[72px] w-[72px] rounded-lg shadow-elevation-1" style="background-color: #71717a;"></div>' +
-      '<div class="w-full px-1 text-center">' +
-      '  <div class="text-xs font-medium leading-tight text-muted-foreground">New Board</div>' +
-      '  <div class="mt-0.5 text-[10px] text-muted-foreground/60">0 cards</div>' +
-      '</div>';
-    return el;
-  },
 });

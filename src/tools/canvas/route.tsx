@@ -102,7 +102,7 @@ export default function CanvasRoute() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background text-foreground">
+    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
       <CanvasHeader board={currentBoard} onFit={handleFit} onReset={resetCamera} />
       <CanvasApp boardId={currentBoardId} />
     </div>

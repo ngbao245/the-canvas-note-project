@@ -31,15 +31,32 @@ interface UnsortDragState {
 interface UnsortState {
   panelOpen: boolean;
   drag: UnsortDragState | null;
+  /** Anchor cho Shift+click range. Là index của lần click "primary" gần nhất
+   *  (click thường hoặc Ctrl+click). Shift+click sẽ chọn range từ anchor tới
+   *  item được shift click. null = chưa có anchor. */
+  lastSelectedIndex: number | null;
+  /** Panel nào đang là active target cho keyboard shortcut (Ctrl+A). Set
+   *  'unsort' khi user click vào panel; null khi click ra ngoài. */
+  activePanel: 'unsort' | null;
   setOpen: (open: boolean) => void;
   toggle: () => void;
   setDrag: (drag: UnsortDragState | null) => void;
+  setLastSelectedIndex: (index: number | null) => void;
+  setActivePanel: (panel: 'unsort' | null) => void;
 }
 
 export const useUnsortStore = create<UnsortState>((set, get) => ({
   panelOpen: false,
   drag: null,
-  setOpen: (open) => set({ panelOpen: open }),
-  toggle: () => set({ panelOpen: !get().panelOpen }),
+  lastSelectedIndex: null,
+  activePanel: null,
+  setOpen: (open) =>
+    set({ panelOpen: open, activePanel: open ? 'unsort' : null }),
+  toggle: () => {
+    const next = !get().panelOpen;
+    set({ panelOpen: next, activePanel: next ? 'unsort' : null });
+  },
   setDrag: (drag) => set({ drag }),
+  setLastSelectedIndex: (index) => set({ lastSelectedIndex: index }),
+  setActivePanel: (panel) => set({ activePanel: panel }),
 }));

@@ -7,7 +7,7 @@ import { useCurrentBoardStore } from '../store/current-board-store';
 import { useUnsortStore } from '../store/unsort-store';
 import { getCameraEngine } from '../engine/camera-engine';
 import { clientToCanvas } from '../engine/coord';
-import { hitZone } from '../lib/hit-test';
+import { hitZone, isInvalidZone } from '../lib/hit-test';
 import { reorderInUnsort, moveFromUnsortToCanvas, moveObjectsToUnsort } from '../engine/actions';
 import { boardDataSchema } from '../types';
 
@@ -86,6 +86,12 @@ export function useUnsortDrag(getListItems: () => CanvasObject[]) {
             ev.clientY > s.panelRect.bottom
           : false;
 
+        // Cursor block khi cursor rời panel + rơi vào vùng invalid (overlay/outside).
+        // Chung isInvalidZone với canvas + toolbar drag. Trong panel = reorder OK,
+        // không block. Canvas/trash/unsort = valid drop khác nhau.
+        const invalid = outside && isInvalidZone(hitZone(ev.clientX, ev.clientY));
+        document.body.classList.toggle('canvas-drag-invalid', invalid);
+
         // Compute targetIndex trong panel (dựa vào cursor Y relative to panel content).
         let targetIndex = s.sourceIndex;
         if (!outside && s.panelRect) {
@@ -111,6 +117,7 @@ export function useUnsortDrag(getListItems: () => CanvasObject[]) {
       const onUp = (ev: PointerEvent) => {
         window.removeEventListener('pointermove', onMove);
         window.removeEventListener('pointerup', onUp);
+        document.body.classList.remove('canvas-drag-invalid');
 
         const s = startRef.current;
         if (!s || !s.started) {

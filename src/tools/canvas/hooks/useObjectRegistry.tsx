@@ -37,9 +37,6 @@ export interface ObjectTypeDefinition {
   label: string;
   /** Có hiện trên toolbar palette không (rect debug thì không). */
   showInToolbar?: boolean;
-  /** Trả về DOM element preview khi kéo từ toolbar (hình dáng thật của type).
-   *  Không có → fallback label. Ghost được style ngoài (position/scale/shadow). */
-  renderPreview?: () => HTMLElement;
 }
 
 const registry = new Map<string, ObjectTypeDefinition>();
