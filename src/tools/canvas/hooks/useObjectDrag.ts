@@ -5,7 +5,13 @@ import { useCameraStore } from '../store/camera-store';
 import { useInteractionStore } from '../store/interaction-store';
 import { useCanvasDragStore } from '../store/canvas-drag-store';
 import { getCameraEngine } from '../engine/camera-engine';
-import { clientToCanvas } from '../engine/coord';
+import {
+  aabbIntersect,
+  clientToCanvas,
+  visibleCanvasBounds,
+  type Bounds,
+} from '../engine/coord';
+import { computeSnapDelta, SNAP_THRESHOLD_PX, unionBounds } from '../engine/alignment';
 import {
   applyMoveDelta,
   bringToFront,
@@ -15,7 +21,7 @@ import {
   moveToUnsortHere,
 } from '../engine/actions';
 import { hitZone, isInvalidZone } from '../lib/hit-test';
-import { boardDataSchema } from '../types';
+import { boardDataSchema, type Camera } from '../types';
 import { createEdgePanLoop } from './useEdgePan';
 
 /**
@@ -31,6 +37,8 @@ import { createEdgePanLoop } from './useEdgePan';
  *   onMove:
  *     - applyMoveDelta chạy ngầm để geometry.x/y update mỗi frame (edge-pan +
  *       commit MoveCommand khi drop cần đúng geometry cuối).
+ *     - KHÔNG hút cạnh lúc kéo — card bám chuột mượt. Khớp cạnh chỉ khi thả
+ *       trên canvas (engine/alignment.ts), rồi trượt nhẹ vào chỗ (settleIntoPlace).
  *     - Update store drag position → preview follow cursor.
  *     - updateZone: hover trash/board-tile/unsort/invalid → dim preview + set
  *       hoveredBoardTileId/hoveredUnsortDropTarget cho highlight ring.
@@ -69,6 +77,7 @@ export function useObjectDrag(objectId: string) {
   const hoveredBoardTileRef = useRef<string | null>(null);
   /** Cursor đang hover trên UnsortToggle hoặc UnsortPanel (data-unsort-drop-target). */
   const hoveredUnsortTargetRef = useRef<boolean>(false);
+
 
   const cleanup = useCallback(() => {
     edgePanRef.current?.stop();
@@ -119,8 +128,9 @@ export function useObjectDrag(objectId: string) {
   const reposition = () => {
     const start = startRef.current;
     if (!start) return;
+    const camera = getCameraEngine().getCamera();
     const cursor = lastClientRef.current;
-    const p = clientToCanvas(cursor.x, cursor.y, getCameraEngine().getCamera());
+    const p = clientToCanvas(cursor.x, cursor.y, camera);
     if (!p) return;
     const targetPrimaryX = p.x - start.grabOffsetCanvasX;
     const targetPrimaryY = p.y - start.grabOffsetCanvasY;
@@ -352,14 +362,22 @@ export function useObjectDrag(objectId: string) {
       return;
     }
 
-    // Drop trên canvas → commit MoveCommand từ before snapshot.
+    // Drop trên canvas → khớp cạnh (nếu gần) rồi commit MoveCommand từ before
+    // snapshot. Lúc kéo không hút để card bám chuột mượt; chỉ khớp khi thả
+    // (Milanote parity). Vị trí khớp nằm luôn trong cùng 1 undo entry.
+    const snap = computeGroupSnap(ids, 0, 0, getCameraEngine().getCamera());
+    if (snap.dx !== 0 || snap.dy !== 0) applyMoveDelta(ids, snap.dx, snap.dy);
+
     const after = new Map<string, { x: number; y: number }>();
     for (const id of ids) {
       const o = useObjectsStore.getState().objects.get(id);
       if (o) after.set(id, { x: o.geometry.x, y: o.geometry.y });
     }
     commitMove(before ?? new Map(), after);
+    // Lấy element trước finishDrag (cleanup xoá sourceElsRef).
+    const els = sourceElsRef.current;
     finishDrag();
+    settleIntoPlace(els, ids, snap.dx, snap.dy);
   };
 
   const onCancel = () => {
@@ -452,4 +470,76 @@ export function useObjectDrag(objectId: string) {
   );
 
   return { onPointerDown };
+}
+
+/**
+ * Độ hút cạnh cho cả cụm object đang kéo, khi cụm dịch thêm (dx, dy).
+ * Ứng viên: object canvas cùng view (objects-store chỉ giữ board hiện tại),
+ * không thuộc cụm, không nằm trong Unsort, và đang hiện trên màn hình — không
+ * hút vào thứ người dùng không thấy.
+ */
+function computeGroupSnap(
+  ids: string[],
+  dx: number,
+  dy: number,
+  camera: Camera,
+): { dx: number; dy: number } {
+  const objects = useObjectsStore.getState().objects;
+  const dragging = new Set(ids);
+
+  const groupRects: Bounds[] = [];
+  for (const id of ids) {
+    const o = objects.get(id);
+    if (o) groupRects.push(o.geometry);
+  }
+  const group = unionBounds(groupRects);
+  if (!group) return { dx: 0, dy: 0 };
+  const moving: Bounds = { ...group, x: group.x + dx, y: group.y + dy };
+
+  const viewport = visibleCanvasBounds(camera);
+  const others: Bounds[] = [];
+  for (const o of objects.values()) {
+    if (dragging.has(o.id) || o.unsortIndex !== null) continue;
+    if (viewport && !aabbIntersect(o.geometry, viewport)) continue;
+    others.push(o.geometry);
+  }
+
+  return computeSnapDelta(moving, others, SNAP_THRESHOLD_PX / camera.zoom);
+}
+
+/** Thời gian card trượt vào chỗ khớp sau khi thả. Ngắn để không thấy trễ. */
+const SETTLE_MS = 120;
+const SETTLE_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)';
+
+/**
+ * Hiệu ứng trượt vào chỗ khớp sau khi thả. Store đã giữ vị trí khớp; đây chỉ
+ * là phần nhìn: card + viền chọn đi từ chỗ thả (-dx, -dy) về 0 bằng thuộc tính
+ * `translate` (tách khỏi `transform`, không đụng style khác). Đơn vị
+ * canvas-space vì cả 2 nằm trong world layer đã scale zoom.
+ *
+ * Card giữ inline translate ngay lúc thả để dù React render vị trí mới trước,
+ * card vẫn đứng ở chỗ thả. Viền chọn chỉ mount lại sau khi mode về 'idle', nên
+ * bắt đầu animate trong rAF (chạy sau commit React, trước lần paint đầu).
+ */
+function settleIntoPlace(els: HTMLElement[], ids: string[], dx: number, dy: number): void {
+  if (dx === 0 && dy === 0) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  const from = `${-dx}px ${-dy}px`;
+  for (const el of els) el.style.translate = from;
+
+  requestAnimationFrame(() => {
+    const targets: HTMLElement[] = [...els];
+    for (const id of ids) {
+      const box = document.querySelector(`[data-selection-box-id="${id}"]`);
+      if (box instanceof HTMLElement) targets.push(box);
+    }
+    for (const el of targets) {
+      el.style.translate = '';
+      el.animate([{ translate: from }, { translate: '0px 0px' }], {
+        duration: SETTLE_MS,
+        easing: SETTLE_EASING,
+      });
+    }
+  });
 }

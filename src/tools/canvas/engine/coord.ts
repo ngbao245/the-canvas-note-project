@@ -51,6 +51,18 @@ export function clientToCanvas(clientX: number, clientY: number, camera: Camera)
   return screenToCanvas({ x: clientX - rect.left, y: clientY - rect.top }, camera);
 }
 
+/**
+ * Vùng canvas-space đang hiện trên màn hình (theo kích thước surface).
+ * Trả null nếu chưa mount surface.
+ */
+export function visibleCanvasBounds(camera: Camera): Bounds | null {
+  const surface = document.querySelector('[data-canvas-surface]');
+  if (!(surface instanceof HTMLElement)) return null;
+  const rect = surface.getBoundingClientRect();
+  const tl = screenToCanvas({ x: 0, y: 0 }, camera);
+  return { x: tl.x, y: tl.y, width: rect.width / camera.zoom, height: rect.height / camera.zoom };
+}
+
 /** AABB test giữa 2 rectangle (cùng coord space). */
 export function aabbIntersect(a: Bounds, b: Bounds): boolean {
   return !(

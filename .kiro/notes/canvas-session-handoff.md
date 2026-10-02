@@ -656,3 +656,27 @@ src/tools/canvas/
 - `npm run build` pass ~22s, route chunk 583kb.
 - eslint `src/tools/canvas`: 0 error, 10 warning (react-refresh + 1 eslint-disable thừa ở
   CanvasSurface.tsx), không chặn.
+
+## Session 2026-10-02 — Hút cạnh khi kéo (alignment snap)
+
+Bạn test trên Milanote rồi chốt: chỉ so cùng loại cạnh, KHÔNG vẽ đường gióng, luôn bật (không có phím tắt hút).
+Viết mới, không copy donor (`bibo-hub/.../engine/alignment.ts` chỉ dùng tham khảo).
+
+- `engine/alignment.ts` (mới, pure): `computeSnapDelta(moving, others, threshold)` so 3 cặp mỗi trục
+  (trái/tâm/phải, trên/tâm/dưới), mỗi trục lấy cặp gần nhất dưới ngưỡng. `unionBounds`. `SNAP_THRESHOLD_PX = 6`.
+- `engine/coord.ts`: thêm `visibleCanvasBounds`.
+- `hooks/useObjectDrag.ts`:
+  - RULE: lúc kéo KHÔNG hút. Card bám chuột mượt. Bản đầu có hút lúc kéo, bạn thấy giật nên bỏ.
+  - Chỉ khi thả trên canvas trống: `computeGroupSnap` → `applyMoveDelta` độ khớp → `commitMove` (1 undo entry
+    gồm cả vị trí khớp). Thả lên trash/board tile/Unsort/vùng invalid thì không khớp (các nhánh đó return trước).
+  - Không bao giờ đặt tự do. Mỗi trục: có cạnh card khác dưới ngưỡng thì khớp cạnh (ưu tiên), không thì khớp
+    lưới `SNAP_GRID = 4` canvas-space theo cạnh trái/trên (bạn thử 16, 8 đều thấy nhảy xa, chốt 4).
+  - Kéo nhiều card thì khớp theo khung gộp của cả cụm.
+  - Ứng viên: object canvas cùng board, không thuộc cụm đang kéo, không nằm trong Unsort, đang hiện trên màn hình.
+  - `settleIntoPlace`: card + viền chọn trượt từ chỗ thả vào chỗ khớp, 120ms, thuộc tính CSS `translate` qua
+    `el.animate`. Card giữ inline translate ngay lúc thả, viền chọn tìm qua `data-selection-box-id` trong rAF
+    (viền mount lại sau khi mode về idle). Tắt khi `prefers-reduced-motion`.
+- `SelectionLayer.tsx`: SelectionBox thêm `data-selection-box-id`.
+- Ngoài scope: hút khi resize, khi kéo từ toolbar hoặc từ Unsort ra canvas.
+
+Build pass 13s, tsc + eslint 3 file sạch.

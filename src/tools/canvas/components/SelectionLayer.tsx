@@ -72,6 +72,8 @@ function SelectionBox({
       // guard check attribute này để KHÔNG kích marquee mode khi user click vào
       // handle/dot bên trong. Native listener không tôn trọng React stopPropagation.
       data-canvas-overlay="true"
+      // useObjectDrag tìm viền qua attr này để trượt cùng card khi thả.
+      data-selection-box-id={id}
       className="pointer-events-none absolute"
       style={{
         left: geometry.x - border,

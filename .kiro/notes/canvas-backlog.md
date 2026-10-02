@@ -20,7 +20,7 @@ Các topic đã discuss với user (session 2026-09-18) nhưng chưa làm. Đán
 
 **Ưu tiên**: Sau khi ship xong Image + Link (Phase B) và Card polish. Vì cần LineObject là 4th object type độc lập với Note/Image/Link.
 
-## 2. Alignment guides (magnetic snap)
+## ~~2. Alignment guides (magnetic snap)~~ ĐÃ LÀM (2026-10-02): chỉ hút cạnh cùng loại, không vẽ đường gióng, luôn bật. Chi tiết ở handoff. Phần dưới là plan cũ (có overlay), giữ để tra.
 
 **Trạng thái**: Đã đọc code plugin cũ `bibo-hub/src/tools/canvas/engine/alignment.ts` + `AlignmentGuideOverlay.tsx`. User confirm nghiêng option B: chỉ alignment guides, không snap-to-grid cứng.
 
