@@ -156,11 +156,12 @@ function getName(object: CanvasObject): string {
   if (object.type === 'note') {
     const parsed = noteDataSchema.safeParse(object.data);
     if (parsed.success) {
-      // Body là HTML (Tiptap). Lấy text node đầu tiên (h1 nếu có, else p đầu).
-      // DOMParser dùng temp div → decode HTML entities + strip inner tags.
-      const div = document.createElement('div');
-      div.innerHTML = parsed.data.body;
-      const first = div.querySelector('h1, h2, h3, p');
+      // Body là HTML (Tiptap). Lấy text của block đầu (h1 nếu có, else p đầu).
+      // Parse bằng DOMParser (document tách rời): không tải ảnh, không chạy
+      // handler. KHÔNG dùng div.innerHTML trên document chính — `<img onerror>`
+      // vẫn chạy dù div chưa gắn vào trang.
+      const doc = new DOMParser().parseFromString(parsed.data.body, 'text/html');
+      const first = doc.body.querySelector('h1, h2, h3, p');
       const text = first?.textContent?.trim() ?? '';
       return text || 'Untitled note';
     }

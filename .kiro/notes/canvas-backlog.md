@@ -87,9 +87,9 @@ Redundant với #1, giữ như subitem của #1 nếu tách nhỏ hơn.
 
 Ctrl+A / C / V / X / D, Escape 2 tầng, Enter vào edit, Ctrl+click chọn nhiều. Khác plan ban đầu: Ctrl+V KHÔNG paste tại chuột mà lệch dần +16 mỗi lần từ vị trí gốc (Milanote parity, user chốt). Chi tiết ở handoff mục 2026-09-23.
 
-## Paste-sanitize — kiểm tra nội dung clipboard trước khi paste
+## ~~Paste-sanitize — kiểm tra nội dung clipboard trước khi paste~~ ĐÃ LÀM (2026-09-23, phương án B: lọc lúc paste + lúc render). Chi tiết ở handoff.
 
-**Trạng thái**: `readCanvasClipboard` chỉ check prefix + version + mảng `objects`, không validate từng object. Bất kỳ trang/app nào cũng ghi được text `canvas-clip:v1:{...}` vào clipboard. Note `body` từ payload đi thẳng vào store rồi NoteView render bằng `dangerouslySetInnerHTML` → có thể chèn HTML lạ (VD `<img onerror=...>`). Type lạ thì ObjectsLayer bỏ qua (an toàn), geometry sai kiểu có thể làm hỏng layout.
+**Trạng thái cũ**: `readCanvasClipboard` chỉ check prefix + version + mảng `objects`, không validate từng object. Bất kỳ trang/app nào cũng ghi được text `canvas-clip:v1:{...}` vào clipboard. Note `body` từ payload đi thẳng vào store rồi NoteView render bằng `dangerouslySetInnerHTML` → có thể chèn HTML lạ (VD `<img onerror=...>`). Type lạ thì ObjectsLayer bỏ qua (an toàn), geometry sai kiểu có thể làm hỏng layout.
 
 **Scope**:
 - Validate từng template: `geometry` qua Zod schema geometry có sẵn, bỏ template sai.

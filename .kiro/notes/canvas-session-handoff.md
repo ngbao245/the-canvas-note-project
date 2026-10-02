@@ -634,8 +634,23 @@ src/tools/canvas/
 - Ctrl+V đọc clipboard async: `pasteCounter` tăng sau khi đọc xong. Bấm V liên tục rất nhanh vẫn
   ra thứ tự đúng vì mỗi lần `getState()` mới nhất.
 - `anchorLabel` của popup khớp qua `aria-label` của nút mở. Đổi label nút thì đổi luôn chỗ này.
-- Clipboard payload chưa được kiểm tra nội dung (chỉ check version + mảng). Xem backlog
-  "paste-sanitize".
+
+### Rule cứng: HTML của Note không được tin (lọc XSS)
+- `lib/note-schema.ts`: `NOTE_SCHEMA_EXTENSIONS` (StarterKit + Link) là nguồn chuẩn schema Note.
+  Editor dùng list này + Placeholder. `sanitizeNoteHtml(html)` parse HTML qua schema đó rồi xuất
+  lại → chỉ còn node/mark/attr hợp lệ; `<script>`, `<img onerror>`, `style`, `onclick`, href
+  `javascript:` đều bị bỏ. Parse trên document tách rời (`DOMParser`) nên không chạy gì lúc lọc.
+  Có cache theo body (tối đa 300 entry).
+- Lọc 2 chỗ: `NoteView` trước `dangerouslySetInnerHTML` (chặn cả data cũ trong IndexedDB) và lúc
+  paste qua registry `sanitizePastedData` (data lưu xuống đã sạch).
+- `readCanvasClipboard` kiểm từng object: type phải có trong registry, geometry qua
+  `geometrySchema`, data qua `sanitizePastedData` của type. Object sai bị bỏ.
+- Type mới nào render HTML/URL do user nhập (Link, To-do...) PHẢI đăng ký `sanitizePastedData`
+  và không `innerHTML` data thô.
+- Đọc text từ HTML (VD `UnsortItem.getName`) dùng `new DOMParser().parseFromString`, KHÔNG dùng
+  `div.innerHTML` trên document chính (`<img onerror>` vẫn chạy dù div chưa gắn vào trang).
+- Thêm extension Tiptap mới thì thêm vào `NOTE_SCHEMA_EXTENSIONS`, nếu không bộ lọc sẽ xoá node đó
+  khỏi view mode.
 
 ### Build cuối session
 - `npm run build` pass ~22s, route chunk 583kb.

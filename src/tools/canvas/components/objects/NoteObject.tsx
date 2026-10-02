@@ -1,8 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
-import Link from '@tiptap/extension-link';
 import { registerObjectType, type ObjectRendererProps } from '../../hooks/useObjectRegistry';
 import type { NoteData } from '../../types';
 import { applyResize, updateObjectData } from '../../engine/actions';
@@ -11,6 +9,7 @@ import { useCurrentBoardStore } from '../../store/current-board-store';
 import { useInteractionStore } from '../../store/interaction-store';
 import { useNoteEditorStore } from '../../store/note-editor-store';
 import { parseNoteData } from '../../lib/note-data';
+import { NOTE_SCHEMA_EXTENSIONS, sanitizeNoteHtml } from '../../lib/note-schema';
 import { useCardClipper } from '../../hooks/useCardClipper';
 import { CardClipperButton } from '../CardClipperButton';
 import { ObjectShell } from './ObjectShell';
@@ -200,6 +199,10 @@ function NoteView({ data, objectId }: { data: NoteData; objectId: string }) {
   const boardId = useCurrentBoardStore((s) => s.currentBoardId);
   const isFixed = data.heightMode === 'fixed';
   const overflow = useContentOverflow(innerRef, contentRef, data.body);
+  // Lọc HTML trước khi nhét vào DOM: body có thể đến từ clipboard hoặc data cũ
+  // trong IndexedDB, không tin được. Editor mode không cần — Tiptap tự parse
+  // qua cùng schema.
+  const safeBody = useMemo(() => sanitizeNoteHtml(data.body), [data.body]);
 
   useNoteAutoGrow(objectId, contentRef, data.heightMode);
 
@@ -212,7 +215,7 @@ function NoteView({ data, objectId }: { data: NoteData; objectId: string }) {
         <div
           ref={contentRef}
           className={NOTE_CONTENT_CLASS}
-          dangerouslySetInnerHTML={{ __html: data.body }}
+          dangerouslySetInnerHTML={{ __html: safeBody }}
         />
         {isFixed && overflow ? <FadeOverlay /> : null}
       </div>
@@ -254,27 +257,16 @@ function NoteEditor({
   const readyRef = useRef(false);
 
   const editor = useEditor({
+    // Schema chung với bộ lọc HTML (lib/note-schema.ts). Placeholder chỉ là UI,
+    // không đổi schema nên thêm riêng ở đây.
     extensions: [
-      StarterKit,
+      ...NOTE_SCHEMA_EXTENSIONS,
       Placeholder.configure({
         placeholder: 'Bắt đầu gõ...',
         // Chỉ show placeholder khi editor rỗng hoàn toàn (không phải khi paragraph
         // empty giữa nội dung khác).
         showOnlyWhenEditable: true,
         showOnlyCurrent: false,
-      }),
-      Link.configure({
-        // openOnClick=false: trong edit mode, click link KHÔNG navigate ra
-        // ngoài — user cần click để đặt caret sửa link. View mode (renderer
-        // dangerouslySetInnerHTML) hiện link như HTML anchor bình thường, browser
-        // xử navigation nếu user click (nhưng anchor trong Note view thường bị
-        // consume bởi drag/select handler ObjectsLayer — nếu cần deep-link phải
-        // wire riêng sau).
-        openOnClick: false,
-        // Auto detect URL khi user gõ + Space/Enter và paste URL.
-        autolink: true,
-        linkOnPaste: true,
-        HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' },
       }),
     ],
     content: initial.body,
@@ -431,6 +423,11 @@ registerObjectType({
   // Kéo corner đổi cả width + height. Note mới heightMode='auto' → RO grow
   // theo content. Sau khi user kéo corner → chuyển 'fixed', RO ngừng grow,
   // content vượt geometry → clip + fade overlay.
+  // Data từ clipboard: chuẩn hoá shape qua parseNoteData rồi lọc body HTML.
+  sanitizePastedData: (data) => {
+    const parsed = parseNoteData(data);
+    return { ...parsed, body: sanitizeNoteHtml(parsed.body) };
+  },
   onResizeCommit: (objectId) => {
     // User kéo corner Note (bất kỳ dim) → lock heightMode='fixed'. Milanote
     // parity: sau explicit resize, note giữ user set, không auto grow lại.

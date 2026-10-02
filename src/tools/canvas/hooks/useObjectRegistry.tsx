@@ -45,6 +45,12 @@ export interface ObjectTypeDefinition {
    */
   onResizeCommit?: (objectId: string, before: Geometry, after: Geometry) => void;
   /**
+   * Lọc `data` của object đến từ nguồn không tin được (clipboard). Trả data đã
+   * sạch, hoặc null để bỏ object đó. Không đăng ký → giữ nguyên data. Type nào
+   * render HTML/URL do user nhập thì PHẢI đăng ký (VD Note lọc body HTML).
+   */
+  sanitizePastedData?: (data: unknown) => unknown | null;
+  /**
    * Render buttons contextual cho element mode (single object selected). Không
    * bao gồm Dismiss (Toolbar tự render Dismiss chung). Fallback null → Toolbar
    * dùng GenericElementActions (Color/Labels/Reactions/Comment/More).
