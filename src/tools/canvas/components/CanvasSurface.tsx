@@ -14,7 +14,6 @@ import {
   computePanBounds,
 } from '../lib/content-bounds';
 import { ObjectsLayer } from './ObjectsLayer';
-import { SelectionLayer } from './SelectionLayer';
 import { MarqueeOverlay } from './MarqueeOverlay';
 import { ContextMenu } from './ContextMenu';
 import { Toolbar } from './Toolbar';
@@ -243,7 +242,6 @@ export function CanvasSurface({ boardId }: { boardId: string | null }) {
         style={{ transformOrigin: '0 0' }}
       >
         <ObjectsLayer />
-        <SelectionLayer />
       </div>
 
       {/* Screen space overlays */}

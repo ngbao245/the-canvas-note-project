@@ -19,22 +19,6 @@ export interface SnapDelta {
   dy: number;
 }
 
-/** Khung bao gộp của nhiều rect. Rỗng → null. */
-export function unionBounds(rects: Bounds[]): Bounds | null {
-  if (rects.length === 0) return null;
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  for (const r of rects) {
-    minX = Math.min(minX, r.x);
-    minY = Math.min(minY, r.y);
-    maxX = Math.max(maxX, r.x + r.width);
-    maxY = Math.max(maxY, r.y + r.height);
-  }
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-}
-
 /**
  * Bước lưới canvas-space. Thả ở chỗ không gần card nào thì góc trên-trái khớp
  * vào bội số của bước này. 4 = 1/8 khoảng chấm grid ở zoom 100% (GRID_BASE 32)

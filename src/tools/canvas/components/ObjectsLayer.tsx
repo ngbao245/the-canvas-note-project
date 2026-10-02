@@ -6,6 +6,7 @@ import { useSelectionStore } from '../store/selection-store';
 import { useInteractionStore } from '../store/interaction-store';
 import { getObjectTypeDefinition } from '../hooks/useObjectRegistry';
 import { useObjectDrag } from '../hooks/useObjectDrag';
+import { SelectionBox } from './SelectionBox';
 
 /**
  * Render toàn bộ object trên canvas. Tra registry theo `obj.type` để lấy renderer.
@@ -79,6 +80,10 @@ function ObjectView({ obj }: { obj: CanvasObject }) {
       }}
     >
       <Renderer object={obj} isSelected={selected} isEditing={editing} onEditEnd={onEditEnd} />
+      {/* Viền chọn nằm trong khối card → cùng lớp với card (xem SelectionBox). */}
+      {selected ? (
+        <SelectionBox id={obj.id} width={obj.geometry.width} height={obj.geometry.height} />
+      ) : null}
     </div>
   );
 }

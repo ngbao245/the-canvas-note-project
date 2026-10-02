@@ -17,7 +17,7 @@ import { ObjectShell } from './ObjectShell';
  *   - Icon vuông ~72x72 solid tô Board.color, rounded-lg.
  *   - Title editable inline (double-click title bubble tới ObjectsLayer set editingId).
  *   - Secondary "N cards" (shallow count objects direct children).
- *   - QuickLineDot top-right handled bởi SelectionLayer (parity Note).
+ *   - QuickLineDot top-right handled bởi SelectionBox (parity Note).
  *   - Double-click icon → navigate `/canvas/:linkedBoardId/:slug`.
  *   - Hover khi drop cross-board: ring primary + count preview +1.
  */

@@ -52,15 +52,17 @@ export function clientToCanvas(clientX: number, clientY: number, camera: Camera)
 }
 
 /**
- * Vùng canvas-space đang hiện trên màn hình (theo kích thước surface).
- * Trả null nếu chưa mount surface.
+ * Vùng canvas-space đang hiện trên màn hình. `viewport` = kích thước surface
+ * (lấy từ CameraEngine.getViewport, đã sync qua ResizeObserver). Viewport chưa
+ * đo (0×0) → null, caller coi như không lọc.
  */
-export function visibleCanvasBounds(camera: Camera): Bounds | null {
-  const surface = document.querySelector('[data-canvas-surface]');
-  if (!(surface instanceof HTMLElement)) return null;
-  const rect = surface.getBoundingClientRect();
+export function visibleCanvasBounds(
+  camera: Camera,
+  viewport: { width: number; height: number },
+): Bounds | null {
+  if (viewport.width === 0 || viewport.height === 0) return null;
   const tl = screenToCanvas({ x: 0, y: 0 }, camera);
-  return { x: tl.x, y: tl.y, width: rect.width / camera.zoom, height: rect.height / camera.zoom };
+  return { x: tl.x, y: tl.y, width: viewport.width / camera.zoom, height: viewport.height / camera.zoom };
 }
 
 /** AABB test giữa 2 rectangle (cùng coord space). */

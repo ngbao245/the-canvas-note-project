@@ -41,7 +41,7 @@ export interface ObjectTypeDefinition {
    * Callback sau khi commitResize xong. Type-specific post-processing hook —
    * VD Note dùng để chuyển heightMode 'auto' → 'fixed' khi user kéo corner.
    * Gọi với snapshot geometry before + after drag. Không fire nếu geometry
-   * không đổi (SelectionLayer đã filter).
+   * không đổi (CornerResizeHandle trong SelectionBox.tsx đã filter).
    */
   onResizeCommit?: (objectId: string, before: Geometry, after: Geometry) => void;
   /**

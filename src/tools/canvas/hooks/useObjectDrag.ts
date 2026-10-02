@@ -11,7 +11,8 @@ import {
   visibleCanvasBounds,
   type Bounds,
 } from '../engine/coord';
-import { computeSnapDelta, SNAP_THRESHOLD_PX, unionBounds } from '../engine/alignment';
+import { computeSnapDelta, SNAP_THRESHOLD_PX, type SnapDelta } from '../engine/alignment';
+import { computeContentBounds } from '../lib/content-bounds';
 import {
   applyMoveDelta,
   bringToFront,
@@ -21,7 +22,7 @@ import {
   moveToUnsortHere,
 } from '../engine/actions';
 import { hitZone, isInvalidZone } from '../lib/hit-test';
-import { boardDataSchema, type Camera } from '../types';
+import { boardDataSchema, type CanvasObject } from '../types';
 import { createEdgePanLoop } from './useEdgePan';
 
 /**
@@ -78,7 +79,6 @@ export function useObjectDrag(objectId: string) {
   /** Cursor đang hover trên UnsortToggle hoặc UnsortPanel (data-unsort-drop-target). */
   const hoveredUnsortTargetRef = useRef<boolean>(false);
 
-
   const cleanup = useCallback(() => {
     edgePanRef.current?.stop();
     edgePanRef.current = null;
@@ -128,9 +128,8 @@ export function useObjectDrag(objectId: string) {
   const reposition = () => {
     const start = startRef.current;
     if (!start) return;
-    const camera = getCameraEngine().getCamera();
     const cursor = lastClientRef.current;
-    const p = clientToCanvas(cursor.x, cursor.y, camera);
+    const p = clientToCanvas(cursor.x, cursor.y, getCameraEngine().getCamera());
     if (!p) return;
     const targetPrimaryX = p.x - start.grabOffsetCanvasX;
     const targetPrimaryY = p.y - start.grabOffsetCanvasY;
@@ -365,7 +364,7 @@ export function useObjectDrag(objectId: string) {
     // Drop trên canvas → khớp cạnh (nếu gần) rồi commit MoveCommand từ before
     // snapshot. Lúc kéo không hút để card bám chuột mượt; chỉ khớp khi thả
     // (Milanote parity). Vị trí khớp nằm luôn trong cùng 1 undo entry.
-    const snap = computeGroupSnap(ids, 0, 0, getCameraEngine().getCamera());
+    const snap = computeGroupSnap(ids);
     if (snap.dx !== 0 || snap.dy !== 0) applyMoveDelta(ids, snap.dx, snap.dy);
 
     const after = new Map<string, { x: number; y: number }>();
@@ -377,7 +376,7 @@ export function useObjectDrag(objectId: string) {
     // Lấy element trước finishDrag (cleanup xoá sourceElsRef).
     const els = sourceElsRef.current;
     finishDrag();
-    settleIntoPlace(els, ids, snap.dx, snap.dy);
+    settleIntoPlace(els, snap.dx, snap.dy);
   };
 
   const onCancel = () => {
@@ -473,30 +472,23 @@ export function useObjectDrag(objectId: string) {
 }
 
 /**
- * Độ hút cạnh cho cả cụm object đang kéo, khi cụm dịch thêm (dx, dy).
+ * Độ khớp cho cả cụm object vừa thả (khung gộp của cụm).
  * Ứng viên: object canvas cùng view (objects-store chỉ giữ board hiện tại),
  * không thuộc cụm, không nằm trong Unsort, và đang hiện trên màn hình — không
  * hút vào thứ người dùng không thấy.
  */
-function computeGroupSnap(
-  ids: string[],
-  dx: number,
-  dy: number,
-  camera: Camera,
-): { dx: number; dy: number } {
+function computeGroupSnap(ids: string[]): SnapDelta {
+  const engine = getCameraEngine();
+  const camera = engine.getCamera();
   const objects = useObjectsStore.getState().objects;
   const dragging = new Set(ids);
 
-  const groupRects: Bounds[] = [];
-  for (const id of ids) {
-    const o = objects.get(id);
-    if (o) groupRects.push(o.geometry);
-  }
-  const group = unionBounds(groupRects);
+  const group = computeContentBounds(
+    ids.map((id) => objects.get(id)).filter((o): o is CanvasObject => o !== undefined),
+  );
   if (!group) return { dx: 0, dy: 0 };
-  const moving: Bounds = { ...group, x: group.x + dx, y: group.y + dy };
 
-  const viewport = visibleCanvasBounds(camera);
+  const viewport = visibleCanvasBounds(camera, engine.getViewport());
   const others: Bounds[] = [];
   for (const o of objects.values()) {
     if (dragging.has(o.id) || o.unsortIndex !== null) continue;
@@ -504,42 +496,34 @@ function computeGroupSnap(
     others.push(o.geometry);
   }
 
-  return computeSnapDelta(moving, others, SNAP_THRESHOLD_PX / camera.zoom);
+  return computeSnapDelta(group, others, SNAP_THRESHOLD_PX / camera.zoom);
 }
 
 /** Thời gian card trượt vào chỗ khớp sau khi thả. Ngắn để không thấy trễ. */
 const SETTLE_MS = 120;
+// = --easing-standard trong index.css. Element.animate không đọc được var(),
+// nên phải ghi giá trị trực tiếp; đổi token thì đổi cả chỗ này.
 const SETTLE_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)';
 
 /**
  * Hiệu ứng trượt vào chỗ khớp sau khi thả. Store đã giữ vị trí khớp; đây chỉ
- * là phần nhìn: card + viền chọn đi từ chỗ thả (-dx, -dy) về 0 bằng thuộc tính
+ * là phần nhìn: khối card đi từ chỗ thả (-dx, -dy) về 0 bằng thuộc tính
  * `translate` (tách khỏi `transform`, không đụng style khác). Đơn vị
- * canvas-space vì cả 2 nằm trong world layer đã scale zoom.
+ * canvas-space vì card nằm trong world layer đã scale zoom.
  *
- * Card giữ inline translate ngay lúc thả để dù React render vị trí mới trước,
- * card vẫn đứng ở chỗ thả. Viền chọn chỉ mount lại sau khi mode về 'idle', nên
- * bắt đầu animate trong rAF (chạy sau commit React, trước lần paint đầu).
+ * Viền chọn nằm trong khối card (SelectionBox) nên tự trượt theo, không cần
+ * animate riêng. Animation bắt đầu ngay (đồng bộ) nên frame paint đầu tiên
+ * sau khi React render vị trí mới đã có translate → không nháy chỗ khớp.
  */
-function settleIntoPlace(els: HTMLElement[], ids: string[], dx: number, dy: number): void {
+function settleIntoPlace(els: HTMLElement[], dx: number, dy: number): void {
   if (dx === 0 && dy === 0) return;
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
   const from = `${-dx}px ${-dy}px`;
-  for (const el of els) el.style.translate = from;
-
-  requestAnimationFrame(() => {
-    const targets: HTMLElement[] = [...els];
-    for (const id of ids) {
-      const box = document.querySelector(`[data-selection-box-id="${id}"]`);
-      if (box instanceof HTMLElement) targets.push(box);
-    }
-    for (const el of targets) {
-      el.style.translate = '';
-      el.animate([{ translate: from }, { translate: '0px 0px' }], {
-        duration: SETTLE_MS,
-        easing: SETTLE_EASING,
-      });
-    }
-  });
+  for (const el of els) {
+    el.animate([{ translate: from }, { translate: '0px 0px' }], {
+      duration: SETTLE_MS,
+      easing: SETTLE_EASING,
+    });
+  }
 }

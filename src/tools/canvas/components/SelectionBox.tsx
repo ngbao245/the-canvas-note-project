@@ -8,61 +8,37 @@ import { getObjectTypeDefinition } from '../hooks/useObjectRegistry';
 import { MIN_OBJECT_SIZE } from '../types';
 
 /**
- * SelectionLayer — Milanote-style. Khi 1 object selected, render:
- *   - Outline box quanh card (ring primary, bù zoom)
+ * SelectionBox — viền chọn Milanote-style, render BÊN TRONG khối card
+ * (ObjectView), không phải tầng riêng. Gồm:
+ *   - Outline quanh card (primary, bù zoom → luôn 2px màn hình)
  *   - QuickLineDot top-right (visual placeholder — drag logic Phase C, xem
  *     `.kiro/notes/canvas-backlog.md` mục 1)
- *   - Corner resize handle SVG bottom-right (SE only, Milanote parity):
- *     drag = resize width + height. Cạnh trên/trái/phải không có handle
- *     (đúng Milanote). Muốn thu nhỏ = drag corner về trong.
+ *   - Corner resize handle SVG bottom-right (SE only, Milanote parity).
  *
- * Trade-off khi bỏ 7 handle: mất resize từ cạnh riêng. User đã confirm OK.
- * Multi-select resize: Phase C (chưa hỗ trợ ở đây).
+ * RULE CỨNG: 1 item = card + viền + chấm + icon resize, cùng 1 lớp. Viền nằm
+ * trong stacking context của card (ObjectView có zIndex = geometry.zIndex), nên
+ * card khác nằm trên che cả card lẫn viền. Không đặt viền ở tầng riêng với
+ * zIndex cố định — bản cũ làm vậy nên viền card dưới nổi đè lên card trên.
+ *
+ * Khi drag: return null. Card thật đang hidden, preview floating đã có viền
+ * qua Renderer isSelected=true. Multi-select resize: Phase C.
  */
-
-export function SelectionLayer() {
-  const selectedIds = useSelectionStore((s) => s.selectedIds);
-  const objects = useObjectsStore((s) => s.objects);
-  const zoom = useCameraStore((s) => s.camera.zoom);
-  const mode = useInteractionStore((s) => s.mode);
-
-  if (selectedIds.size === 0) return null;
-  // Khi drag: viền không vẽ trong world (item hidden + geometry chạy ngầm theo
-  // cursor). Preview floating body đã có viền qua Renderer với isSelected=true.
-  // Nếu vẫn vẽ ở đây → viền world (transform scale) + viền preview (screen-space)
-  // hiện đôi, lệch nhau khi zoom ≠ 100%. Drop → mode='idle' → viền hiện lại
-  // quanh vị trí mới. RULE CỨNG: viền canvas selection luôn theo item, không
-  // được tồn tại "trần" trong world khi item hidden.
-  if (mode === 'dragging') return null;
-
-  const items: { id: string; g: { x: number; y: number; width: number; height: number } }[] = [];
-  for (const id of selectedIds) {
-    const o = objects.get(id);
-    // Skip object trong Unsort (unsortIndex !== null): không render selection
-    // box trên canvas. UnsortItem tự highlight qua ring primary trong panel.
-    if (o && o.unsortIndex === null) items.push({ id, g: o.geometry });
-  }
-
-  return (
-    <>
-      {items.map(({ id, g }) => (
-        <SelectionBox key={id} id={id} geometry={g} zoom={zoom} single={selectedIds.size === 1} />
-      ))}
-    </>
-  );
-}
-
-function SelectionBox({
+export function SelectionBox({
   id,
-  geometry,
-  zoom,
-  single,
+  width,
+  height,
 }: {
   id: string;
-  geometry: { x: number; y: number; width: number; height: number };
-  zoom: number;
-  single: boolean;
+  width: number;
+  height: number;
 }) {
+  // Subscribe zoom ở đây (chỉ mount khi card được chọn) để card không chọn
+  // không re-render theo zoom 60Hz.
+  const zoom = useCameraStore((s) => s.camera.zoom);
+  const dragging = useInteractionStore((s) => s.mode === 'dragging');
+  const single = useSelectionStore((s) => s.selectedIds.size === 1);
+  if (dragging) return null;
+
   // border 2/zoom → luôn 2px screen. Handle/dot size cũng bù zoom để giữ constant screen.
   const border = 2 / zoom;
 
@@ -72,20 +48,15 @@ function SelectionBox({
       // guard check attribute này để KHÔNG kích marquee mode khi user click vào
       // handle/dot bên trong. Native listener không tôn trọng React stopPropagation.
       data-canvas-overlay="true"
-      // useObjectDrag tìm viền qua attr này để trượt cùng card khi thả.
-      data-selection-box-id={id}
       className="pointer-events-none absolute"
       style={{
-        left: geometry.x - border,
-        top: geometry.y - border,
-        width: geometry.width + border * 2,
-        height: geometry.height + border * 2,
+        // Toạ độ tương đối với khối card (cha), không phải world.
+        left: -border,
+        top: -border,
+        width: width + border * 2,
+        height: height + border * 2,
         border: `${border}px solid var(--primary)`,
         borderRadius: `${6 / zoom}px`, // match rounded-sm của ObjectShell
-        // z-canvas-selection (500) — trên object (geometry.zIndex 100-500 typical).
-        // Không set → default auto (0) → item card render lên trên → border/dot/
-        // resize SVG bị che. Token định nghĩa trong index.css.
-        zIndex: 'var(--z-canvas-selection)',
       }}
     >
       {/* Chỉ hiện handle + dot khi 1 object select (Phase A single-resize). */}
@@ -180,6 +151,8 @@ function CornerResizeHandle({ objectId, zoom }: { objectId: string; zoom: number
   return (
     <div
       onPointerDown={onPointerDown}
+      // Handle nằm trong khối card: chặn double-click lọt lên ObjectView (vào edit).
+      onDoubleClick={(e) => e.stopPropagation()}
       style={{
         position: 'absolute',
         bottom: offset,

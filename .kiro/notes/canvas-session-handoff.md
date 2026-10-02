@@ -680,3 +680,23 @@ Viết mới, không copy donor (`bibo-hub/.../engine/alignment.ts` chỉ dùng 
 - Ngoài scope: hút khi resize, khi kéo từ toolbar hoặc từ Unsort ra canvas.
 
 Build pass 13s, tsc + eslint 3 file sạch.
+
+### Fix 2026-10-02 — viền chọn cùng lớp với card
+
+Bug bạn báo: card B nằm sau card A, chọn B thì viền xanh + chấm + icon resize của B vẫn nổi trước A.
+Nguyên nhân: SelectionLayer là tầng riêng, zIndex cố định `--z-canvas-selection` (500), luôn trên mọi card.
+Kèm lỗi ngầm: zIndex card tăng mãi, vượt 500 thì card tự che viền của mình.
+
+Sửa:
+- `SelectionLayer.tsx`: bỏ component `SelectionLayer`, chỉ export `SelectionBox({ id, width, height })`, toạ độ
+  tương đối với card. Tự subscribe zoom / mode dragging / số lượng chọn. Icon resize chặn double-click.
+- `ObjectsLayer.tsx`: `ObjectView` render `<SelectionBox>` bên trong khối card khi selected.
+- `CanvasSurface.tsx`: gỡ `<SelectionLayer />`.
+- `useObjectDrag.ts`: `settleIntoPlace(els, dx, dy)` chỉ animate card, viền tự theo. Bỏ `data-selection-box-id`.
+- RULE CỨNG: 1 item = card + viền + chấm + icon resize, cùng 1 lớp. Không đặt viền ở tầng riêng.
+- Token `--z-canvas-selection` không còn chỗ dùng (giữ trong index.css, vô hại).
+
+Đã kiểm trên Chrome DevTools: viền A nằm trong khối A, B che được viền A.
+Còn mở: board tile phần ngoài icon/chữ trong suốt → nhìn xuyên thấy viền + icon resize card dưới nhưng bấm
+không được (khung trong suốt của card trên vẫn nhận chuột). Chờ bạn chốt: giữ / nền đặc / cho bấm xuyên.
+Card cũ có thể có 2 viền chồng (`ring-2` ObjectShell + border SelectionBox) — chưa xử, chờ bạn nhìn.
