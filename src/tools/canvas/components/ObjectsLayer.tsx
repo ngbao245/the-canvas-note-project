@@ -40,7 +40,11 @@ function ObjectView({ obj }: { obj: CanvasObject }) {
     (e: ReactPointerEvent<HTMLDivElement>) => {
       e.stopPropagation();
       useSelectionStore.getState().select(obj.id);
-      useInteractionStore.getState().setEditingId(obj.id);
+      // Pass screen coord double-click → NoteEditor (và các renderer sau) đặt
+      // caret tại vị trí click. Milanote parity: click hàng nào caret hàng đó.
+      useInteractionStore
+        .getState()
+        .setEditingId(obj.id, { x: e.clientX, y: e.clientY });
     },
     [obj.id],
   );
@@ -49,6 +53,12 @@ function ObjectView({ obj }: { obj: CanvasObject }) {
     if (useInteractionStore.getState().editingId === obj.id) {
       useInteractionStore.getState().setEditingId(null);
     }
+    // 2-tier dismiss (theo Milanote toolbar parity): thoát edit CHỈ clear
+    // editingId, GIỮ selection → Toolbar về element mode (note vẫn active).
+    // Muốn deselect note phải nhấn Dismiss lần 2 trong Toolbar element mode,
+    // hoặc click vùng canvas trống (usePointerInteraction xử clear).
+    // Áp cho mọi path exit: Escape / Ctrl+Enter / click outside / blur header /
+    // Dismiss button trong Toolbar. Consistent behavior cho user không rối.
   }, [obj.id]);
 
   if (!def) return null; // type lạ (data cũ chưa migrate) → bỏ qua, không crash.

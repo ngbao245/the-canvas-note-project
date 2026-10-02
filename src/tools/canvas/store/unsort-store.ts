@@ -35,26 +35,37 @@ interface UnsortState {
    *  (click thường hoặc Ctrl+click). Shift+click sẽ chọn range từ anchor tới
    *  item được shift click. null = chưa có anchor. */
   lastSelectedIndex: number | null;
-  /** Panel nào đang là active target cho keyboard shortcut (Ctrl+A). Set
-   *  'unsort' khi user click vào panel; null khi click ra ngoài. */
-  activePanel: 'unsort' | null;
+  /** Panel nào đang là active target cho keyboard shortcut (Ctrl+A):
+   *   - 'unsort': user click vào Unsort panel → Ctrl+A chọn all Unsort items.
+   *   - 'canvas': user click canvas surface hoặc đóng panel Unsort → Ctrl+A
+   *     chọn all canvas objects của board hiện tại.
+   *   - null: chỉ dùng trong transition khi chưa init (mount CanvasApp sẽ set
+   *     'canvas' default).
+   *
+   *  Trước 2026-09-23 chỉ có 'unsort' | null. Extend thêm 'canvas' để Ctrl+A
+   *  biết focus target — trước đó Ctrl+A trên canvas không có owner. */
+  activePanel: 'unsort' | 'canvas' | null;
   setOpen: (open: boolean) => void;
   toggle: () => void;
   setDrag: (drag: UnsortDragState | null) => void;
   setLastSelectedIndex: (index: number | null) => void;
-  setActivePanel: (panel: 'unsort' | null) => void;
+  setActivePanel: (panel: 'unsort' | 'canvas' | null) => void;
 }
 
 export const useUnsortStore = create<UnsortState>((set, get) => ({
   panelOpen: false,
   drag: null,
   lastSelectedIndex: null,
-  activePanel: null,
+  // Default 'canvas' — CanvasApp mount thấy activePanel = 'canvas' ngay, không
+  // cần init effect riêng. Panel Unsort mở/click sẽ override sang 'unsort'.
+  activePanel: 'canvas',
   setOpen: (open) =>
-    set({ panelOpen: open, activePanel: open ? 'unsort' : null }),
+    // Panel đóng → 'canvas' (không phải null như trước) để Ctrl+A trên canvas
+    // vẫn work sau khi user close Unsort.
+    set({ panelOpen: open, activePanel: open ? 'unsort' : 'canvas' }),
   toggle: () => {
     const next = !get().panelOpen;
-    set({ panelOpen: next, activePanel: next ? 'unsort' : null });
+    set({ panelOpen: next, activePanel: next ? 'unsort' : 'canvas' });
   },
   setDrag: (drag) => set({ drag }),
   setLastSelectedIndex: (index) => set({ lastSelectedIndex: index }),

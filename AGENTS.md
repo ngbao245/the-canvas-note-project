@@ -18,7 +18,7 @@ Steering setup dựa trên [`Theadd/kiro-agents`](https://github.com/Theadd/kiro
 - `.kiro/steering/coding-style.md` — chi tiết rule TS/theme/folder/comment. Match `src/**/*.{ts,tsx}`.
 
 **Handoff theo tool** (Kiro tự đọc khi làm tool đó):
-- Canvas → `.kiro/notes/canvas-session-handoff.md` + `.kiro/notes/canvas-backlog.md`
+- Canvas → `.kiro/notes/canvas-session-handoff.md` (trạng thái tổng + rule cứng) + `.kiro/notes/canvas-backlog.md` (feature chưa làm)
 
 **Skill** (Kiro chỉ load khi được gọi tên hoặc khớp trigger):
 - Đặt trong `.kiro/skills/{tên-skill}/SKILL.md`. Hiện chưa có skill nào.

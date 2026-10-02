@@ -21,6 +21,8 @@ import { useSelectionStore } from '../store/selection-store';
 import { useHistoryStore } from '../store/history-store';
 import { useCurrentBoardStore } from '../store/current-board-store';
 import { getObjectTypeDefinition } from '../hooks/useObjectRegistry';
+import { extractParagraphHtml, removeParagraphAt } from '../lib/note-clip';
+import { parseNoteData } from '../lib/note-data';
 
 /**
  * Update geometry của 1 object rồi persist snapshot mới ra repo. Gom pattern
@@ -750,6 +752,126 @@ export function commitResize(id: string, before: Geometry, after: Geometry): voi
   });
 }
 
+// --- Duplicate / Paste (composite, undo-able) ---
+//
+// `duplicateObjects` (Ctrl+D) và `pasteObjects` (Ctrl+V) cùng một việc: dịch
+// template theo offset rồi chèn qua `insertObjectsComposite` → 1 undo entry
+// cho cả cụm, không phải N entry.
+
+/** Bản mẫu để tạo object mới: không có id/boardId/timestamp/unsortIndex.
+ *  Dùng chung cho clipboard payload (`lib/clipboard.ts`). */
+export interface ObjectTemplate {
+  type: string;
+  geometry: Geometry;
+  data: unknown;
+}
+
+function offsetTemplates(templates: ObjectTemplate[], dx: number, dy: number): ObjectTemplate[] {
+  return templates.map((t) => ({
+    ...t,
+    geometry: { ...t.geometry, x: t.geometry.x + dx, y: t.geometry.y + dy },
+  }));
+}
+
+/**
+ * Tạo N object mới từ templates trong 1 composite undo entry. Templates đã
+ * được caller tính geometry final (position, size). Auto-assign id mới,
+ * boardId = target, unsortIndex = null (luôn canvas), zIndex tăng dần từ
+ * max(board) + 1 để cluster nằm trên cùng.
+ *
+ * Selection sau khi apply = tất cả object mới (replace).
+ */
+function insertObjectsComposite(
+  templates: ObjectTemplate[],
+  boardId: string | null,
+  label: string,
+): CanvasObject[] {
+  if (templates.length === 0) return [];
+  const now = new Date().toISOString();
+  const baseZ = getMaxZIndex(boardId) + 1;
+  const created: CanvasObject[] = templates.map((t, i) => ({
+    id: crypto.randomUUID(),
+    type: t.type,
+    boardId,
+    geometry: { ...t.geometry, zIndex: baseZ + i },
+    data: t.data,
+    unsortIndex: null,
+    createdAt: now,
+    updatedAt: now,
+  }));
+
+  const repo = getCanvasRepository();
+  const apply = () => {
+    const s = useObjectsStore.getState();
+    for (const obj of created) {
+      s.add(obj);
+      void repo.saveObject(obj);
+    }
+    useSelectionStore.getState().replace(created.map((o) => o.id));
+  };
+  const revert = () => {
+    const s = useObjectsStore.getState();
+    for (const obj of created) {
+      s.remove(obj.id);
+      void repo.deleteObject(obj.id);
+    }
+    useSelectionStore.getState().clear();
+  };
+
+  apply();
+  useHistoryStore.getState().push({ label, undo: revert, redo: apply });
+  return created;
+}
+
+/**
+ * Duplicate object(s) đang chọn tại offset (dx, dy) canvas-space. Ctrl+D
+ * dùng offset (+16, +16) để bản sao không đè hoàn toàn lên gốc — user thấy
+ * ngay item mới. Multi-select giữ tương quan geometry giữa các item (offset
+ * chung, không collapse).
+ */
+export function duplicateObjects(
+  ids: string[],
+  offset: { dx: number; dy: number } = { dx: 16, dy: 16 },
+): CanvasObject[] {
+  const store = useObjectsStore.getState();
+  const originals: CanvasObject[] = [];
+  for (const id of ids) {
+    const o = store.objects.get(id);
+    // Chỉ duplicate object trên canvas (unsortIndex === null). Object trong
+    // Unsort không hỗ trợ Ctrl+D — user muốn thì kéo ra canvas trước.
+    if (o && o.unsortIndex === null) originals.push(o);
+  }
+  if (originals.length === 0) return [];
+
+  const templates = originals.map((o) => ({
+    type: o.type,
+    geometry: o.geometry,
+    // Deep clone để bản sao không share reference với gốc. JSON round-trip đủ
+    // vì data là plain object.
+    data: JSON.parse(JSON.stringify(o.data)) as unknown,
+  }));
+  const label = originals.length === 1 ? 'Duplicate object' : `Duplicate ${originals.length} objects`;
+  return insertObjectsComposite(
+    offsetTemplates(templates, offset.dx, offset.dy),
+    originals[0].boardId,
+    label,
+  );
+}
+
+/**
+ * Paste templates (từ clipboard) dịch theo offset so với vị trí gốc. Offset
+ * chung cho cả cụm → tương quan vị trí giữa các item giữ nguyên. Cross-board
+ * OK vì boardId do caller truyền (thường = board hiện tại).
+ */
+export function pasteObjects(
+  templates: ObjectTemplate[],
+  offset: { dx: number; dy: number },
+  boardId: string | null,
+): CanvasObject[] {
+  const label = templates.length === 1 ? 'Paste object' : `Paste ${templates.length} objects`;
+  return insertObjectsComposite(offsetTemplates(templates, offset.dx, offset.dy), boardId, label);
+}
+
 // --- Delete ---
 export function deleteObjects(ids: string[]): void {
   const store = useObjectsStore.getState();
@@ -874,4 +996,97 @@ function swapZIndex(idA: string, zA: number, idB: string, zB: number, label: str
       mutateGeometryAndPersist(idB, { zIndex: zA });
     },
   });
+}
+
+
+// --- Card Clipper (Milanote parity: tách paragraph khỏi Note thành note mới) ---
+
+/**
+ * Tách paragraph tại index của Note gốc thành Note mới tại (canvasX, canvasY).
+ * `cut=true` → Note gốc mất paragraph đó (Milanote default). `cut=false` → copy
+ * (giữ paragraph gốc, chỉ tạo bản sao). Composite command: 1 undo entry revert
+ * cả tạo mới + xoá paragraph gốc.
+ *
+ * Callers:
+ *   - CardClipperButton drag → drop trên canvas.
+ *   - Alt+drag = copy, else cut.
+ */
+export function clipParagraphToNewNote(
+  sourceId: string,
+  paragraphIndex: number,
+  canvasX: number,
+  canvasY: number,
+  boardId: string | null,
+  cut: boolean,
+): CanvasObject | null {
+  const source = useObjectsStore.getState().objects.get(sourceId);
+  if (!source) return null;
+
+  const parsedData = parseNoteData(source.data);
+  const paragraphHtml = extractParagraphHtml(parsedData.body, paragraphIndex);
+  if (!paragraphHtml) return null;
+
+  const def = getObjectTypeDefinition('note');
+  if (!def) return null;
+  const { width, height, rotation } = def.defaultGeometry;
+  const zIndex = getMaxZIndex(boardId) + 1;
+  const now = new Date().toISOString();
+
+  // New note với body = paragraph vừa clip. Color inherit từ source (Milanote
+  // parity — visual continuity giữa note gốc và note tách ra).
+  const newObj: CanvasObject = {
+    id: crypto.randomUUID(),
+    type: 'note',
+    boardId,
+    geometry: {
+      x: canvasX - width / 2,
+      y: canvasY - height / 2,
+      width,
+      height,
+      rotation,
+      zIndex,
+    },
+    data: { body: paragraphHtml, color: parsedData.color },
+    unsortIndex: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const originalSourceData = source.data;
+  const nextSourceBody = cut ? removeParagraphAt(parsedData.body, paragraphIndex) : parsedData.body;
+  const nextSourceData = { body: nextSourceBody, color: parsedData.color };
+
+  const repo = getCanvasRepository();
+
+  const apply = () => {
+    useObjectsStore.getState().add(newObj);
+    useSelectionStore.getState().select(newObj.id);
+    void repo.saveObject(newObj);
+    if (cut) {
+      useObjectsStore.getState().updateData(sourceId, nextSourceData);
+      const updated = useObjectsStore.getState().objects.get(sourceId);
+      if (updated) void repo.saveObject(updated);
+    }
+  };
+
+  const revert = () => {
+    useObjectsStore.getState().remove(newObj.id);
+    useSelectionStore.getState().clear();
+    void repo.deleteObject(newObj.id);
+    if (cut) {
+      useObjectsStore.getState().updateData(sourceId, originalSourceData);
+      const restored = useObjectsStore.getState().objects.get(sourceId);
+      if (restored) void repo.saveObject(restored);
+    }
+  };
+
+  apply();
+
+  useHistoryStore.getState().push({
+    label: cut ? 'Clip paragraph (Cut)' : 'Clip paragraph (Copy)',
+    undo: revert,
+    redo: apply,
+  });
+
+  return newObj;
 }

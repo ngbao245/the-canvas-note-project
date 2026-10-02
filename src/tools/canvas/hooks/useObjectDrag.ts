@@ -376,9 +376,39 @@ export function useObjectDrag(objectId: string) {
     (e: ReactPointerEvent<HTMLDivElement>) => {
       // Đang edit object này → để renderer nhận pointer (chọn text, focus input).
       if (useInteractionStore.getState().editingId === objectId) return;
-      // Modifier pan (middle, Ctrl) → bỏ qua, để surface xử pan.
-      if (e.button === 1 || e.ctrlKey || e.metaKey) return;
+      // Middle mouse: bỏ qua, để surface xử pan.
+      if (e.button === 1) return;
       if (e.button !== 0) return;
+
+      // Ctrl/Cmd+click: multi-select toggle nếu bare click (không drag). Cho
+      // event bubble lên surface để Ctrl+drag pan vẫn work — distinguish bằng
+      // local pointermove threshold. Xử tách khỏi flow drag object thường vì
+      // logic đơn giản hơn (không cần preview, edge-pan, cross-board detect).
+      if (e.ctrlKey || e.metaKey) {
+        const startX = e.clientX;
+        const startY = e.clientY;
+        let moved = false;
+        const onMoveLocal = (ev: PointerEvent) => {
+          if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > DRAG_THRESHOLD) {
+            moved = true;
+          }
+        };
+        const onUpLocal = () => {
+          window.removeEventListener('pointermove', onMoveLocal);
+          window.removeEventListener('pointerup', onUpLocal);
+          window.removeEventListener('pointercancel', onUpLocal);
+          if (!moved) {
+            // Bare Ctrl+click → toggle selection (giống Shift+click). User có
+            // 2 cách multi-select: Shift+click và Ctrl+click, đều fire toggle.
+            useSelectionStore.getState().toggle(objectId);
+          }
+        };
+        window.addEventListener('pointermove', onMoveLocal);
+        window.addEventListener('pointerup', onUpLocal);
+        window.addEventListener('pointercancel', onUpLocal);
+        return; // KHÔNG stopPropagation — surface Ctrl+drag pan bubble bình thường.
+      }
+
       e.stopPropagation();
 
       const sel = useSelectionStore.getState();

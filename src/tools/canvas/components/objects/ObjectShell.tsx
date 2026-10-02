@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { DrawablyCard } from 'drawably/react';
 import { useUiStyleStore } from '@/stores/ui-style-store';
 
@@ -27,16 +27,24 @@ export function ObjectShell({
   editing,
   variant = 'card',
   colorBar,
+  colorBarStyle,
   children,
 }: {
   selected: boolean;
   editing: boolean;
   variant?: 'card' | 'bare';
-  /** Class Tailwind cho ColorBar top. Undefined = dùng primary/60 default. */
+  /** Class Tailwind cho ColorBar top (data-driven qua theme token, VD 'bg-warning/70'). */
   colorBar?: string;
+  /** Inline style cho ColorBar. Dùng khi color là DATA (user chọn hex tự do,
+   *  ngoài palette theme). Ưu tiên hơn `colorBar` prop nếu có. Note color
+   *  palette dùng path này qua `NoteData.color` (xem `lib/note-colors.ts`). */
+  colorBarStyle?: CSSProperties;
   children: ReactNode;
 }) {
   const style = useUiStyleStore((s) => s.style);
+  // Nếu có inline style → skip class fallback (tránh conflict background). Else
+  // dùng class prop hoặc default primary/60 theme-aware.
+  const colorBarClass = colorBarStyle ? '' : (colorBar ?? 'bg-primary/60');
 
   if (variant === 'bare') {
     // Bare: ảnh tự fill, chỉ ring khi selected. Hand/flat cùng behavior (không có
@@ -64,7 +72,8 @@ export function ObjectShell({
         <DrawablyCard style={{ width: '100%', height: '100%' }}>
           <div className="relative h-full w-full overflow-hidden">
             <div
-              className={`absolute inset-x-0 top-0 h-1 ${colorBar ?? 'bg-primary/60'}`}
+              className={`absolute inset-x-0 top-0 h-1 ${colorBarClass}`}
+              style={colorBarStyle}
               aria-hidden="true"
             />
             {children}
@@ -89,7 +98,8 @@ export function ObjectShell({
       }}
     >
       <div
-        className={`absolute inset-x-0 top-0 h-1 ${colorBar ?? 'bg-primary/60'}`}
+        className={`absolute inset-x-0 top-0 h-1 ${colorBarClass}`}
+        style={colorBarStyle}
         aria-hidden="true"
       />
       {children}

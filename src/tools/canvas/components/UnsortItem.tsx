@@ -155,12 +155,15 @@ function IconBox({ type }: { type: string }) {
 function getName(object: CanvasObject): string {
   if (object.type === 'note') {
     const parsed = noteDataSchema.safeParse(object.data);
-    if (parsed.success)
-      return (
-        parsed.data.title.trim() ||
-        parsed.data.body.split('\n')[0].trim() ||
-        'Untitled note'
-      );
+    if (parsed.success) {
+      // Body là HTML (Tiptap). Lấy text node đầu tiên (h1 nếu có, else p đầu).
+      // DOMParser dùng temp div → decode HTML entities + strip inner tags.
+      const div = document.createElement('div');
+      div.innerHTML = parsed.data.body;
+      const first = div.querySelector('h1, h2, h3, p');
+      const text = first?.textContent?.trim() ?? '';
+      return text || 'Untitled note';
+    }
     return 'Untitled note';
   }
   if (object.type === 'board') {

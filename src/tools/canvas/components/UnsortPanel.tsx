@@ -117,7 +117,9 @@ export function UnsortPanel({ boardId }: { boardId: string | null }) {
       if (!(target instanceof Element)) return;
       const insidePanel = target.closest('[data-unsort-panel="true"]');
       if (!insidePanel && useUnsortStore.getState().activePanel === 'unsort') {
-        useUnsortStore.getState().setActivePanel(null);
+        // Click ngoài panel → chuyển active sang 'canvas' (không phải null như
+        // trước) để Ctrl+A trên canvas vẫn work. 2026-09-23 activepanel-canvas.
+        useUnsortStore.getState().setActivePanel('canvas');
       }
     };
     window.addEventListener('pointerdown', onDocPointerDown, true);

@@ -23,6 +23,27 @@ export default function App() {
     applyThemeAttr(theme);
   }, [theme]);
 
+  // Chặn browser page zoom qua trackpad pinch (wheel với ctrlKey — convention
+  // native trackpad). Global listener trên window, passive:false để preventDefault
+  // work. Canvas surface có element listener RIÊNG chạy song song → canvas zoom
+  // camera vẫn work bình thường khi active; các route khác (Landing/Reader/etc.)
+  // KHÔNG bị browser zoom trang khi user vô tình pinch touchpad.
+  //
+  // Không đụng keyboard Ctrl+= / Ctrl+- / Ctrl+0 — chỉ canvas route override
+  // trong useCanvasKeys, các route khác giữ browser default (user có thể zoom
+  // chữ nếu muốn).
+  useEffect(() => {
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) e.preventDefault();
+    };
+    // Capture phase: chạy TRƯỚC mọi target/bubble listener → preventDefault
+    // luôn work bất kể child element có stopPropagation không. VD Toolbar canvas
+    // stopPropagation để không kích canvas zoom, nếu attach BUBBLE thì window
+    // không nhận được event → browser zoom trang. Capture bypass hoàn toàn.
+    window.addEventListener('wheel', onWheel, { passive: false, capture: true });
+    return () => window.removeEventListener('wheel', onWheel, { capture: true });
+  }, []);
+
   return (
     <BrowserRouter>
       <Suspense fallback={null}>

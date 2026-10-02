@@ -1,6 +1,6 @@
 # Canvas — Session Handoff
 
-Ghi 2026-09-18. Đọc file này để nắm ngữ cảnh canvas thay vì replay lịch sử chat dài.
+Ghi 2026-09-18, cập nhật tới 2026-09-23 (mục cuối file). Đọc file này để nắm ngữ cảnh canvas thay vì replay lịch sử chat dài. Mục cũ ghi theo thời gian; chỗ nào bị session sau thay thế đã đánh dấu "(đã thay ở ...)".
 
 Liên quan: `.kiro/notes/canvas-backlog.md` (backlog feature chưa làm).
 
@@ -361,3 +361,283 @@ LƯU Ý: user reject 2 lần khi Kiro tự dựng Sidebar 232px / layout grid. T
 - `npm run build` pass 10s (nested-boards).
 - `npm run lint`: 0 errors, 7 warnings (react-refresh only-export-components — 5 cũ + 2 mới từ BoardObject cùng pattern, non-blocking).
 - Đã `git init` từ trước, chưa commit lần nào (user tự commit).
+
+
+## Session 2026-09-21 — Unified drag + Toolbar element mode + Note Tiptap + CardClipper
+
+### Unified drag visualize (3 case đồng bộ)
+
+Bug ban đầu: canvas item drag in-place bị header/toolbar/panel che (nằm trong world wrapper
+transform stacking context + surface overflow-hidden). Toolbar/Unsort drag portal body bay đẹp,
+canvas drag không bay.
+
+Fix: **canvas drag CŨNG dùng FloatingObjectPreview** portal body.
+- `store/canvas-drag-store.ts` (mới) — Zustand mirror useUnsortStore. `{ primaryId, clientX/Y,
+  grabOffsetX/Y, dim }`.
+- `components/CanvasObjectDragPreview.tsx` (mới) — subscribe store, mount trong CanvasSurface.
+- `hooks/useObjectDrag.ts` — bỏ in-place lift (transform/boxShadow/zIndex), thay bằng
+  `visibility:hidden` tất cả selected + set canvas-drag-store. Preview mount qua store.
+- `lib/hit-test.ts` — thêm `isInvalidZone(zone)` helper (overlay/outside = invalid). 3 hook drag
+  (canvas/toolbar/unsort) dùng chung → cursor block feedback nhất quán.
+- `hooks/useToolbarDrag.tsx` — fix import path bẩn (5-level up), dùng `isInvalidZone`.
+- `hooks/useUnsortDrag.ts` — dùng `isInvalidZone`.
+
+Rule cứng (đã note trong handoff mục "Gotcha cần nhớ"):
+- **Card selected LUÔN có viền**, kể cả preview drag. `FloatingObjectPreview` có prop `selected`
+  → canvas + unsort pass true, toolbar false.
+- **SelectionLayer hide khi mode='dragging'** để tránh viền đôi (world scale + screen-space).
+
+### Fix bugs kèm theo
+
+- **Marquee canvas leak Unsort items**: `usePointerInteraction.ts` marquee commit iterate all
+  objects → Unsort item geometry (x=0,y=0 hoặc default) trong rectangle → bị hit → select all.
+  Fix: filter `unsortIndex === null` khi marquee.
+- **SelectionBox bị object card che**: SelectionBox không set zIndex → default auto (0). Item
+  container `zIndex: obj.geometry.zIndex` (100+ sau stacking system) → item card render lên trên.
+  Fix: `SelectionLayer.tsx` SelectionBox thêm `zIndex: var(--z-canvas-selection)` (500).
+
+### Ctrl-zoom override (rule global)
+
+RULE CỨNG: mọi Ctrl-zoom (wheel + keyboard) nhắm CANVAS, không được để browser zoom trang.
+
+- `hooks/useCanvasKeys.ts` — thêm `Ctrl+=/Ctrl++` (zoom in), `Ctrl+-` (zoom out), `Ctrl+0`
+  (reset view). Gọi `engine.zoomImpulse` với anchor center viewport. preventDefault chặn
+  browser page zoom shortcut.
+- `App.tsx` — window listener `wheel` với `capture:true` + `passive:false` + `preventDefault`
+  khi `ctrlKey`. Chặn trackpad pinch (wheel+ctrlKey) trên MỌI page (Landing/canvas/...) →
+  browser không zoom trang. Canvas surface có element listener riêng chạy song song → canvas
+  zoom camera vẫn work.
+- Toolbar canvas wheel `stopPropagation` — trước đó chặn bubble tới surface. Với global capture
+  listener, browser page zoom vẫn bị chặn qua capture path bất kể stopPropagation.
+
+### Toolbar 2 mode (creation ↔ element-selected)
+
+Milanote parity: khi select 1 object → toolbar switch từ 8 tile creation → 5 contextual action.
+
+- `components/Toolbar.tsx` — thêm mode detection `selectedIds.size === 1`.
+  - **Creation mode**: 8 tile Note/Board/Link/Image/... (nguyên trạng, h-12 w-12 tile).
+  - **Element mode**: `DismissButton` (arrow-left, click clear selection về creation) + 5
+    `ActionButton` (Color/Labels/Reactions/Comment/More, h-10 w-10 compact, không label
+    under icon) + Trash footer.
+- Height **cố định** `h-[calc(100vh-8rem)]` cho cả 2 mode (không co theo content). List
+  container `flex-1` fill space, Trash footer sticky bottom. Center vertical `top-1/2
+  -translate-y-1/2`.
+- **Color** (mode element cho Note): `ColorButton` state open + `ColorPopup` grid 2x3 swatch
+  + Clear. Popup absolute `left-full ml-2 top-0`. Palette 6 hex ở `lib/note-colors.ts`.
+- Labels/Reactions/Comment/More: **placeholder** click no-op, chờ Phase sau (cần label
+  management global, comment thread UI, user context).
+
+### Note refactor sang Tiptap (Milanote parity rich text)
+
+- Install: `@tiptap/react`, `@tiptap/pm`, `@tiptap/starter-kit`, `@tiptap/extension-placeholder`.
+  Route chunk +~400kb → ~570kb (chấp nhận, canvas là core tool).
+- **Schema đổi**: `NoteData` drop `title` field. `body: string` chứa **HTML** (Tiptap
+  `.getHTML()`). Default `<p></p>`. `color: string | null` giữ.
+- `lib/note-data.ts` (mới) — `parseNoteData(rawData)`: migrate legacy shape (title + body plain
+  text với `\n`) → HTML (`<h1>title</h1><p>line</p>...`). Idempotent — HTML shape mới passthrough.
+- `objects/NoteObject.tsx`: rewrite dùng `useEditor` + StarterKit + Placeholder. `NoteView`
+  render `dangerouslySetInnerHTML`. `NOTE_CONTENT_CLASS` shared cho view + editor (Tailwind
+  arbitrary variants `[&_p]:font-serif [&_h1]:font-bold ...`).
+- `styles/index.css` — placeholder CSS `.tiptap p.is-editor-empty:first-child::before` với
+  `content: attr(data-placeholder)`.
+- `components/UnsortItem.tsx::getName` — extract text từ HTML body qua DOMParser (h1/h2/h3/p đầu).
+- `components/Toolbar.tsx::ColorButton` — fallback data không có title (spread match schema mới).
+
+### Note auto-grow height (content-driven)
+
+- Milanote parity: Note width fixed, height = content actual (không hard-code lines).
+- `NoteObject.tsx::syncHeightToContent` — measure `scrollHeight` element content + cộng
+  `NOTE_VERTICAL_PADDING` (40 = p-5 20×2) → target height. Gọi `applyResize({ height })` khi
+  diff >1px. `applyResize` silent (không push undo — auto-grow là visual, không phải user action).
+  Min 68 (Milanote parity 1 dòng).
+- **ResizeObserver** trên Tiptap ProseMirror DOM (editor mode) hoặc content div (view mode).
+  Fire mọi layout change: content update, text wrap khi width thay đổi, font load reflow, undo
+  Tiptap history. **KHÔNG dùng `editor.on('update')`** vì miss case wrap-do-width-change (không
+  phải doc transaction). RO catch mọi layout → 1 mechanism thống nhất.
+- 6 điểm behavior (user confirm):
+  1. Enter tạo `<p>` mới → cao lên.
+  2. Text wrap khi Note hẹp → cao lên (RO catch).
+  3. Xoá paragraph/text → co lại (RO catch).
+  4. User resize width → wrap khác → recalc.
+  5. Undo/redo → data revert → re-render → RO sync.
+  6. Note mới chỉ 1 paragraph rỗng (`<p></p>`), KHÔNG title/heading default.
+
+### Note resize width-only (Milanote parity)
+
+- Registry `ObjectTypeDefinition` thêm field `resizeMode?: 'both' | 'width-only'`. Default 'both'.
+- Note register `resizeMode: 'width-only'`. Board/Image/... không set → 'both'.
+- `components/SelectionLayer.tsx::CornerResizeHandle` — lookup `getObjectTypeDefinition(start.type)`,
+  nếu `resizeMode === 'width-only'` → drag corner chỉ update width, giữ `g0.height`. Height
+  auto sync qua RO trong renderer (text wrap khi width nhỏ đi → dòng tăng → RO fire → height
+  tăng). User cảm giác drag ngang thấy Note co giãn tự nhiên.
+
+### CardClipper — tách paragraph khỏi Note thành note mới
+
+Milanote feature: hover paragraph trong Note → icon Card bên phải → drag ra canvas → tạo Note
+mới với content = paragraph đó. Cut default (source Note mất paragraph), Alt = Copy.
+
+- `lib/note-clip.ts` (mới) — `parseBodyChildren` / `countParagraphs` / `extractParagraphHtml` /
+  `removeParagraphAt`. Dùng `<template>` để parse an toàn.
+- `engine/actions.ts::clipParagraphToNewNote` — composite action. Extract paragraph, create Note
+  mới (body = paragraph, color inherit source), update source data (nếu cut). Push 1 history
+  entry `apply/revert` cả 2 → undo 1 lần revert cả create + cut.
+- `hooks/useCardClipper.ts` (mới) — hover detection. Return `{ index, top }` để render button.
+  Track `wrapperRef` (outer) + `contentRootRef` (Tiptap DOM hoặc content div). `pointermove`
+  trong wrapper → `elementFromPoint` → tìm block-level ancestor mà parent = root → index +
+  Y position relative wrapper. Guard `data-card-clipper-button` để không reset khi hover button.
+- `components/CardClipperButton.tsx` (mới) — icon Card SVG 20x24 trong button 24x24, absolute
+  `right: -32px` top: dynamic. Drag pattern reuse `useToolbarDrag`-like. FloatingObjectPreview
+  render mock note. Drop canvas → `clipParagraphToNewNote(cut = !e.altKey)`.
+- `NoteObject.tsx` integrate view + editor mode: mỗi mode có `wrapperRef` + `contentRootRef` +
+  `useCardClipper` hook + conditional render `<CardClipperButton>`. Editor mode track
+  `currentBody` state qua `onUpdate` để paragraph mới gõ có thể clip ngay.
+
+### Điều chỉnh padding Note
+
+- User feedback: `pt-6 pb-5` (24/20) lệch top/bottom. Đổi `p-5` (20 đều 4 cạnh) — Note không
+  có header nên không cần chừa nhiều top. NOTE_VERTICAL_PADDING 44 → 40.
+- **Còn chưa ưng** (session này chưa fine-tune xong, defer sang session sau). User có thể
+  muốn: tăng padding đều `p-6` (24), hoặc điều chỉnh line-height, hoặc thay đổi font size.
+
+## Trạng thái build cuối session (2026-09-21)
+
+- `npm run build` pass ~14s.
+- Route chunk 571kb (Tiptap +~400kb). Warning "chunks larger than 500kB" non-blocking. Có thể
+  lazy chunk Tiptap sau (backlog).
+- 9 lint warnings cũ non-blocking (react-refresh only-export-components + unused eslint-disable).
+
+## Files mới trong session này
+
+```
+src/tools/canvas/
+  store/canvas-drag-store.ts        — canvas drag preview state
+  lib/note-data.ts                  — parseNoteData migration + schema helper
+  lib/note-clip.ts                  — extract/remove paragraph HTML
+  lib/note-colors.ts                — palette 6 hex Milanote parity
+  hooks/useCardClipper.ts           — hover detection paragraph
+  components/CanvasObjectDragPreview.tsx  — subscribe canvas-drag-store
+  components/CardClipperButton.tsx  — icon + drag pattern
+```
+
+## Rule cứng session này
+
+- **Ctrl-zoom (wheel + keyboard) TUYỆT ĐỐI override browser page zoom**. Global window listener
+  capture phase preventDefault trong `App.tsx`. Trackpad pinch chặn toàn app trừ canvas surface.
+- **Note = Tiptap rich text HTML**, KHÔNG plain text + `\n` split. Schema `body: HTML string`.
+- **Note auto-grow theo content**, không hard-code lines. Height = `scrollHeight + NOTE_VERTICAL_PADDING`.
+  Min 68 (Milanote parity). Không set fixed height cho Note.
+- **CardClipper feature** — tồn tại trong cả view + editor mode. Cut default, Alt = Copy.
+  Composite history 1 undo entry.
+- ~~Resize mode per-type qua registry `resizeMode`, Note = 'width-only'~~ (đã thay ở 2026-09-22:
+  Note kéo cả 2 chiều + `heightMode`. Field `resizeMode` xoá 2026-09-23 vì không còn type nào dùng).
+
+## Việc dang dở (cập nhật 2026-09-23)
+
+- ~~Padding Note~~ — chốt `px-5 py-6` ngày 2026-09-22.
+- ~~Text-selected toolbar mode 3~~ — xong 2026-09-23 (xem mục cuối).
+- **Element mode toolbar**: Labels / Reactions / Comment / More vẫn placeholder (chỉ Color chạy).
+  Cần hệ thống nền (quản lý label, luồng comment, user context).
+- **Lazy chunk Tiptap** — route chunk ~583kb, xem backlog.
+
+## Session 2026-09-22 — Note heightMode + caret + toolbar 3 mode theo type
+
+### Note
+- `types.ts` `noteDataSchema` thêm `heightMode: 'auto' | 'fixed'` (default 'auto').
+  - 'auto': RO grow-only (`syncHeightToContent`), không tự co lại dưới height hiện tại.
+  - 'fixed': user đã kéo corner → giữ height, content vượt thì clip + `FadeOverlay`
+    (gradient trong suốt → `var(--card)` ở đáy, bật qua `useContentOverflow`).
+- Kéo corner đổi cả 2 chiều. Registry thêm `onResizeCommit(objectId, before, after)`;
+  SelectionLayer gọi sau `commitResize` nếu geometry đổi. Note dùng để chuyển 'auto' → 'fixed'.
+- Padding chốt `px-5 py-6`, `NOTE_VERTICAL_PADDING = 48`, `NOTE_MIN_HEIGHT = 68`, mặc định 338x68.
+  Wrapper `overflow-visible` để CardClipperButton (right:-32px) không bị cắt; div bên trong
+  `overflow-hidden` chỉ khi fixed.
+- `NOTE_CONTENT_CLASS` thêm `break-words whitespace-pre-wrap` (view mode khớp editor),
+  `p+p` cách 10px, viền mờ `outline-primary/40` từng paragraph.
+- Caret đúng chỗ double-click: `interaction-store.editingClickPoint` (ObjectsLayer truyền
+  clientX/Y), NoteEditor mount đọc 1 lần → `editor.view.posAtCoords` → `setTextSelection`.
+  Không có điểm (VD Enter) → `focus('end')`.
+- `usePointerInteraction`: đang edit mà pointerdown surface → return sớm, để browser blur editor
+  (đường commit đã chạy ổn).
+
+### Toolbar theo từng type
+- `Toolbar.tsx` 3 mode, ưu tiên editing > element > creation. editing = `editingId` set.
+- Registry thêm `renderElementActions(object)` + `renderEditingActions(object)`. Không đăng ký thì
+  Toolbar dùng `GenericElementActions` / `GenericEditingActions` (placeholder).
+- Note: `components/objects/NoteToolbar.tsx` (`NoteElementActions`, `NoteEditingActions`).
+  Thêm type mới = tạo `XxxToolbar.tsx` + đăng ký trong registry, không sửa Toolbar.tsx.
+- `ActionButton` export từ Toolbar.tsx để toolbar từng type dùng lại.
+
+### Thoát 2 tầng
+- `ObjectsLayer.onEditEnd` CHỈ clear `editingId`, giữ selection. Dismiss lần 1: editing → element
+  (note vẫn chọn). Dismiss lần 2: element → creation (bỏ chọn). Escape cùng logic.
+
+## Session 2026-09-23 — Wire Tiptap toolbar + phím tắt Phase 1
+
+### Toolbar editing mode cho Note (6/8 nút chạy)
+- `store/note-editor-store.ts`: `activeEditor: Editor | null`. NoteEditor mount set, unmount clear
+  (chỉ clear nếu store vẫn trỏ editor đó). Cần vì ObjectsLayer và Toolbar là 2 nhánh song song.
+- `NoteEditingActions` subscribe `activeEditor`, re-render qua `editor.on('transaction')`
+  (transaction đã gồm thay đổi selection, không cần `selectionUpdate`).
+- Bold / Italic / Bulleted / Numbered: `editor.chain().focus().toggleXxx().run()`, highlight qua
+  `ActionButton active={editor.isActive(...)}`.
+- TextStyle popup 5 mục: Title h1 / Heading h2 / Subheading h3 / Body paragraph / Quote
+  (toggleBlockquote). NOTE_CONTENT_CLASS có style h3.
+- Link: `@tiptap/extension-link` (openOnClick false, autolink, linkOnPaste, rel noopener).
+  Popup input URL + Save / Remove / Cancel. `extendMarkRange('link')` để sửa link cũ không cần bôi
+  đen đúng. Save tắt khi selection rỗng và không có link cũ.
+- Comment + More vẫn placeholder.
+
+### Rule cứng: toolbar không làm mất trạng thái edit (Milanote parity)
+2 lớp, PHẢI giữ khi thêm nút/popup mới:
+1. `ActionButton` có `onMouseDown={e => e.preventDefault()}` → focus không rời editor, selection
+   text vẫn còn highlight, `onBlur` không fire.
+2. Popup có input (Link URL) thì focus buộc phải rời editor → `NoteEditor.onBlur` bỏ qua khi
+   `relatedTarget.closest('[data-canvas-overlay]')`. Mọi popup phải gắn `data-canvas-overlay`
+   (dùng `<ToolbarPopup>` là có sẵn). Đóng popup xong gọi `editor.chain().focus()` trả focus.
+- DismissButton cố ý KHÔNG preventDefault.
+- Thiếu 1 trong 2 lớp → click toolbar làm thoát edit, thoát 2 tầng bị dồn thành 1 tầng.
+
+### Popup dùng chung
+- `components/ToolbarPopup.tsx`: `<ToolbarPopup ref className>` (positioning left-full ml-2 +
+  surface + `data-canvas-overlay`) và `useToolbarPopupClose({ popupRef, anchorLabel, onClose, onRefocus? })`.
+- Hook: click ngoài đóng (bỏ qua click chính nút mở, khớp qua `aria-label` = `anchorLabel`).
+  Escape bắt ở capture phase + stopPropagation → chỉ đóng popup, KHÔNG lọt xuống useCanvasKeys
+  (bỏ chọn) hay NoteEditor (thoát edit). Callback giữ trong ref, listener gắn 1 lần.
+- ColorPopup / TextStylePopup / LinkPopup đều dùng. Popup mới của type sau (Priority, Edit URL,
+  Alt text...) chỉ viết phần nội dung.
+
+### Phím tắt Phase 1 (`hooks/useCanvasKeys.ts`)
+- Ctrl+A: chọn hết object canvas board hiện tại, chỉ khi `activePanel === 'canvas'`.
+- Ctrl+C / Ctrl+X: ghi clipboard system (`lib/clipboard.ts`, prefix `canvas-clip:v1:`, payload
+  `{ version, objects: ObjectTemplate[] }` giữ toạ độ gốc). X xoá thêm. Bỏ qua item trong Unsort.
+  Reset `pasteCounter = 0`.
+- Ctrl+V: paste lệch dần. Lần N đặt tại toạ độ gốc + N×16 (`pasteCounter` trong interaction-store).
+  Không dùng vị trí chuột. Cross-board OK. Text thường trong clipboard → bỏ qua im lặng.
+- Ctrl+D: nhân bản +16/+16.
+- Enter: 1 object chọn, chưa edit → vào edit (caret cuối).
+- Escape: đang chọn không edit → bỏ chọn (tầng edit do NoteEditor xử).
+- `engine/actions.ts`: `duplicateObjects(ids, offset)` + `pasteObjects(templates, offset, boardId)`
+  dùng chung `offsetTemplates` + `insertObjectsComposite` (id mới, zIndex từ max+1, selection =
+  object mới, 1 undo entry cho cả cụm). `ObjectTemplate` export từ đây.
+
+### activePanel
+- `unsort-store.activePanel: 'unsort' | 'canvas' | null`, default 'canvas'. Click panel → 'unsort';
+  click surface (`CanvasSurface` pointerdown) hoặc đóng panel / click ngoài panel → 'canvas'.
+  Ctrl+A Unsort vẫn ở UnsortPanel.tsx.
+
+### Chọn nhiều
+- Shift+click và Ctrl/Cmd+click trên object đều toggle selection. Ctrl+click: `useObjectDrag` gắn
+  listener tạm, nhả chuột mà chưa đi quá 5px thì toggle; không stopPropagation nên Ctrl+kéo vẫn
+  pan camera như cũ.
+
+### Gotcha
+- Ctrl+V đọc clipboard async: `pasteCounter` tăng sau khi đọc xong. Bấm V liên tục rất nhanh vẫn
+  ra thứ tự đúng vì mỗi lần `getState()` mới nhất.
+- `anchorLabel` của popup khớp qua `aria-label` của nút mở. Đổi label nút thì đổi luôn chỗ này.
+- Clipboard payload chưa được kiểm tra nội dung (chỉ check version + mảng). Xem backlog
+  "paste-sanitize".
+
+### Build cuối session
+- `npm run build` pass ~22s, route chunk 583kb.
+- eslint `src/tools/canvas`: 0 error, 10 warning (react-refresh + 1 eslint-disable thừa ở
+  CanvasSurface.tsx), không chặn.

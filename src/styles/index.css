@@ -204,6 +204,22 @@ body.canvas-drag-invalid * {
   cursor: not-allowed !important;
 }
 
+/* ============================================================
+   Tiptap placeholder — Milanote parity "Start typing..."
+   Extension `@tiptap/extension-placeholder` inject `data-placeholder` attr
+   trên node rỗng đầu tiên + class `is-editor-empty`. CSS này show text
+   placeholder qua `content: attr()` khi paragraph đầu rỗng.
+   Wrapper editor có class `tiptap` (set trong NoteObject NOTE_CONTENT_CLASS).
+   ============================================================ */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--muted-foreground);
+  opacity: 0.4;
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
 /* Ẩn scrollbar nhưng vẫn scroll được (mockup 04 .side-scroll pattern) */
 .no-scrollbar {
   scrollbar-width: none;

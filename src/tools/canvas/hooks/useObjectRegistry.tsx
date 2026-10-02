@@ -10,7 +10,7 @@
 // Nhờ vậy Phase sau / plugin thêm type mới không đụng engine.
 // ============================================================
 
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import type { CanvasObject, Geometry } from '../types';
 
 /** Props truyền vào renderer của mỗi object type. */
@@ -37,6 +37,32 @@ export interface ObjectTypeDefinition {
   label: string;
   /** Có hiện trên toolbar palette không (rect debug thì không). */
   showInToolbar?: boolean;
+  /**
+   * Callback sau khi commitResize xong. Type-specific post-processing hook —
+   * VD Note dùng để chuyển heightMode 'auto' → 'fixed' khi user kéo corner.
+   * Gọi với snapshot geometry before + after drag. Không fire nếu geometry
+   * không đổi (SelectionLayer đã filter).
+   */
+  onResizeCommit?: (objectId: string, before: Geometry, after: Geometry) => void;
+  /**
+   * Render buttons contextual cho element mode (single object selected). Không
+   * bao gồm Dismiss (Toolbar tự render Dismiss chung). Fallback null → Toolbar
+   * dùng GenericElementActions (Color/Labels/Reactions/Comment/More).
+   *
+   * Milanote parity: mỗi object type có cây chức năng riêng — Note = format
+   * color/labels/comment; Task = priority/due-date/assignee; Link = edit URL/
+   * refresh metadata; Image = crop/rotate/replace...
+   */
+  renderElementActions?: (object: CanvasObject) => ReactNode;
+  /**
+   * Render buttons contextual cho editing mode (user vào edit content). Không
+   * bao gồm Dismiss (Toolbar tự render). Fallback null → Toolbar dùng
+   * GenericEditingActions (TextStyle/Bold/Italic/List/Link/... placeholder).
+   *
+   * Type không có edit content (VD Board) không đăng ký field này → Toolbar
+   * không chuyển sang editing mode cho type đó.
+   */
+  renderEditingActions?: (object: CanvasObject) => ReactNode;
 }
 
 const registry = new Map<string, ObjectTypeDefinition>();

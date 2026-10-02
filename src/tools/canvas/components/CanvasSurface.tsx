@@ -3,6 +3,7 @@ import { StickyNote } from 'lucide-react';
 import { useObjectsStore } from '../store/objects-store';
 import { useInteractionStore } from '../store/interaction-store';
 import { useSelectionStore } from '../store/selection-store';
+import { useUnsortStore } from '../store/unsort-store';
 import { getCameraEngine } from '../engine/camera-engine';
 import { screenToCanvas } from '../engine/coord';
 import { createObjectAt } from '../engine/actions';
@@ -164,6 +165,21 @@ export function CanvasSurface({ boardId }: { boardId: string | null }) {
 
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
+  // Click bất kỳ đâu trong surface → activePanel = 'canvas' để Ctrl+A chọn
+  // object canvas (không phải Unsort). Native listener để chạy trước logic
+  // drag/pan của usePointerInteraction.
+  useEffect(() => {
+    const el = surfaceRef.current;
+    if (!el) return;
+    const onPointerDown = () => {
+      if (useUnsortStore.getState().activePanel !== 'canvas') {
+        useUnsortStore.getState().setActivePanel('canvas');
+      }
+    };
+    el.addEventListener('pointerdown', onPointerDown);
+    return () => el.removeEventListener('pointerdown', onPointerDown);
   }, []);
 
   // --- Context menu ---

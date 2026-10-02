@@ -52,11 +52,38 @@ export type CanvasObject = z.infer<typeof canvasObjectSchema>;
 // `CanvasObject.data` là `unknown` ở schema gốc. Mỗi renderer parse phần data
 // của type mình qua schema dưới đây. Engine core không đọc các field này.
 
-/** Note: ghi chữ plain (rich text hoãn sang Phase C).
- *  Default geometry: xem `.kiro/notes/canvas-object-type-defaults.md`. */
+/**
+ * Note (Milanote parity): rich text qua Tiptap.
+ *
+ * `body` chứa HTML string (Tiptap `.getHTML()`). Structure điển hình:
+ *   <h1>Heading</h1><p>Paragraph</p><p>Another</p>
+ *
+ * Mỗi Enter = paragraph mới. Heading/bold/italic/list/link do user chọn qua
+ * toolbar editing mode (StarterKit + extension-link).
+ *
+ * Note cũ (title + plain body) migrate qua `lib/note-data.ts::parseNoteData`
+ * — merge title thành `<h1>` prepend, mỗi line body thành `<p>`. Renderer gọi
+ * parser mỗi lần render, không persist migration ngược (Tiptap tự save HTML
+ * khi user edit lần đầu).
+ *
+ * `color`: hex ColorBar top (user chọn qua toolbar element mode), null = default
+ * primary/60 theme-aware. Palette ở `lib/note-colors.ts`.
+ */
 export const noteDataSchema = z.object({
-  title: z.string().default(''),
-  body: z.string().default(''),
+  body: z.string().default('<p></p>'),
+  color: z.string().nullable().default(null),
+  /**
+   * Height mode (Milanote parity):
+   *   - 'auto': RO auto-grow theo content khi content vượt geometry (mặc định
+   *     note mới tạo). User gõ Enter → note cao ra.
+   *   - 'fixed': user đã kéo corner set explicit height. RO KHÔNG grow. Nếu
+   *     content vượt geometry → clip + fade overlay bottom (sương mờ hint).
+   *
+   * Chuyển 'auto' → 'fixed' tự động khi user drag corner Note (bất kỳ dim).
+   * Chưa có UI reset về 'auto' (Milanote cũng không có — user muốn note lớn
+   * lại thì tự kéo corner).
+   */
+  heightMode: z.enum(['auto', 'fixed']).default('auto'),
 });
 export type NoteData = z.infer<typeof noteDataSchema>;
 

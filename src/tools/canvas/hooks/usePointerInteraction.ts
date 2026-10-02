@@ -46,6 +46,16 @@ export function usePointerInteraction(ref: RefObject<HTMLElement | null>) {
       ) {
         return;
       }
+
+      // Đang edit inline: KHÔNG preventDefault, KHÔNG setPointerCapture, KHÔNG
+      // set editingId. Cho browser tự blur editor → editor.onBlur fire →
+      // commitAndClose commit body + setEditingId(null). Đây là path đã proven
+      // (giống click header thoát edit). Skip marquee/pan cho pointerdown này —
+      // user chỉ "click ngoài để thoát". Muốn marquee thì release rồi kéo lại.
+      if (useInteractionStore.getState().editingId) {
+        return;
+      }
+
       const isMiddle = e.button === 1;
       const isCtrl = e.ctrlKey || e.metaKey;
       const shouldPan = spacePressed || isMiddle || (isCtrl && e.button === 0);

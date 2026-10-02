@@ -62,9 +62,9 @@ Redundant với #1, giữ như subitem của #1 nếu tách nhỏ hơn.
 - Session này ship: Note polish (radius, contrast shadow, ColorBar, Fraunces serif, padding, ResizeGrip decor), zoom smoothness fix (anchor lock + isolate ZoomBadge + alpha 0.20)
 - Next session bắt đầu: Note polish part 2 (QuickLine visual dot + corner resize handle) → sau đó Phase B Task 5-9 (Image + Link)
 
-## Note auto-grow height (Milanote parity)
+## ~~Note auto-grow height (Milanote parity)~~ ĐÃ LÀM (2026-09-21 auto-grow, 2026-09-22 `heightMode` auto/fixed). Chi tiết ở handoff.
 
-**Trạng thái**: Bibo Note hiện `height: fixed` (default 180). Milanote thực tế `height: auto` — grow theo content, min ~68 khi rỗng, tự cao khi có body dài. Kiro giữ fixed vì chưa refactor.
+**Trạng thái cũ (giữ để tra lịch sử)**: Bibo Note hiện `height: fixed` (default 180). Milanote thực tế `height: auto` — grow theo content, min ~68 khi rỗng, tự cao khi có body dài. Kiro giữ fixed vì chưa refactor.
 
 **Scope**:
 - ObjectShell + NoteObject dùng `height: auto`, min-height (VD 68), max-height cap (VD viewport 80%).
@@ -83,17 +83,20 @@ Redundant với #1, giữ như subitem của #1 nếu tách nhỏ hơn.
 
 **Ưu tiên**: Làm sau khi ship Image + Link object type (không blocking). Có thể xen kẽ theo mức phase.
 
-### Phase 1 — Cực thiết yếu (làm sớm)
+### ~~Phase 1 — Cực thiết yếu~~ ĐÃ LÀM (2026-09-23)
 
-- **Ctrl+A** — Select all object trong board hiện tại.
-- **Ctrl+C** — Copy object đang chọn vào clipboard (JSON serialize).
-- **Ctrl+V** — Paste tại vị trí chuột trên canvas, hoặc tâm viewport nếu chuột ngoài canvas.
-- **Ctrl+X** — Cut = Copy + Delete.
-- **Ctrl+D** — Duplicate object đang chọn tại vị trí offset (VD +16px, +16px) để không đè.
-- **Escape** — Deselect nếu có selection. Nếu đang edit note → thoát edit trước, chưa deselect (2 lần Esc mới deselect).
-- **Enter** — Vào edit mode object đang chọn (thay double-click). Nếu > 1 object select → không làm gì hoặc chỉ vào edit primary.
+Ctrl+A / C / V / X / D, Escape 2 tầng, Enter vào edit, Ctrl+click chọn nhiều. Khác plan ban đầu: Ctrl+V KHÔNG paste tại chuột mà lệch dần +16 mỗi lần từ vị trí gốc (Milanote parity, user chốt). Chi tiết ở handoff mục 2026-09-23.
 
-Effort: ~2-3 giờ. Cần Clipboard API + JSON serialize object schema + strategy chọn vị trí paste.
+## Paste-sanitize — kiểm tra nội dung clipboard trước khi paste
+
+**Trạng thái**: `readCanvasClipboard` chỉ check prefix + version + mảng `objects`, không validate từng object. Bất kỳ trang/app nào cũng ghi được text `canvas-clip:v1:{...}` vào clipboard. Note `body` từ payload đi thẳng vào store rồi NoteView render bằng `dangerouslySetInnerHTML` → có thể chèn HTML lạ (VD `<img onerror=...>`). Type lạ thì ObjectsLayer bỏ qua (an toàn), geometry sai kiểu có thể làm hỏng layout.
+
+**Scope**:
+- Validate từng template: `geometry` qua Zod schema geometry có sẵn, bỏ template sai.
+- Note body: đưa qua Tiptap schema (`generateJSON` → `generateHTML` với cùng extension list) để chỉ giữ node/mark hợp lệ, bỏ attr lạ.
+- Cân nhắc làm luôn ở tầng render (NoteView) để chặn cả data cũ trong IndexedDB.
+
+**Effort**: Small-medium (~30-60 phút). **Ưu tiên**: cao hơn feature mới vì là lỗ bảo mật.
 
 ### Phase 2 — Fine-tune (làm khi rảnh)
 
@@ -101,8 +104,9 @@ Effort: ~2-3 giờ. Cần Clipboard API + JSON serialize object schema + strateg
 - **Shift+Arrow** — Nudge 10px.
 - ~~**Ctrl+]** / **Ctrl+[** — Bring forward / send backward~~ ĐÃ LÀM (2026-09-20, Phase 2 stacking).
 - ~~**Ctrl+Shift+]** / **Ctrl+Shift+[** — Bring to front / send to back~~ ĐÃ LÀM (2026-09-20).
-- **Ctrl++** / **Ctrl+=** — Zoom in quanh tâm viewport, dùng notch ZOOM_STEP_IN.
-- **Ctrl+-** — Zoom out quanh tâm viewport, dùng notch ZOOM_STEP_OUT.
+- ~~**Ctrl++** / **Ctrl+=** — Zoom in quanh tâm viewport, dùng notch ZOOM_STEP_IN~~ ĐÃ LÀM.
+- ~~**Ctrl+-** — Zoom out quanh tâm viewport, dùng notch ZOOM_STEP_OUT~~ ĐÃ LÀM.
+- ~~**Ctrl+0** — Reset view (đè browser reset zoom trang)~~ ĐÃ LÀM.
 - **Shift+drag** — Constrain di chuyển theo trục ngang HOẶC dọc (theo trục cursor di lệch nhiều hơn tại thời điểm drag start).
 - **Ctrl+drag** — Duplicate + drag (giữ nguyên object cũ, kéo bản sao đi theo cursor).
 - **Ctrl+Shift+drag** — Duplicate + constrain axis (kết hợp 2 cái trên).
@@ -212,9 +216,9 @@ Dùng: `title={`Undo (${modifierLabel()}+Z)`}`.
 - Bibo hiện chưa dùng Alt cho gì → dùng Alt+drag làm duplicate là an toàn, cross-platform hoạt động cùng convention.
 - Nếu chọn Ctrl+drag (Windows-style) thì Mac tương ứng phải là Cmd+drag → nhưng Cmd+drag trên Mac có thể conflict với behavior khác. **Kiro nghiêng Alt+drag** khi implement để nhất quán 2 nền tảng.
 
-## 6. activePanel = 'canvas' khi đóng Unsort
+## ~~6. activePanel = 'canvas' khi đóng Unsort~~ ĐÃ LÀM (2026-09-23, cùng phím tắt Phase 1)
 
-**Trạng thái**: Session 2026-09-21 ship multi-select Unsort. Hiện `activePanel` chỉ có 2 state: `'unsort' | null`. Đóng panel → set null. Khi đó Ctrl+A trên canvas cũng không có "owner", nếu sau này thêm Ctrl+A cho canvas thì cần biết focus đang ở đâu.
+**Trạng thái cũ**: Session 2026-09-21 ship multi-select Unsort. Hiện `activePanel` chỉ có 2 state: `'unsort' | null`. Đóng panel → set null. Khi đó Ctrl+A trên canvas cũng không có "owner", nếu sau này thêm Ctrl+A cho canvas thì cần biết focus đang ở đâu.
 
 **Scope làm sau**:
 - Đổi type `activePanel: 'unsort' | 'canvas' | null` (default `'canvas'`).
@@ -226,9 +230,11 @@ Dùng: `title={`Undo (${modifierLabel()}+Z)`}`.
 
 **Ưu tiên**: Không blocking. Làm khi user muốn Ctrl+A trên canvas.
 
-## 7. Portal drag item ra body
+## 7. Portal drag item ra body — PHẦN DRAG ĐÃ LÀM (2026-09-21)
 
-**Trạng thái**: Session 2026-09-21 phát hiện bug 2: item canvas khi drag lên gần header bị clip vì `CanvasApp` wrapper có `overflow-hidden`. Đã thử fix bằng nâng surface z-index + overflow visible → phá layout Unsort panel (bug 3: panel biến mất khi drag). Rollback.
+Canvas drag giờ dùng `FloatingObjectPreview` portal ra `document.body` (xem handoff "Unified drag visualize"). Còn lại: thu nhỏ z-index token (đoạn "Cùng lượt" cuối mục này).
+
+**Trạng thái cũ**: Session 2026-09-21 phát hiện bug 2: item canvas khi drag lên gần header bị clip vì `CanvasApp` wrapper có `overflow-hidden`. Đã thử fix bằng nâng surface z-index + overflow visible → phá layout Unsort panel (bug 3: panel biến mất khi drag). Rollback.
 
 Preview toolbar/Unsort không có bug vì portal ra `document.body` — position fixed, thoát mọi stacking + overflow clip. Canvas drag item chưa portal (item DOM giữ nguyên vị trí trong `ObjectsLayer` để engine transform theo camera).
 

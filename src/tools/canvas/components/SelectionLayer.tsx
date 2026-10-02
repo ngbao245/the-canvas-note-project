@@ -4,6 +4,7 @@ import { useSelectionStore } from '../store/selection-store';
 import { useCameraStore } from '../store/camera-store';
 import { useInteractionStore, type ResizeHandle } from '../store/interaction-store';
 import { applyResize, commitResize } from '../engine/actions';
+import { getObjectTypeDefinition } from '../hooks/useObjectRegistry';
 import { MIN_OBJECT_SIZE } from '../types';
 
 /**
@@ -143,6 +144,7 @@ function CornerResizeHandle({ objectId, zoom }: { objectId: string; zoom: number
     const start = useObjectsStore.getState().objects.get(objectId);
     if (!start) return;
     const g0 = start.geometry;
+    const def = getObjectTypeDefinition(start.type);
 
     const onMove = (ev: PointerEvent) => {
       const dx = (ev.clientX - startClientX) / zoom;
@@ -156,7 +158,14 @@ function CornerResizeHandle({ objectId, zoom }: { objectId: string; zoom: number
       useInteractionStore.getState().setMode('idle');
       useInteractionStore.getState().setResizeHandle(null);
       const end = useObjectsStore.getState().objects.get(objectId);
-      if (end) commitResize(objectId, g0, end.geometry);
+      if (end) {
+        commitResize(objectId, g0, end.geometry);
+        // Type-specific post-processing (VD Note lock heightMode='fixed' sau
+        // drag). Chỉ gọi nếu geometry thực sự đổi để tránh side effect thừa.
+        const changed =
+          g0.width !== end.geometry.width || g0.height !== end.geometry.height;
+        if (changed) def?.onResizeCommit?.(objectId, g0, end.geometry);
+      }
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
