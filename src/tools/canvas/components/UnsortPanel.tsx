@@ -90,7 +90,7 @@ function UnsortDragPreview({ items }: { items: CanvasObject[] }) {
  * Drag reorder qua useUnsortDrag; drag-out ra canvas cũng qua đó (khi cursor
  * rời khỏi panel bounds).
  */
-export function UnsortPanel({ boardId }: { boardId: string | null }) {
+export function UnsortPanel({ boardId }: { boardId: string }) {
   const setOpen = useUnsortStore((s) => s.setOpen);
   const objectsMap = useObjectsStore((s) => s.objects);
   const hoveredDropTarget = useHoveredUnsortDropTarget();
@@ -264,7 +264,7 @@ function UnsortList({
  * Toggle tab dính góc phải-trên canvas. Mount trong CanvasSurface (screen-space
  * overlay). Ẩn khi panel đang mở.
  */
-export function UnsortToggle({ boardId }: { boardId: string | null }) {
+export function UnsortToggle({ boardId }: { boardId: string }) {
   const open = useUnsortStore((s) => s.panelOpen);
   const toggle = useUnsortStore((s) => s.toggle);
   const objectsMap = useObjectsStore((s) => s.objects);

@@ -52,6 +52,8 @@
     --z-drag-layer: 40000;
     --z-modal: 50000;
     --z-tooltip: 60000;
+    /* Công cụ dev (nút đổi ngôn ngữ...) — luôn nổi trên mọi tầng, chỉ có ở dev. */
+    --z-dev: 90000;
 
     /*
      * Elevation shadow — 3 mức nâng chuẩn cho object.

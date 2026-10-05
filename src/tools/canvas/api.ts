@@ -10,18 +10,25 @@
 import { createStore, get, set, del, keys, type UseStore } from 'idb-keyval';
 import type { Board, CanvasObject, Camera } from './types';
 
+/** Object bản cũ trên Home: giống CanvasObject nhưng `boardId` là null. */
+export type LegacyRootObject = Omit<CanvasObject, 'boardId'> & { boardId: null };
+
 // --- Interface ---
 export interface CanvasRepository {
   loadBoards(): Promise<Board[]>;
   saveBoard(board: Board): Promise<void>;
   /** Xoá 1 Board record. Không cascade — caller lo xoá objects/children. */
   deleteBoard(id: string): Promise<void>;
-  loadObjects(boardId: string | null): Promise<CanvasObject[]>;
+  loadObjects(boardId: string): Promise<CanvasObject[]>;
+  /** Object lưu theo quy ước cũ (`boardId: null` = Home). Chỉ dùng lúc chuyển đổi. */
+  loadLegacyRootObjects(): Promise<LegacyRootObject[]>;
   saveObject(obj: CanvasObject): Promise<void>;
   deleteObject(id: string): Promise<void>;
   /** Batch xoá mọi object có boardId matching. Dùng cho cascade delete Board. */
   deleteObjectsByBoard(boardId: string): Promise<void>;
   saveCamera(boardId: string, camera: Camera): Promise<void>;
+  /** Tổng số board + object đang lưu. Dùng cho Cài đặt → Dữ liệu. Board tính cả Home. */
+  countAll(): Promise<{ boards: number; objects: number }>;
 }
 
 // --- IndexedDB adapter ---
@@ -58,12 +65,23 @@ class IndexedDbCanvasRepository implements CanvasRepository {
     await del(id, this.boardsStore);
   }
 
-  async loadObjects(boardId: string | null): Promise<CanvasObject[]> {
+  async loadObjects(boardId: string): Promise<CanvasObject[]> {
     const ids = await keys(this.objectsStore);
     const result: CanvasObject[] = [];
     for (const id of ids) {
       const o = await get<CanvasObject>(id, this.objectsStore);
       if (o && o.boardId === boardId) result.push(o);
+    }
+    return result;
+  }
+
+  async loadLegacyRootObjects(): Promise<LegacyRootObject[]> {
+    const ids = await keys(this.objectsStore);
+    const result: LegacyRootObject[] = [];
+    for (const id of ids) {
+      // Đọc thô: data IDB cũ có thể còn boardId null dù type mới là string.
+      const o = await get<CanvasObject | LegacyRootObject>(id, this.objectsStore);
+      if (o && o.boardId === null) result.push(o as LegacyRootObject);
     }
     return result;
   }
@@ -82,6 +100,15 @@ class IndexedDbCanvasRepository implements CanvasRepository {
       const o = await get<CanvasObject>(id, this.objectsStore);
       if (o && o.boardId === boardId) await del(id, this.objectsStore);
     }
+  }
+
+  async countAll(): Promise<{ boards: number; objects: number }> {
+    // Chỉ đếm key, không đọc value → nhanh kể cả khi nhiều object.
+    const [boardKeys, objectKeys] = await Promise.all([
+      keys(this.boardsStore),
+      keys(this.objectsStore),
+    ]);
+    return { boards: boardKeys.length, objects: objectKeys.length };
   }
 
   async saveCamera(boardId: string, camera: Camera): Promise<void> {

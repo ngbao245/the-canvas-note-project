@@ -162,3 +162,74 @@ import { LoadingState, EmptyState, ErrorState } from '@/components/shared';
 - Error → `<ErrorState message={...} onRetry={...} />`.
 
 Không tự viết inline copy-paste. Xem trực tiếp `src/components/shared/{LoadingState,EmptyState,ErrorState}.tsx` để biết props có sẵn.
+
+## Chữ UI và đa ngôn ngữ (i18n)
+
+Mọi chữ người dùng nhìn thấy hoặc nghe thấy phải qua bộ dịch, không viết chữ cứng trong JSX. Spec: `.kiro/specs/i18n/`.
+
+### Thêm 1 câu
+
+1. Thêm key vào `src/lib/i18n/locales/vi.json` (nguồn chuẩn), rồi thêm đúng key đó vào `en.json`.
+   Thiếu bên en → `tsc` báo lỗi tại `src/lib/i18n/messages.ts`.
+2. Key IN HOA, lồng theo vùng: `{VÙNG}.{KHỐI}.{TÊN}`. Vùng: `COMMON`, `SETTINGS`, `CANVAS`, `ACCOUNT`, `LANDING`.
+   Tên nhiều từ nối bằng `_`: `UNDO_TITLE`, `FIT_CONTENT`. Hai thứ giữ chữ thường: `one` / `other` của số nhiều
+   (tên do trình duyệt trả về) và biến trong câu `{name}`, `{count}` (tên tham số).
+   Câu dùng nhiều nơi (Huỷ, Xoá, OK) để ở `COMMON`, không chép lại.
+3. Trong component: `const { t } = useI18n();` rồi `t('CANVAS.HEADER.FIT_CONTENT')`. Gõ sai key → `tsc` báo.
+
+### Các kiểu câu
+
+- Chèn biến: viết `{tên}` trong câu, truyền qua tham số.
+  `"title": "Xoá board \"{name}\"?"` → `t('CANVAS.CONFIRM.DELETE_BOARD.TITLE', { name: board.name })`.
+- Số nhiều: key là object có `other` (bắt buộc) và `one` (en cần, vi không cần), truyền `count`.
+  `t('CANVAS.COUNT.OBJECT', { count: 3 })` → en "3 objects", vi "3 object". Số trong `{count}` tự định dạng theo ngôn ngữ.
+- Ghép nhiều phần có số nhiều riêng: dịch từng phần rồi ghép bằng 1 key (xem `deleteBoardItems` trong `CanvasApp.tsx`).
+- Số đứng riêng: `formatNumber(n)` từ `useI18n()`. Không `toLocaleString('vi-VN')`.
+  Cần cố định số chữ số thập phân thì truyền tham số thứ 2: `formatNumber(1.5, 1)` → vi "1,5", en "1.5".
+- Hằng số ngoài component (danh sách màu, menu): lưu KEY, dịch lúc render (xem `lib/note-colors.ts` + `NoteToolbar`).
+- Ngoài React (engine, hàm tạo object): `import { t } from '@/lib/i18n'`. Chỉ cho chữ tạo 1 lần, không tự đổi khi đổi ngôn ngữ.
+
+Mẫu đã làm sẵn: `LocalizationSection`, `DataSection`, `CanvasHeader`, `ConfirmDialog` + `CanvasApp`, phần chọn màu trong `NoteToolbar`.
+
+### Đúng / sai
+
+Đúng:
+```tsx
+const { t } = useI18n();
+<Badge>{t('CANVAS.COUNT.OBJECT', { count })}</Badge>
+<IconButton title={t('CANVAS.HEADER.UNDO_TITLE')} ariaLabel={t('CANVAS.HEADER.UNDO')} />
+```
+
+Sai:
+```tsx
+<Badge>{count} object{count === 1 ? '' : 's'}</Badge>   // tự ghép số nhiều
+<IconButton title="Undo (Ctrl+Z)" ariaLabel="Undo" />   // title / aria-label cũng là chữ UI
+const LABEL = t('CANVAS.HEADER.UNDO');                   // gọi t() ở ngoài component → không đổi khi đổi ngôn ngữ
+`Sẽ mất ${n} object` + ' + ' + `${b} board con`          // cộng chuỗi, en không dịch được thứ tự câu
+```
+
+### Không dịch
+
+- Dữ liệu người dùng: tên board, nội dung note.
+- Tên riêng: bibo, Canvas, Unsort, Note, Board (khi là tên loại object). Tên phím: Ctrl, Shift, Delete.
+- Tên mặc định board lưu vào dữ liệu: "Home", "New Board" (luôn tiếng Anh).
+- Comment trong code (vẫn tiếng Việt), `console.warn`, label undo trong `engine/actions.ts` (chưa hiện trên UI).
+- Tên ngôn ngữ trong `LOCALE.*`: luôn viết bằng chính tiếng đó ("English" ở cả 2 bộ).
+
+### Gotcha
+
+- `title`, `aria-label`, `placeholder`, `alt` đều phải dịch, không chỉ chữ giữa thẻ.
+- `useToolbarPopupClose({ anchorLabel })` tìm nút mở theo `aria-label`. Dịch label của nút thì `anchorLabel` phải dùng cùng key, không thì click nút không đóng popup.
+- Tên mặc định của board ("Home", "New Board" trong `engine/actions.ts`, `lib/board-tree.ts`, `types.ts`): luôn tiếng Anh, KHÔNG đưa qua bộ dịch. `normalizeBoards` so tên "Home" / "Board", dịch là hỏng.
+
+### Tự kiểm tra (PowerShell, chạy ở gốc `bibo`)
+
+```powershell
+$files = Get-ChildItem -Recurse -Include *.tsx src | Where-Object { $_.FullName -notmatch '\\(lib\\i18n|experiments)\\' }
+# Chữ tiếng Việt nằm giữa thẻ JSX
+$files | Select-String -Pattern '>[^<>{}]*[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ][^<>{}]*<'
+# Thuộc tính còn chữ cứng
+$files | Select-String -Pattern '(title|aria-label|placeholder|label|alt)="[^"]*[A-Za-zÀ-ỹ]{2,}'
+```
+
+Hai lệnh chỉ bắt kiểu hay gặp. Chữ tiếng Anh giữa thẻ (`<span>Default</span>`) và chữ trong biến / hằng số thì lệnh không bắt hết, Kiro rà thêm ở bước rà soát.

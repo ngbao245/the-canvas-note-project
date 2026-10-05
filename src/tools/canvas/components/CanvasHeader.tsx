@@ -1,34 +1,32 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft,
-  ChevronRight,
   RotateCcw,
   Maximize2,
-  Sun,
-  Moon,
   Undo2,
   Redo2,
   ChevronDown,
-  Settings,
-  PenTool,
-  Square,
+  type LucideIcon,
 } from 'lucide-react';
-import { useThemeStore } from '@/stores/theme-store';
-import { useUiStyleStore } from '@/stores/ui-style-store';
 import { Badge } from '@/components/style';
+import { AccountMenu } from '@/components/settings/AccountMenu';
+import { useI18n } from '@/lib/i18n';
 import { useObjectsStore } from '../store/objects-store';
 import { useCameraStore } from '../store/camera-store';
 import { useHistoryStore } from '../store/history-store';
-import { useBoardsStore } from '../store/boards-store';
-import { renameBoard } from '../engine/actions';
-import { boardSlug } from '../lib/slug';
-import { isRootBoard, type Board } from '../types';
+import type { Board } from '../types';
+import { BreadcrumbList } from './BreadcrumbList';
 
 /**
- * CanvasHeader — header 2 row của canvas (Milanote parity), tách khỏi route.tsx.
- *   Row 1 (tools): back → home + breadcrumb + Undo/Redo + theme/style/settings
- *   Row 2 (board): object count + centered title + View dropdown (zoom%/Fit/Reset)
+ * CanvasHeader — 2 hàng:
+ *   - Hàng 1: breadcrumb các cấp (trái, tự rút theo bề rộng) + công cụ (phải:
+ *     Undo/Redo + avatar mở popup tài khoản → Cài đặt).
+ *   - Hàng 2: số object (trái) + View (phải).
+ *
+ * Không có title board ở giữa: breadcrumb đã cho biết đang ở board nào.
+ * Đổi tên board: double-click tên trên tile ở board cha.
+ *
+ * Co dãn hàng 1: breadcrumb `flex-1 min-w-0` co tới 0 và tự ẩn bớt cấp; cụm
+ * công cụ không co (`shrink-0`) nên không bao giờ mất nút.
  *
  * Các cụm subscribe store riêng (UndoRedoCluster / ObjectCountBadge / ZoomBadge)
  * để cô lập re-render — push history hay zoom 60Hz không đụng cả header.
@@ -44,8 +42,16 @@ export function CanvasHeader({
 }) {
   return (
     <header className="flex flex-col border-b border-border bg-card">
-      <ToolsRow board={board} />
-      <BoardRow board={board} onFit={onFit} onReset={onReset} />
+      <div className="flex h-10 items-center gap-3 px-4">
+        <div className="flex min-w-0 flex-1 items-center">
+          <BreadcrumbList board={board} />
+        </div>
+        <ToolsCluster />
+      </div>
+      <div className="flex h-10 items-center justify-between gap-3 border-t border-border/50 px-4">
+        <ObjectCountBadge />
+        <ViewMenu onFit={onFit} onReset={onReset} />
+      </div>
     </header>
   );
 }
@@ -67,7 +73,7 @@ function IconButton({
   ariaLabel,
   disabled,
 }: {
-  icon: typeof ArrowLeft;
+  icon: LucideIcon;
   onClick?: () => void;
   title?: string;
   ariaLabel: string;
@@ -88,117 +94,18 @@ function IconButton({
 }
 
 // ============================================================
-// Row 1: Tools
+// Hàng 1 — cụm công cụ bên phải
 // ============================================================
 
-function ToolsRow({ board }: { board: Board }) {
-  const theme = useThemeStore((s) => s.theme);
-  const toggleTheme = useThemeStore((s) => s.toggle);
-
+// Theme + phong cách đã chuyển vào modal Cài đặt (avatar → Cài đặt → Giao diện).
+function ToolsCluster() {
+  // shrink-0: breadcrumb co trước, cụm nút không bao giờ bị ép mất.
   return (
-    <div className="flex h-10 items-center gap-2 px-4">
-      <Link
-        to="/"
-        aria-label="Về trang chủ"
-        className={ICON_BTN_CLS}
-      >
-        <ArrowLeft className="h-4 w-4" />
-      </Link>
-      <Breadcrumb board={board} />
-
-      <div className="ml-auto flex items-center gap-1">
-        <UndoRedoCluster />
-        <div className="mx-1 h-4 w-px bg-border" />
-        <IconButton
-          icon={theme === 'dark' ? Sun : Moon}
-          onClick={toggleTheme}
-          title={theme === 'dark' ? 'Chuyển sang light' : 'Chuyển sang dark'}
-          ariaLabel="Đổi theme"
-        />
-        <StyleToggle />
-        <IconButton icon={Settings} title="Cài đặt (sắp có)" ariaLabel="Cài đặt" />
-      </div>
+    <div className="flex shrink-0 items-center gap-1">
+      <UndoRedoCluster />
+      <div className="mx-1 h-4 w-px bg-border" />
+      <AccountMenu />
     </div>
-  );
-}
-
-// Toggle phong cách hiển thị: hand (drawably vẽ tay) / flat (phẳng shadcn).
-// Đọc/ghi useUiStyleStore (persist localStorage). Icon PenTool = hand, Square = flat.
-function StyleToggle() {
-  const style = useUiStyleStore((s) => s.style);
-  const toggle = useUiStyleStore((s) => s.toggle);
-  const isHand = style === 'hand';
-  return (
-    <IconButton
-      icon={isHand ? PenTool : Square}
-      onClick={toggle}
-      title={isHand ? 'Chuyển sang phẳng' : 'Chuyển sang vẽ tay'}
-      ariaLabel="Đổi phong cách"
-    />
-  );
-}
-
-function Breadcrumb({ board }: { board: Board }) {
-  const boards = useBoardsStore((s) => s.boards);
-
-  // Ancestry chain: walk parentId ngược lên root. Root = board có parentId=null.
-  const chain: Board[] = [];
-  let cursor: Board | undefined = board;
-  const seen = new Set<string>();
-  while (cursor && !seen.has(cursor.id)) {
-    chain.unshift(cursor);
-    seen.add(cursor.id);
-    cursor = cursor.parentId ? boards.get(cursor.parentId) : undefined;
-  }
-
-  // Root board = "Home". Nested giữ name.
-  const label = (b: Board) => (b.parentId === null ? 'Home' : b.name);
-  const linkTo = (b: Board) =>
-    b.parentId === null ? '/canvas' : `/canvas/${b.id}/${boardSlug(b.name)}`;
-
-  // Collapse ≥ 4 segments: `Home / ... / Parent / Current`.
-  const collapsed = chain.length >= 4;
-  const visible = collapsed
-    ? [chain[0], null, chain[chain.length - 2], chain[chain.length - 1]]
-    : chain;
-
-  return (
-    <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-xs">
-      {visible.map((b, i) => {
-        // b === null → segment collapse "..." (không clickable ở MVP).
-        if (b === null) {
-          return (
-            <div key={`ellipsis-${i}`} className="flex items-center gap-1">
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
-              <span
-                className="text-muted-foreground/70"
-                title="Còn segment ở giữa (chưa mở popover)"
-              >
-                ...
-              </span>
-            </div>
-          );
-        }
-        const isLast = i === visible.length - 1;
-        return (
-          <div key={b.id} className="flex items-center gap-1">
-            {i > 0 ? (
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
-            ) : null}
-            {isLast ? (
-              <span className="font-medium text-foreground">{label(b)}</span>
-            ) : (
-              <Link
-                to={linkTo(b)}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                {label(b)}
-              </Link>
-            )}
-          </div>
-        );
-      })}
-    </nav>
   );
 }
 
@@ -207,125 +114,42 @@ function UndoRedoCluster() {
   const redoCount = useHistoryStore((s) => s.redoStack.length);
   const undo = useHistoryStore((s) => s.undo);
   const redo = useHistoryStore((s) => s.redo);
+  const { t } = useI18n();
 
+  // title (tooltip) và aria-label (trình đọc màn hình) cũng là chữ UI → qua bộ dịch.
   return (
     <>
       <IconButton
         icon={Undo2}
         onClick={undo}
         disabled={undoCount === 0}
-        title="Undo (Ctrl+Z)"
-        ariaLabel="Undo"
+        title={t('CANVAS.HEADER.UNDO_TITLE')}
+        ariaLabel={t('CANVAS.HEADER.UNDO')}
       />
       <IconButton
         icon={Redo2}
         onClick={redo}
         disabled={redoCount === 0}
-        title="Redo (Ctrl+Shift+Z)"
-        ariaLabel="Redo"
+        title={t('CANVAS.HEADER.REDO_TITLE')}
+        ariaLabel={t('CANVAS.HEADER.REDO')}
       />
     </>
   );
 }
 
 // ============================================================
-// Row 2: Board
+// Hàng 2 — số object + View
 // ============================================================
-
-function BoardRow({
-  board,
-  onFit,
-  onReset,
-}: {
-  board: Board;
-  onFit: () => void;
-  onReset: () => void;
-}) {
-  // Root board → ẩn title center (đã có breadcrumb ở row 1).
-  // Nested → hiện board.name, editable inline (double-click → mở editor).
-  const showTitle = !isRootBoard(board);
-
-  return (
-    <div className="grid h-10 grid-cols-3 items-center border-t border-border/50 px-4">
-      <div className="flex items-center gap-2">
-        <ObjectCountBadge />
-      </div>
-      <div className="flex items-center justify-center">
-        {showTitle ? <TitleEditable board={board} /> : null}
-      </div>
-      <div className="flex items-center justify-end">
-        <ViewMenu onFit={onFit} onReset={onReset} />
-      </div>
-    </div>
-  );
-}
-
-/** Title Row 2 khi nested. Double-click → editable inline, Enter/blur commit,
- *  URL slug replace theo tên mới. Escape huỷ. */
-function TitleEditable({ board }: { board: Board }) {
-  const navigate = useNavigate();
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(board.name);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (editing) {
-      setValue(board.name);
-      setTimeout(() => {
-        inputRef.current?.focus();
-        inputRef.current?.select();
-      }, 0);
-    }
-  }, [editing, board.name]);
-
-  const commit = () => {
-    const next = value.trim() || 'New Board';
-    if (next !== board.name) {
-      renameBoard(board.id, next);
-      // URL slug replace không push history mới (rename không phải navigation).
-      navigate(`/canvas/${board.id}/${boardSlug(next)}`, { replace: true });
-    }
-    setEditing(false);
-  };
-
-  if (!editing) {
-    return (
-      <h1
-        onDoubleClick={() => setEditing(true)}
-        className="cursor-text text-sm font-medium tracking-tight text-foreground hover:text-primary"
-        title="Double-click để đổi tên"
-      >
-        {board.name}
-      </h1>
-    );
-  }
-
-  return (
-    <input
-      ref={inputRef}
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          commit();
-        } else if (e.key === 'Escape') {
-          e.preventDefault();
-          setEditing(false);
-        }
-      }}
-      className="w-48 bg-transparent text-center text-sm font-medium tracking-tight text-foreground outline-none focus:ring-1 focus:ring-primary rounded-sm px-1"
-    />
-  );
-}
 
 function ObjectCountBadge() {
   const objectCount = useObjectsStore((s) => s.objects.size);
+  const { t } = useI18n();
+  // nowrap: chữ không xuống dòng làm header cao lên.
+  // Số nhiều: truyền `count`, bộ dịch tự chọn "1 object" / "3 objects" (vi không đổi).
   return (
-    <Badge tone="default">
-      {objectCount} object{objectCount === 1 ? '' : 's'}
-    </Badge>
+    <span className="shrink-0 whitespace-nowrap">
+      <Badge tone="default">{t('CANVAS.COUNT.OBJECT', { count: objectCount })}</Badge>
+    </span>
   );
 }
 
@@ -334,6 +158,7 @@ function ObjectCountBadge() {
 function ViewMenu({ onFit, onReset }: { onFit: () => void; onReset: () => void }) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const { t } = useI18n();
 
   // Click outside close.
   useEffect(() => {
@@ -354,7 +179,7 @@ function ViewMenu({ onFit, onReset }: { onFit: () => void; onReset: () => void }
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <span>View</span>
+        {/* <span>View</span> */}
         <ZoomBadge />
         <ChevronDown className="h-3.5 w-3.5" />
       </button>
@@ -365,7 +190,7 @@ function ViewMenu({ onFit, onReset }: { onFit: () => void; onReset: () => void }
         >
           <ViewMenuItem
             icon={Maximize2}
-            label="Fit content"
+            label={t('CANVAS.HEADER.FIT_CONTENT')}
             hint="F"
             onClick={() => {
               setOpen(false);
@@ -374,7 +199,7 @@ function ViewMenu({ onFit, onReset }: { onFit: () => void; onReset: () => void }
           />
           <ViewMenuItem
             icon={RotateCcw}
-            label="Reset view"
+            label={t('CANVAS.HEADER.RESET_VIEW')}
             hint="0"
             onClick={() => {
               setOpen(false);
@@ -418,9 +243,5 @@ function ViewMenuItem({
 // re-render, ViewMenu button + BoardRow không bị đụng.
 function ZoomBadge() {
   const zoom = useCameraStore((s) => s.camera.zoom);
-  return (
-    <span className="text-xs tabular-nums text-foreground/80">
-      {Math.round(zoom * 100)}%
-    </span>
-  );
+  return <span className="text-xs tabular-nums text-foreground/80">{Math.round(zoom * 100)}%</span>;
 }

@@ -74,7 +74,9 @@ export function FloatingObjectPreview({
         // Shadow ở đây bị scale theo zoom cùng subtree — zoom out → shadow nhỏ,
         // khớp với item thật trong world (cũng bị scale). Không muốn shadow
         // giữ constant screen thì phải overlay layer riêng, không cần thiết.
-        boxShadow: '0 12px 32px rgba(0, 0, 0, 0.35)',
+        // Type tự vẽ viền vùng thân (Board) có khung lớn hơn phần nhìn thấy, phần
+        // dư trong suốt → shadow cả khung hiện thành 1 hình chữ nhật thừa. Bỏ.
+        boxShadow: def.ownSelectionFrame ? undefined : '0 12px 32px rgba(0, 0, 0, 0.35)',
         // Tầng drag-layer (screen-space) — preview nổi trên toolbar/header/panel.
         // Xem `.kiro/notes/z-index-tiers.md`.
         zIndex: 'var(--z-drag-layer)',

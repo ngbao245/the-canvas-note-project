@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Button } from '@/components/style';
+import { useI18n } from '@/lib/i18n';
 
 /**
  * Confirm dialog tuỳ biến, tránh cài @radix-ui/react-dialog cho 1 use case.
@@ -21,12 +22,14 @@ export function ConfirmDialog({
   open,
   title,
   description,
-  confirmLabel = 'OK',
-  cancelLabel = 'Huỷ',
+  confirmLabel,
+  cancelLabel,
   destructive,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  // Nhãn mặc định lấy từ bộ dịch lúc render, không đặt chuỗi cứng ở default param.
+  const { t } = useI18n();
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -57,10 +60,10 @@ export function ConfirmDialog({
         )}
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onCancel}>
-            {cancelLabel}
+            {cancelLabel ?? t('COMMON.CANCEL')}
           </Button>
           <Button variant={destructive ? 'destructive' : 'default'} onClick={onConfirm}>
-            {confirmLabel}
+            {confirmLabel ?? t('COMMON.OK')}
           </Button>
         </div>
       </div>

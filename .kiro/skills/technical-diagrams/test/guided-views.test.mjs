@@ -127,7 +127,7 @@ test('guided views schema enforces collection and focus bounds', () => {
   const tooMany = fixture('architecture');
   tooMany.meta.views = Array.from({ length: 6 }, (_, index) => ({
     id: `view-${index}`,
-    label: `View ${index}`,
+    label: `${index}`,
     focus: [tooMany.components[0].id],
   }));
   const overLimit = run('architecture', tooMany, 'too-many');

@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="vi" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Typography Playground — Bibo Canvas</title>
+<!-- Font Google. Tiempos là font trả phí, không có trên Google Fonts (xem ghi chú ở Concept A). -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Roboto+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap"
+/>
+<!-- Font cho concept G–L + Tự phối (Kiro đề xuất). Tách link riêng cho dễ đọc. -->
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Literata:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Fraunces:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&family=Nunito:ital,wght@0,400;0,600;0,700;1,400&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Newsreader:ital,wght@0,400;0,600;1,400&display=swap"
+/>
+<style>
+  :root {
+    /* Thang chữ, điều khiển bằng thanh trên cùng. */
+    --body-size: 14px;
+    --body-lh: 20px;
+    --h1-size: 24px;
+    /* Các cỡ còn lại suy ra theo tỉ lệ của thang gốc (14/20, 24/30, 20/26, 15/24, 12/18). */
+    --small-size: calc(var(--body-size) * 12 / 14);
+    --small-lh: calc(var(--body-lh) * 18 / 20);
+    --h3-size: calc(var(--body-size) * 15 / 14);
+    --h3-lh: calc(var(--body-lh) * 24 / 20);
+    --h2-size: calc(var(--h1-size) * 20 / 24);
+    --h2-lh: calc(var(--h2-size) * 1.3);
+    --h1-lh: calc(var(--h1-size) * 1.25);
+
+    /* Light */
+    --page: #f6f6f5;
+    --canvas: #ebedee;
+    --surface: #ffffff;
+    --border: #e1e3e6;
+    --fg: #1b2536;
+    --fg-muted: #5f6672;
+    --fg-faint: #a3a7ae;
+    --link: #2f63f7;
+    --code-bg: #f1f2f4;
+    --quote-bar: #cbced2;
+    --chrome: #ffffff;
+  }
+  [data-theme='dark'] {
+    --page: #141414;
+    --canvas: #1f1f1f;
+    --surface: #2a2a2a;
+    --border: #383838;
+    --fg: #ededed;
+    --fg-muted: #a3a3a3;
+    --fg-faint: #6b6b6b;
+    --link: #8ab0ff;
+    --code-bg: #333333;
+    --quote-bar: #4e4e4e;
+    --chrome: #1a1a1a;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--page);
+    color: var(--fg);
+    font-family: Inter, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Thanh điều khiển ---------- */
+  .controls {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 20px;
+    padding: 10px 24px;
+    background: var(--chrome);
+    border-bottom: 1px solid var(--border);
+    font: 500 12px/18px Inter, system-ui, sans-serif;
+    color: var(--fg-muted);
+  }
+  .controls strong { color: var(--fg); font-weight: 600; margin-right: 8px; }
+  .controls label { display: flex; align-items: center; gap: 8px; }
+  .controls input[type='range'] { width: 110px; }
+  .controls output { min-width: 36px; color: var(--fg); font-variant-numeric: tabular-nums; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .seg button {
+    font: inherit; padding: 4px 12px; border: 0; cursor: pointer;
+    background: transparent; color: var(--fg-muted);
+  }
+  .seg button[aria-pressed='true'] { background: var(--fg); color: var(--page); }
+  .controls .reset {
+    font: inherit; padding: 4px 10px; cursor: pointer; border-radius: 6px;
+    border: 1px solid var(--border); background: transparent; color: var(--fg-muted);
+  }
+  .jump { margin-left: auto; display: flex; gap: 6px; }
+  .jump a { color: var(--fg-muted); text-decoration: none; padding: 2px 6px; border-radius: 4px; }
+  .jump a:hover { background: var(--canvas); color: var(--fg); }
+
+  main { padding: 24px; display: flex; flex-direction: column; gap: 40px; }
+
+  /* ---------- Nhãn concept (luôn dùng Inter để nhãn không lẫn với font đang so) ---------- */
+  .concept-label { font-family: Inter, system-ui, sans-serif; margin-bottom: 12px; }
+  .concept-label h2 { margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; letter-spacing: -0.01em; }
+  .concept-label .stack { font-size: 12px; color: var(--fg-muted); margin-top: 2px; }
+  .concept-label .goal { font-size: 12px; color: var(--fg-faint); }
+  .concept-label .warn { font-size: 12px; color: #c2410c; margin-top: 4px; }
+  [data-theme='dark'] .concept-label .warn { color: #fdba74; }
+
+  /* ---------- Canvas mockup ---------- */
+  .concept {
+    --ui: Inter, system-ui, sans-serif;
+    --heading: Inter, system-ui, sans-serif;
+    --code: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  .canvas {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--canvas);
+    font-family: var(--ui);
+    font-size: var(--body-size);
+    line-height: var(--body-lh);
+    letter-spacing: -0.01em;
+  }
+  .board-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 16px;
+    background: var(--chrome);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--ui);
+  }
+  .crumbs { display: flex; align-items: center; gap: 6px; font-size: var(--small-size); line-height: var(--small-lh); }
+  .crumbs .logo { width: 16px; height: 16px; border-radius: 50%; background: #000; }
+  [data-theme='dark'] .crumbs .logo { box-shadow: 0 0 0 1px var(--border); }
+  .crumbs .sq { width: 14px; height: 14px; border-radius: 4px; }
+  .crumbs .sep { color: var(--fg-faint); }
+  .crumbs .current { color: var(--fg-muted); }
+  .board-title {
+    margin-left: auto; margin-right: auto;
+    font-family: var(--heading); font-weight: 600;
+    font-size: var(--h3-size); line-height: var(--h3-lh); letter-spacing: -0.02em;
+  }
+  .toolbar { display: flex; gap: 4px; }
+  .btn {
+    font-family: var(--ui); font-size: var(--small-size); line-height: var(--small-lh); font-weight: 500;
+    padding: 4px 10px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface); color: var(--fg);
+  }
+  .btn.primary { background: var(--fg); color: var(--page); border-color: var(--fg); }
+
+  .board {
+    display: grid;
+    grid-template-columns: minmax(300px, 420px) minmax(240px, 320px) minmax(220px, 300px);
+    gap: 28px; align-items: start;
+    padding: 32px;
+    min-height: 560px;
+    overflow-x: auto;
+  }
+
+  .card {
+    background: var(--surface);
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(51, 61, 78, 0.18);
+    padding: 22px 24px 24px;
+  }
+  .card h1, .card h2, .card h3 {
+    font-family: var(--heading); letter-spacing: -0.02em; font-weight: 600; margin: 0;
+  }
+  .card h1 { font-size: var(--h1-size); line-height: var(--h1-lh); margin-bottom: 12px; }
+  .card h2 { font-size: var(--h2-size); line-height: var(--h2-lh); margin: 18px 0 8px; }
+  .card h3 { font-size: var(--h3-size); line-height: var(--h3-lh); margin: 14px 0 4px; }
+  .card p { margin: 0 0 10px; }
+  .card a { color: var(--link); text-decoration: underline; text-underline-offset: 2px; }
+  .card ul, .card ol { margin: 0 0 10px; padding-left: 20px; }
+  .card li { margin: 2px 0; }
+  .card blockquote {
+    margin: 10px 0; padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--quote-bar);
+    color: var(--fg-muted); font-style: italic;
+  }
+  .card code {
+    font-family: var(--code); font-size: 0.9em;
+    background: var(--code-bg); padding: 1px 5px; border-radius: 4px;
+  }
+  .card pre {
+    font-family: var(--code); font-size: calc(var(--body-size) * 12.5 / 14); line-height: 1.6;
+    background: var(--code-bg); padding: 12px 14px; border-radius: 6px;
+    margin: 8px 0 0; overflow-x: auto; letter-spacing: 0;
+  }
+  .meta { font-size: var(--small-size); line-height: var(--small-lh); color: var(--fg-muted); }
+  .placeholder { color: var(--fg-faint); }
+  .card .board-tile-row { display: flex; gap: 16px; margin-top: 4px; }
+  .tile { width: 72px; text-align: center; }
+  .tile .icon { width: 56px; height: 56px; border-radius: 10px; margin: 0 auto 6px; }
+  .tile .name { font-size: var(--small-size); line-height: var(--small-lh); font-weight: 500; }
+  .tile .count { font-size: calc(var(--small-size) * 0.9); color: var(--fg-muted); }
+
+  .accents { font-size: var(--body-size); }
+
+  /* ---------- Nhóm concept Kiro đề xuất + Tự phối ---------- */
+  .group-title {
+    font: 600 12px/18px Inter, system-ui, sans-serif; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--fg-faint); padding-top: 8px; border-top: 1px solid var(--border);
+  }
+  .mix { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 8px; font: 500 12px/18px Inter, system-ui, sans-serif; color: var(--fg-muted); }
+  .mix label { display: flex; align-items: center; gap: 8px; }
+  .mix select {
+    font: inherit; color: var(--fg); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 6px; padding: 3px 6px;
+  }
+
+  /* ---------- Tooltip tên font khi hover ---------- */
+  .font-tip {
+    position: fixed; z-index: 20; pointer-events: none;
+    padding: 6px 10px; border-radius: 6px;
+    background: #1b2536; color: #fff;
+    font: 500 12px/18px Inter, system-ui, sans-serif; letter-spacing: 0;
+    white-space: nowrap; display: none;
+  }
+  .font-tip .role { color: #a3a7ae; font-weight: 400; }
+  .font-tip .spec { color: #cbced2; font-weight: 400; }
+  .font-tip .fallback { color: #fdba74; }
+  [data-theme='dark'] .font-tip { background: #ededed; color: #1a1a1a; }
+  [data-theme='dark'] .font-tip .role,
+  [data-theme='dark'] .font-tip .spec { color: #5f6672; }
+  [data-theme='dark'] .font-tip .fallback { color: #c2410c; }
+  /* Viền nét đứt quanh phần đang hover để biết tooltip nói về chữ nào. */
+  .font-hover { outline: 1px dashed var(--link); outline-offset: 2px; border-radius: 2px; }
+
+  /* ---------- Bảng so sánh ---------- */
+  table {
+    width: 100%; border-collapse: collapse;
+    font: 13px/20px Inter, system-ui, sans-serif;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+  }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; color: var(--fg-muted); font-size: 12px; }
+  td.eval { color: var(--fg-faint); }
+  tr:last-child td { border-bottom: 0; }
+</style>
+</head>
+<body>
+
+<div class="controls" role="toolbar" aria-label="Điều chỉnh typography">
+  <strong>Typography Playground</strong>
+  <label>Body size
+    <input id="bodySize" type="range" min="12" max="18" step="0.5" value="14" />
+    <output for="bodySize" id="bodySizeOut">14px</output>
+  </label>
+  <label>Heading size
+    <input id="h1Size" type="range" min="18" max="36" step="1" value="24" />
+    <output for="h1Size" id="h1SizeOut">24px</output>
+  </label>
+  <label>Line height
+    <input id="lineHeight" type="range" min="16" max="30" step="1" value="20" />
+    <output for="lineHeight" id="lineHeightOut">20px</output>
+  </label>
+  <button class="reset" id="reset" type="button">Reset</button>
+  <div class="seg" role="group" aria-label="Theme">
+    <button type="button" data-theme-btn="light" aria-pressed="true">Light</button>
+    <button type="button" data-theme-btn="dark" aria-pressed="false">Dark</button>
+  </div>
+  <nav class="jump" aria-label="Đi tới concept">
+    <a href="#A">A</a><a href="#B">B</a><a href="#C">C</a><a href="#D">D</a><a href="#E">E</a><a href="#F">F</a>
+    <a href="#G">G</a><a href="#H">H</a><a href="#I">I</a><a href="#J">J</a><a href="#K">K</a><a href="#L">L</a>
+    <a href="#mix">Tự phối</a><a href="#table">Bảng</a>
+  </nav>
+</div>
+
+<div class="font-tip" id="fontTip" role="tooltip"></div>
+
+<main>
+  <!-- Nội dung mẫu nằm trong <template>, JS nhân ra 6 concept → cùng nội dung tuyệt đối. -->
+  <template id="mockup">
+    <div class="canvas">
+      <div class="board-header">
+        <div class="crumbs">
+          <span class="logo" aria-hidden="true"></span><span>Home</span>
+          <span class="sep">›</span>
+          <span class="sq" style="background:#cb997e" aria-hidden="true"></span><span>Nghiên cứu</span>
+          <span class="sep">›</span>
+          <span class="sq" style="background:#7d9dc7" aria-hidden="true"></span><span class="current">Kiến trúc hệ thống</span>
+        </div>
+        <div class="board-title">Kiến trúc hệ thống đồng bộ hóa</div>
+        <div class="toolbar">
+          <button class="btn" type="button">Hoàn tác</button>
+          <button class="btn primary" type="button">Chia sẻ</button>
+        </div>
+      </div>
+
+      <div class="board">
+        <!-- Note chính -->
+        <article class="card">
+          <h1>Xây dựng không gian làm việc của riêng bạn</h1>
+          <p>
+            Đây là một ghi chú mẫu để kiểm tra cảm giác đọc trên canvas. Bibo giúp bạn thu thập
+            ý tưởng, sắp xếp thông tin và phát triển chúng thành những nội dung hoàn chỉnh.
+          </p>
+          <p>
+            Một hệ thống tốt không chỉ cần <strong>đẹp</strong> mà còn phải <em>dễ đọc trong nhiều
+            giờ liên tục</em>. Xem thêm <a href="#">tài liệu thiết kế</a>.
+          </p>
+          <h2>Ghi chú quan trọng</h2>
+          <ul>
+            <li>Ý tưởng đầu tiên</li>
+            <li>Một đoạn nội dung dài hơn để kiểm tra wrapping khi dòng chữ vượt quá bề rộng của thẻ ghi chú</li>
+            <li>Tiếng Việt có dấu đầy đủ</li>
+          </ul>
+          <h3>Các bước thực hiện</h3>
+          <ol>
+            <li>Thu thập tài liệu và hình ảnh tham khảo</li>
+            <li>Điều chỉnh bố cục cho phù hợp</li>
+            <li>Đồng bộ hóa lên tất cả thiết bị</li>
+          </ol>
+          <blockquote>“Tưởng tượng quan trọng hơn kiến thức.” — một câu trích dẫn để thử chữ nghiêng.</blockquote>
+          <p class="meta">Cập nhật 2 giờ trước · Đặng Nguyễn · 128 từ</p>
+        </article>
+
+        <!-- Note dài + tiếng Việt nhiều dấu -->
+        <article class="card">
+          <h2 style="margin-top:0">Trải nghiệm đọc</h2>
+          <p class="accents">
+            Đặng, Nguyễn, Trần, Ứng dụng, Tưởng tượng, kiến trúc, hệ thống, đồng bộ hóa,
+            quản lý, thực hiện, điều chỉnh, trải nghiệm.
+          </p>
+          <p class="accents">
+            <strong>ĐẶNG NGUYỄN TRẦN — ỨNG DỤNG — TƯỞNG TƯỢNG</strong><br />
+            ẩ ẫ ậ ằ ẳ ẵ ặ ề ể ễ ệ ỉ ĩ ị ổ ỗ ộ ờ ở ỡ ợ ừ ử ữ ự ỳ ỷ ỹ ỵ
+          </p>
+          <p>
+            Khi làm việc với nhiều dự án cùng lúc, việc quản lý ý tưởng trở nên khó khăn hơn bao giờ
+            hết. Một canvas trực quan cho phép bạn đặt ghi chú, hình ảnh, đường dẫn và danh sách công
+            việc cạnh nhau, nhìn thấy mối liên hệ giữa chúng và điều chỉnh cấu trúc bất cứ lúc nào mà
+            không phải lo lắng về thứ tự hay thư mục. Đoạn văn này đủ dài để kiểm tra khoảng cách dòng,
+            độ đều của chữ và cảm giác khi đọc liên tục trong một thẻ hẹp.
+          </p>
+          <p class="placeholder">Nhập nội dung ghi chú…</p>
+          <p class="meta">Thẻ ghi chú · 1.240 ký tự</p>
+        </article>
+
+        <!-- Code + board tile -->
+        <div style="display:flex;flex-direction:column;gap:28px">
+          <article class="card">
+            <h3 style="margin-top:0">Đoạn mã đồng bộ</h3>
+            <p>Gọi hàm <code>syncBoard()</code> sau khi lưu.</p>
+            <pre>// Đồng bộ hóa board với máy chủ
+async function syncBoard(id: string) {
+  const board = await repo.load(id);
+  return queue.push({ id, at: Date.now() });
+}</pre>
+          </article>
+          <div class="card">
+            <p class="meta" style="margin-bottom:10px">Board con</p>
+            <div class="board-tile-row">
+              <div class="tile"><div class="icon" style="background:#e9785e"></div><div class="name">Ý tưởng</div><div class="count">12 cards</div></div>
+              <div class="tile"><div class="icon" style="background:#a5b18d"></div><div class="name">Quản lý</div><div class="count">4 cards</div></div>
+              <div class="tile"><div class="icon" style="background:#d48ea6"></div><div class="name">Trải nghiệm</div><div class="count">7 cards</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <section class="concept" id="A" style="--heading: 'Tiempos Headline', 'Tiempos Text', Tiempos, Georgia, serif; --code: 'Roboto Mono', ui-monospace, monospace;">
+    <div class="concept-label">
+      <h2>A — Milanote Original</h2>
+      <div class="stack">Inter + Tiempos + Roboto Mono</div>
+      <div class="goal">Gần Milanote nhất.</div>
+      <div class="warn" data-tiempos-warn>Tiempos là font trả phí, không có trên Google Fonts. Nếu máy chưa cài Tiempos, heading đang hiện bằng Georgia.</div>
+    </div>
+    <div data-slot></div>
+  </section>
+
+  <section class="concept" id="B" style="--heading: Inter, system-ui, sans-serif;">
+    <div class="concept-label">
+      <h2>B — Inter Only</h2>
+      <div class="stack">Inter + Inter + JetBrains Mono</div>
+      <div class="goal">Tối giản, sạch, hiện đại (kiểu Linear/Vercel).</div>
+    </div>
+    <div data-slot></div>
+  </section>
+
+  <section class="concept" id="C" style="--heading: 'Source Serif 4', Georgia, serif;">
+    <div class="concept-label">
+      <h2>C — Inter + Source Serif 4</h2>
+      <div class="stack">Inter + Source Serif 4 + JetBrains Mono</div>
+      <div class="goal">Editorial nhưng dễ đọc, hỗ trợ tiếng Việt.</div>
+    </div>
+    <div data-slot></div>
+  </section>
+
+  <section class="concept" id="D" style="--ui: Geist, system-ui, sans-serif; --heading: Geist, system-ui, sans-serif; --code: 'Geist Mono', ui-monospace, monospace;">
+    <div class="concept-label">
+      <h2>D — Geist</h2>
+      <div class="stack">Geist + Geist + Geist Mono</div>
+      <div class="goal">Giao diện sản phẩm / developer hiện đại.</div>
+    </div>
+    <div data-slot></div>
+  </section>
+
+  <section class="concept" id="E" style="--heading: Lora, Georgia, serif;">
+    <div class="concept-label">
+      <h2>E — Inter + Lora</h2>
+      <div class="stack">Inter + Lora + JetBrains Mono</div>
+      <div class="goal">Mềm hơn, chất editorial.</div>
+    </div>
+    <div data-slot></div>
+  </section>
+
+  <section class="concept" id="F" style="--heading: Merriweather, Georgia, serif;">
+    <div class="concept-label">
+      <h2>F — Inter + Merriweather</h2>
+      <div class="stack">Inter + Merriweather + JetBrains Mono</div>
+      <div class="goal">Ưu tiên dễ đọc, cảm giác "writing app".</div>
+    </div>
+    <div data-slot></div>
+  </section>
+
+  <div class="group-title">Kiro đề xuất thêm — không theo Milanote</div>
+
+  <section class="concept" id="G" style="--ui: 'Be Vietnam Pro', system-ui, sans-serif; --heading: Literata, Georgia, serif;">
+    <div class="concept-label">
+      <h2>G — Be Vietnam Pro + Literata</h2>
+      <div class="stack">Be Vietnam Pro + Literata + JetBrains Mono</div>
+      <div class="goal">Làm cho tiếng Việt trước tiên. Be Vietnam Pro do người Việt thiết kế, dấu đặt cân, không chồng lên nhau ở chữ hoa. Literata là serif dành cho đọc dài (font của Google Play Books).</div>
+    </div>
+    <div data-slot></div>
+  </section>
+
+  <section class="concept" id="H" style="--ui: 'Plus Jakarta Sans', system-ui, sans-serif; --heading: Fraunces, Georgia, serif;">
+    <div class="concept-label">
+      <h2>H — Plus Jakarta Sans + Fraunces</h2>
+      <div class="stack">Plus Jakarta Sans + Fraunces + JetBrains Mono</div>
+      <div class="goal">Đúng ý định ban đầu của Bibo: index.css khai báo Plus Jakarta Sans (nhưng chưa tải), Fraunces đã dùng cho title card. Xem nó thực sự trông ra sao. Dáng chữ tròn, hợp với block bo góc.</div>
+    </div>
+    <div data-slot></div>
+  </section>
+
+  <section class="concept" id="I" style="--ui: 'IBM Plex Sans', system-ui, sans-serif; --heading: 'IBM Plex Serif', Georgia, serif; --code: 'IBM Plex Mono', ui-monospace, monospace;">
+    <div class="concept-label">
+      <h2>I — IBM Plex trọn bộ</h2>
+      <div class="stack">IBM Plex Sans + IBM Plex Serif + IBM Plex Mono</div>
+      <div class="goal">Một gia đình font cho cả 3 vai trò, nên sans/serif/mono khớp chiều cao và nhịp. Cảm giác sổ tay kỹ thuật, nghiêm túc.</div>
+    </div>
+    <div data-slot></div>
+  </section>
+
+  <section class="concept" id="J" style="--ui: Nunito, system-ui, sans-serif; --heading: Nunito, system-ui, sans-serif;">
+    <div class="concept-label">
+      <h2>J — Nunito</h2>
+      <div class="stack">Nunito + Nunito + JetBrains Mono</div>
+      <div class="goal">Đầu nét bo tròn, đi cùng ý bạn thích bo tròn thay vì khối vuông. Thân thiện, nhẹ nhàng, hơi "app cá nhân".</div>
+    </div>
+    <div data-slot></div>
+  </section>
+
+  <section class="concept" id="K" style="--heading: 'Space Grotesk', system-ui, sans-serif; --code: 'Space Mono', ui-monospace, monospace;">
+    <div class="concept-label">
+      <h2>K — Inter + Space Grotesk</h2>
+      <div class="stack">Inter + Space Grotesk + Space Mono</div>
+      <div class="goal">Body vẫn trung tính (Inter), heading có cá tính kiểu grotesk. Bibo có dấu ấn riêng mà phần đọc dài không bị ảnh hưởng.</div>
+    </div>
+    <div data-slot></div>
+  </section>
+
+  <section class="concept" id="L" style="--ui: 'Be Vietnam Pro', system-ui, sans-serif; --heading: Newsreader, Georgia, serif;">
+    <div class="concept-label">
+      <h2>L — Be Vietnam Pro + Newsreader</h2>
+      <div class="stack">Be Vietnam Pro + Newsreader + JetBrains Mono</div>
+      <div class="goal">Heading kiểu báo in, tương phản nét cao, sang. Body vẫn là font tối ưu cho tiếng Việt.</div>
+    </div>
+    <div data-slot></div>
+  </section>
+
+  <section class="concept" id="mix">
+    <div class="concept-label">
+      <h2>Tự phối</h2>
+      <div class="stack">Chọn font cho từng vai trò, mockup đổi ngay. Dùng để thử kết hợp chưa có ở trên.</div>
+      <div class="mix">
+        <label>UI / Body <select data-mix="--ui" data-default="Be Vietnam Pro"></select></label>
+        <label>Heading <select data-mix="--heading" data-default="Fraunces"></select></label>
+        <label>Code <select data-mix="--code" data-default="JetBrains Mono"></select></label>
+      </div>
+    </div>
+    <div data-slot></div>
+  </section>
+
+  <section id="table">
+    <div class="concept-label"><h2>So sánh</h2></div>
+    <table>
+      <thead><tr><th>Concept</th><th>UI</th><th>Heading</th><th>Code</th><th>Feeling</th></tr></thead>
+      <tbody>
+        <tr><td>A</td><td>Inter</td><td>Tiempos</td><td>Roboto Mono</td><td class="eval">[My evaluation]</td></tr>
+        <tr><td>B</td><td>Inter</td><td>Inter</td><td>JetBrains Mono</td><td class="eval">[My evaluation]</td></tr>
+        <tr><td>C</td><td>Inter</td><td>Source Serif 4</td><td>JetBrains Mono</td><td class="eval">[My evaluation]</td></tr>
+        <tr><td>D</td><td>Geist</td><td>Geist</td><td>Geist Mono</td><td class="eval">[My evaluation]</td></tr>
+        <tr><td>E</td><td>Inter</td><td>Lora</td><td>JetBrains Mono</td><td class="eval">[My evaluation]</td></tr>
+        <tr><td>F</td><td>Inter</td><td>Merriweather</td><td>JetBrains Mono</td><td class="eval">[My evaluation]</td></tr>
+        <tr><td>G</td><td>Be Vietnam Pro</td><td>Literata</td><td>JetBrains Mono</td><td class="eval">[My evaluation]</td></tr>
+        <tr><td>H</td><td>Plus Jakarta Sans</td><td>Fraunces</td><td>JetBrains Mono</td><td class="eval">[My evaluation]</td></tr>
+        <tr><td>I</td><td>IBM Plex Sans</td><td>IBM Plex Serif</td><td>IBM Plex Mono</td><td class="eval">[My evaluation]</td></tr>
+        <tr><td>J</td><td>Nunito</td><td>Nunito</td><td>JetBrains Mono</td><td class="eval">[My evaluation]</td></tr>
+        <tr><td>K</td><td>Inter</td><td>Space Grotesk</td><td>Space Mono</td><td class="eval">[My evaluation]</td></tr>
+        <tr><td>L</td><td>Be Vietnam Pro</td><td>Newsreader</td><td>JetBrains Mono</td><td class="eval">[My evaluation]</td></tr>
+      </tbody>
+    </table>
+  </section>
+</main>
+
+<script>
+  // Nhân mockup vào 6 concept.
+  const tpl = document.getElementById('mockup');
+  document.querySelectorAll('[data-slot]').forEach((slot) => {
+    slot.replaceWith(tpl.content.cloneNode(true));
+  });
+
+  // Tự phối: 3 dropdown → biến CSS của riêng section #mix.
+  const FONT_GROUPS = {
+    Sans: ['Inter', 'Be Vietnam Pro', 'Plus Jakarta Sans', 'Geist', 'IBM Plex Sans', 'Nunito', 'Space Grotesk'],
+    Serif: ['Source Serif 4', 'Literata', 'Fraunces', 'Newsreader', 'Lora', 'Merriweather', 'IBM Plex Serif', 'Tiempos Headline'],
+    Mono: ['JetBrains Mono', 'Roboto Mono', 'Geist Mono', 'IBM Plex Mono', 'Space Mono'],
+  };
+  const GENERIC_OF = { Sans: 'sans-serif', Serif: 'serif', Mono: 'monospace' };
+  const mixSection = document.getElementById('mix');
+  mixSection.querySelectorAll('select[data-mix]').forEach((sel) => {
+    const groups = sel.dataset.mix === '--code' ? ['Mono'] : ['Sans', 'Serif'];
+    for (const g of groups) {
+      const og = document.createElement('optgroup');
+      og.label = g;
+      for (const f of FONT_GROUPS[g]) og.append(new Option(f, `"${f}", ${GENERIC_OF[g]}`));
+      sel.append(og);
+    }
+    const def = [...sel.options].find((o) => o.text === sel.dataset.default);
+    if (def) def.selected = true;
+    const update = () => mixSection.style.setProperty(sel.dataset.mix, sel.value);
+    sel.addEventListener('change', update);
+    update();
+  });
+
+  // Thanh điều khiển → biến CSS trên :root, mọi mockup cập nhật cùng lúc.
+  const root = document.documentElement;
+  const controls = [
+    ['bodySize', '--body-size', 14],
+    ['h1Size', '--h1-size', 24],
+    ['lineHeight', '--body-lh', 20],
+  ];
+  const apply = () => {
+    for (const [id, cssVar] of controls) {
+      const input = document.getElementById(id);
+      root.style.setProperty(cssVar, input.value + 'px');
+      document.getElementById(id + 'Out').textContent = input.value + 'px';
+    }
+  };
+  controls.forEach(([id]) => document.getElementById(id).addEventListener('input', apply));
+  document.getElementById('reset').addEventListener('click', () => {
+    controls.forEach(([id, , def]) => (document.getElementById(id).value = def));
+    apply();
+  });
+
+  // Light / Dark.
+  document.querySelectorAll('[data-theme-btn]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      root.dataset.theme = btn.dataset.themeBtn;
+      document.querySelectorAll('[data-theme-btn]').forEach((b) =>
+        b.setAttribute('aria-pressed', String(b === btn)),
+      );
+    });
+  });
+
+  // Ẩn cảnh báo Tiempos nếu máy đã cài font này.
+  document.fonts.ready.then(() => {
+    const has = ['Tiempos Headline', 'Tiempos Text', 'Tiempos'].some((f) =>
+      document.fonts.check(`600 24px "${f}"`, 'Đ') && isLocalFont(f),
+    );
+    if (has) document.querySelector('[data-tiempos-warn]')?.remove();
+  });
+  // ---------- Hover → hiện tên font thật đang hiển thị ----------
+  // CSS chỉ cho biết danh sách font (VD "Tiempos, Georgia, serif"), không cho biết
+  // font nào thực sự được dùng. Lấy font đầu tiên trong danh sách mà trình duyệt
+  // có: font web đã tải xong, hoặc font cài trên máy. Không phải font đầu tiên
+  // → đánh dấu "dự phòng" để biết font mong muốn không tải được.
+  const tip = document.getElementById('fontTip');
+  const GENERIC = new Set(['serif', 'sans-serif', 'monospace', 'system-ui', 'ui-monospace', 'cursive', 'fantasy']);
+  let hovered = null;
+
+  const unquote = (s) => s.trim().replace(/^["']|["']$/g, '');
+  const loadedWebFonts = () => {
+    const set = new Set();
+    document.fonts.forEach((f) => { if (f.status === 'loaded') set.add(unquote(f.family)); });
+    return set;
+  };
+  function resolveFont(stack) {
+    const families = stack.split(',').map(unquote);
+    const web = loadedWebFonts();
+    for (let i = 0; i < families.length; i++) {
+      const f = families[i];
+      if (GENERIC.has(f)) return { name: f === 'serif' ? 'serif mặc định (thường là Times New Roman)' : f + ' mặc định', fallback: i > 0 };
+      if (web.has(f) || isLocalFont(f)) return { name: f, fallback: i > 0, wanted: families[0] };
+    }
+    return { name: 'không rõ', fallback: true };
+  }
+  function roleOf(el) {
+    if (el.closest('pre, code')) return 'Code';
+    if (el.closest('h1, h2, h3, .board-title')) return 'Heading';
+    return 'UI / Body';
+  }
+  function show(el, x, y) {
+    const cs = getComputedStyle(el);
+    const font = resolveFont(cs.fontFamily);
+    const concept = el.closest('.concept')?.id ?? '';
+    const style = cs.fontStyle === 'italic' ? ' italic' : '';
+    tip.innerHTML =
+      `<span class="role">${concept} · ${roleOf(el)}</span> &nbsp;${font.name}` +
+      (font.fallback && font.wanted ? ` <span class="fallback">(dự phòng, ${font.wanted} không có)</span>` : '') +
+      `<br><span class="spec">${parseFloat(cs.fontSize)}px / ${cs.lineHeight} · weight ${cs.fontWeight}${style}</span>`;
+    tip.style.display = 'block';
+    // Giữ tooltip trong màn hình.
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.min(x + 14, window.innerWidth - w - 8) + 'px';
+    tip.style.top = (y + 18 + h > window.innerHeight ? y - h - 10 : y + 18) + 'px';
+  }
+  document.addEventListener('mousemove', (e) => {
+    const el = e.target instanceof Element && e.target.closest('.canvas') ? e.target : null;
+    // Chỉ phần tử có chữ trực tiếp (bỏ khung, khối màu trống).
+    const textEl = el && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) ? el : null;
+    if (textEl !== hovered) {
+      hovered?.classList.remove('font-hover');
+      hovered = textEl;
+      hovered?.classList.add('font-hover');
+    }
+    if (hovered) show(hovered, e.clientX, e.clientY);
+    else tip.style.display = 'none';
+  });
+
+  // fonts.check() trả true cả khi font không tồn tại (không cần tải) → so bề rộng với fallback.
+  function isLocalFont(name) {
+    const c = document.createElement('canvas').getContext('2d');
+    const sample = 'Đặng Nguyễn Tưởng tượng';
+    c.font = `600 24px monospace`;
+    const base = c.measureText(sample).width;
+    c.font = `600 24px "${name}", monospace`;
+    return c.measureText(sample).width !== base;
+  }
+</script>
+</body>
+</html>

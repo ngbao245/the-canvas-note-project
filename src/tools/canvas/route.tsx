@@ -17,7 +17,8 @@ import { CanvasHeader } from './components/CanvasHeader';
  * Canvas route: hỗ trợ 3 pattern URL (từ nested-boards spec):
  *   /canvas                          → root board
  *   /canvas/:boardId                 → nested board
- *   /canvas/:boardId/:slug           → nested board với slug (URL đọc được)
+ *   /canvas/:boardId/:slug           → link cũ, redirect về `/canvas/:boardId`
+ *                                      (URL chỉ dùng id từ 2026-10-02)
  *
  * Bootstrap 1 lần (load boards từ IDB). useBoardSync theo dõi currentBoardId
  * → load objects + hydrate camera + persist callback theo board đang xem.
@@ -30,13 +31,15 @@ export default function CanvasRoute() {
   const params = useParams<{ boardId?: string; slug?: string }>();
   const navigate = useNavigate();
   const paramBoardId = params.boardId ?? null;
+  const hasSlug = params.slug !== undefined;
 
   const bootstrap = useCanvasBootstrap();
   const rootBoard = bootstrap.state.phase === 'ready' ? bootstrap.state.rootBoard : null;
 
-  // currentBoardId semantics: null = root. Root board id trong URL → canonical.
+  // URL `/canvas` = Home, nhưng board đang xem luôn là id thật (Home cũng vậy).
+  // null chỉ khi bootstrap chưa xong. Id Home trong URL → canonical `/canvas`.
   const isCanonicalRoot = rootBoard !== null && paramBoardId === rootBoard.id;
-  const currentBoardId = paramBoardId;
+  const currentBoardId = paramBoardId ?? rootBoard?.id ?? null;
 
   // Sync URL param → store (consumer khác đọc store thay vì gọi useParams lại).
   useEffect(() => {
@@ -50,22 +53,26 @@ export default function CanvasRoute() {
       navigate('/canvas', { replace: true });
       return;
     }
-    if (currentBoardId !== null) {
-      const exists = useBoardsStore.getState().boards.has(currentBoardId);
+    // Link cũ có slug (`/canvas/:id/:slug`) → URL chỉ id.
+    if (paramBoardId !== null && hasSlug) {
+      navigate(`/canvas/${paramBoardId}`, { replace: true });
+      return;
+    }
+    if (paramBoardId !== null) {
+      const exists = useBoardsStore.getState().boards.has(paramBoardId);
       if (!exists) {
         navigate('/canvas', { replace: true });
       }
     }
-  }, [currentBoardId, rootBoard, isCanonicalRoot, navigate]);
+  }, [paramBoardId, rootBoard, isCanonicalRoot, hasSlug, navigate]);
 
   // Sync objects + camera + persist theo currentBoardId đang xem.
   useBoardSync({ currentBoardId, rootBoard });
 
   // Resolve Board record đang xem để pass xuống Header.
-  const currentBoard = useBoardsStore((s) => {
-    if (!rootBoard) return null;
-    return currentBoardId ? (s.boards.get(currentBoardId) ?? null) : rootBoard;
-  });
+  const currentBoard = useBoardsStore((s) =>
+    currentBoardId ? (s.boards.get(currentBoardId) ?? null) : null,
+  );
 
   const resetCamera = useCameraStore((s) => s.reset);
 
@@ -104,7 +111,7 @@ export default function CanvasRoute() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
       <CanvasHeader board={currentBoard} onFit={handleFit} onReset={resetCamera} />
-      <CanvasApp boardId={currentBoardId} />
+      <CanvasApp boardId={currentBoard.id} />
     </div>
   );
 }

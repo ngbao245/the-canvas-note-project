@@ -7,8 +7,8 @@
 // object type của mình. Nhờ đó Phase B thêm loại object (note/text/image/link)
 // không đụng engine core.
 //
-// `boardId: string | null` sẵn từ Phase A (null = root board). Phase D nested
-// boards không phải migrate schema.
+// `boardId` luôn là id board thật, kể cả board gốc (Home). Bản cũ lưu `null`
+// cho object trên Home; bootstrap chuyển đổi 1 lần (`migrateRootObjects`).
 // ============================================================
 
 import { z } from 'zod';
@@ -33,7 +33,7 @@ export type Geometry = z.infer<typeof geometrySchema>;
 export const canvasObjectSchema = z.object({
   id: z.string(),
   type: z.string(), // 'rect' Phase A; 'note' | 'text' | 'image' | 'link' Phase B; 'board' nested
-  boardId: z.string().nullable(), // null = root board
+  boardId: z.string(), // id board chứa object (Home cũng là id thật)
   geometry: geometrySchema,
   data: z.unknown(),
   /**

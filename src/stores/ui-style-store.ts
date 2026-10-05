@@ -5,10 +5,12 @@ import { persist } from 'zustand/middleware';
  * Store phong cách hiển thị (trục độc lập với theme màu).
  * - hand: vẽ tay (drawably) — mặc định
  * - flat: phẳng (shadcn thuần theme token)
- * Lưu localStorage. Chưa expose UI toggle giai đoạn này.
+ * Lưu localStorage. Đổi trong Cài đặt → Giao diện.
  */
 
 export type UiStyle = 'hand' | 'flat';
+
+export const DEFAULT_UI_STYLE: UiStyle = 'hand';
 
 interface UiStyleState {
   style: UiStyle;
@@ -19,7 +21,7 @@ interface UiStyleState {
 export const useUiStyleStore = create<UiStyleState>()(
   persist(
     (set, get) => ({
-      style: 'hand',
+      style: DEFAULT_UI_STYLE,
       setStyle: (style) => set({ style }),
       toggle: () => set({ style: get().style === 'hand' ? 'flat' : 'hand' }),
     }),

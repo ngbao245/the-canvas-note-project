@@ -700,3 +700,174 @@ Sửa:
 Còn mở: board tile phần ngoài icon/chữ trong suốt → nhìn xuyên thấy viền + icon resize card dưới nhưng bấm
 không được (khung trong suốt của card trên vẫn nhận chuột). Chờ bạn chốt: giữ / nền đặc / cho bấm xuyên.
 Card cũ có thể có 2 viền chồng (`ring-2` ObjectShell + border SelectionBox) — chưa xử, chờ bạn nhìn.
+
+### Fix 2026-10-02 — viền chọn Board chỉ bọc khối vuông (Milanote parity)
+
+Trước: Board chọn có 2 viền bọc cả tile 98x139 (SelectionBox + `ring-2` ObjectShell bare), có icon resize.
+
+Sửa:
+- Registry thêm `ownSelectionFrame?: boolean`. true → ObjectView không vẽ SelectionBox cả card, renderer tự đặt
+  `<SelectionBox>` trong phần tử thân. Image/Link sau này dùng lại field này.
+- `SelectionBox({ id, resizable?, radius? })`: bỏ width/height, dùng `inset: -border` → bọc đúng phần tử cha, vị trí
+  lấy từ layout thật (không hard-code 13/8). `resizable=false` ẩn icon resize. `radius` (CSS) → bo ngoài = radius + border.
+  Bỏ nhánh "dragging → null": card nguồn đã `visibility:hidden` nên viền con ẩn theo, còn preview cần viền.
+- Board: SelectionBox trong icon 72x72, `resizable={false}`, `radius="var(--radius)"` (khớp `rounded-lg`).
+- ObjectShell `bare` bỏ ring + overflow-hidden (type bare tự vẽ viền).
+- FloatingObjectPreview: type `ownSelectionFrame` không có shadow cả khung (khung trong suốt lộ hình chữ nhật thừa).
+  Preview Board tự có viền quanh khối vuông vì render cùng Renderer.
+- Note giữ nguyên: viền cả card + icon resize, preview vẫn dùng `ring-2` ObjectShell.
+
+Còn mở (chưa đụng): tile Board phần trong suốt vẫn nhận chuột; viền đôi Note (`ring-2` + SelectionBox) chờ bạn xác nhận.
+
+### Fix 2026-10-02 — breadcrumb nhiều cấp + URL chỉ id
+
+Lỗi gốc: `createBoardAt` nhận `boardId` hiện tại (root = null) và ghi thẳng vào `Board.parentId` → board cấp 1
+cũng `parentId: null` như root. Breadcrumb mất cấp, cấp 1 hiện "Home", màu xoay đếm lẫn root, bootstrap có thể chọn nhầm root.
+
+Sửa:
+- `lib/board-tree.ts` (mới): `normalizeBoards` lúc bootstrap. Root = board `parentId: null` tạo sớm nhất. Board `null`
+  khác → `parentId = root.id`. Root tên cũ "Home" → "Board". Board đã sửa được lưu lại IDB. `findRootBoardId`.
+- `createBoardAt`: `parentId = parentBoardId ?? rootId`. Object trên root vẫn `boardId: null` (quy ước cũ giữ nguyên).
+- `makeDefaultBoard` tên "Board".
+- Root giữ tên "Home". `normalizeBoards` sửa ngược nếu bản fix lỡ đổi thành "Board".
+- Header: bỏ nút mũi tên về trang chủ. Mục root = logo tạm (tròn đen 18px) + tên. Các mục hiện `board.name`.
+- URL chỉ id: `/canvas/:id`. Link cũ `/canvas/:id/:slug` redirect về `/canvas/:id`. Đổi tên không sửa URL.
+  `lib/slug.ts` không còn chỗ dùng (giữ lại).
+
+Còn mở: kéo Board tile sang board khác (cross-board / Unsort) KHÔNG cập nhật `parentId` của Board entity → sau khi
+chuyển, breadcrumb board đó vẫn chỉ về cha cũ. Bug có từ trước, chưa sửa.
+
+### Fix 2026-10-02 — viền chọn lệch so với khối màu Board
+
+`SelectionBox` đổi từ `inset: -border` + `border` sang `inset: 0` + `box-shadow: 0 0 0 {border}px primary`. Lý do (suy
+luận, chưa đo trên trình duyệt): khi zoom ≠ 100% `border = 2/zoom` lẻ, mép trong viền và mép khối màu làm tròn khác nhau →
+hở/lệch vài cạnh. Box-shadow mọc từ đúng mép hộp nên khít. Bo góc mặc định đổi sang `calc(var(--radius) - 4px)` (= rounded-sm
+canvas-space của card, trước là 6px màn hình). Chấm QuickLine + icon resize bù lại 1 border để giữ vị trí cũ.
+
+### Fix 2026-10-02 — chấm QuickLine bám theo góc bo
+
+Milanote khối vuông nên chấm ở góc hộp nằm đúng trên viền. Bibo bo góc (Board `var(--radius)` 10px, Note 6px) → góc hộp
+là khoảng trống ngoài đường cong, chấm lơ lửng. `QuickLineDot` nhận `radius`, đặt tâm lên đường giữa viền tại điểm 45° của
+cung: `inset = r - (r + border/2) * 0.70711 - size/2` (CSS calc). Đổi radius (kể cả 0) chấm tự theo.
+
+### 2026-10-02 — Header 1 hàng 3 phần + breadcrumb rút theo bề rộng
+
+- `CanvasHeader.tsx`: bỏ 2 hàng (ToolsRow/BoardRow). Giờ 1 hàng `h-11`: left (breadcrumb) / center (title, ẩn ở Home,
+  tối đa 40%) / right (số object + View + Undo/Redo + theme/style/settings). Left và right cùng `flex-1` → title nằm giữa
+  khi đủ chỗ; right không co dưới cụm nút; left co tới 0. Title tạm cắt "…" 1 dòng (cách hiển thị tên dài: bàn sau).
+- `BreadcrumbList.tsx` (mới): Home (logo tròn đen) + ô màu `Board.color` mỗi cấp + tên. Cấp giữa tối đa 160px cắt "…".
+  Thiếu chỗ → ẩn dần cấp giữa từ gần Home, thay bằng nút "..." mở menu các cấp ẩn (Esc/bấm ngoài đóng, Esc không lọt
+  xuống canvas). Ẩn hết vẫn thiếu → tên hiện tại cắt "…". Lúc đo, mục hiện tại tính tối đa 240px để tên rất dài không
+  đẩy ẩn mất cấp cha (giống DOM Milanote).
+- `hooks/useBreadcrumbFit.ts` (mới): lớp đo ẩn + ResizeObserver (khung + lớp đo) + `computeHiddenCount` pure.
+- Số 160/240px và thứ tự ẩn là Kiro tự chọn theo DOM Milanote, không có quy tắc công khai.
+
+### 2026-10-02 (cuối session) — header chốt lại 2 hàng, không title giữa
+
+Thay mục "Header 1 hàng 3 phần" ở trên (đã lỗi thời):
+- `CanvasHeader.tsx` 2 hàng: hàng 1 = breadcrumb (trái, `flex-1 min-w-0`) + `ToolsCluster` (phải, `shrink-0`: Undo/Redo,
+  theme, style, Settings "sắp có"). Hàng 2 = số object (trái) + View (phải).
+- Bỏ title board ở giữa header (`TitleEditable` đã xoá). Breadcrumb đủ để biết đang ở đâu. Đổi tên board: double-click
+  tên trên tile ở board cha.
+- Breadcrumb: mọi mục max-w 300px (Milanote `max-width: 30rem`). Mục hiện tại chữ mờ `text-muted-foreground`, không
+  phải link, `aria-current="page"`. Cấp cha `text-foreground`, hover nền `bg-muted`.
+- Font: app khai báo `'Plus Jakarta Sans', Inter` nhưng KHÔNG tải font nào ngoài Fraunces → đang hiện Segoe UI. Chưa
+  quyết font. Đang so trong `mockups/typography-playground.html` (12 concept A–L + Tự phối, hover hiện tên font).
+- Còn mở: tên dài ở title (không còn title giữa nên có thể bỏ câu hỏi này). Hai việc "lưu id board gốc thay `null`"
+  và "kéo Board tile không cập nhật `parentId`" đã xong 2026-10-05 (xem các mục Fix 2026-10-05 bên dưới).
+
+## Session 2026-10-05 — Popup tài khoản + modal Cài đặt (bản thử, chưa có spec)
+
+Bạn bảo "làm thử" theo Milanote AccountPopup + `mockups/10-settings.html`. Chưa viết spec `settings`.
+- `src/stores/settings-modal-store.ts` (mới): `open`, `section` ('appearance' | 'account'), không persist.
+- `src/components/settings/AccountMenu.tsx` (mới): nút avatar tròn trên header (thay nút Settings "sắp có") →
+  popup có mũi tên: avatar + "Khách / Chưa đăng nhập" + Cài đặt + Đăng nhập (tắt). Phần 2 báo dữ liệu lưu trên trình duyệt.
+- `src/components/settings/SettingsModal.tsx` (mới): modal phủ toàn màn hình, mount 1 lần ở `App.tsx`. Nav trái
+  (Giao diện, Tài khoản) + nội dung. Giao diện: theme Tối/Sáng (preview dùng `data-theme` cục bộ, không hard-code màu),
+  phong cách Vẽ tay/Phẳng, Font "Sắp có". Esc đóng, trả focus về chỗ cũ.
+- RULE: modal mở thì chặn mọi keydown ở window capture (stopPropagation, không preventDefault) để phím canvas
+  (Ctrl+Z, Delete, F, 0) không chạy ngầm sau modal.
+- Bạn chốt: bỏ nút theme + style khỏi header, chỉ đổi trong Cài đặt. Header phải còn Undo/Redo | avatar.
+- Bạn duyệt bản thử. Vỏ 6 mục: Tài khoản, Giao diện, Canvas, Thanh công cụ, Phím tắt, Dữ liệu (`SECTIONS` trong
+  `SettingsModal.tsx`). Giao diện chạy thật, Tài khoản chỉ ghi "Khách", 4 mục còn lại là EmptyState "Sắp có".
+  Email/thông báo và Ngôn ngữ (Milanote có) tạm không đưa vào. Nội dung từng mục bàn sau, chưa có spec.
+- Fix nhích ngang khi chuyển mục: bạn chọn giữ bố cục căn giữa (header tiêu đề + X, khối max-w-4xl giữa màn hình:
+  menu 200px | nội dung). Chống co dãn: vùng cuộn `scrollbar-gutter: stable`, khối `w-full`, cột nội dung
+  `minmax(0,1fr)`, mục menu đang chọn không đậm hơn. Chuyển mục → `scrollTo(0)` (không remount, giữ focus).
+- Quyết định mục Dữ liệu (bạn chọn A):
+  - Phase 1 chỉ xem: số board, số object, dung lượng. Vỏ đã có (`DataSection`), số hiện "—", chưa nối IDB.
+  - Export chính lâu dài ở backend (sau này IDB chỉ là bản offline, nguồn chuẩn là DB backend). Trước khi export
+    phải đồng bộ xong; còn thay đổi chưa đẩy lên thì báo rõ.
+  - Export tạm ở frontend chỉ làm khi bạn bắt đầu có board thật mà backend chưa có. Lúc đó mới chốt định dạng file
+    có `version`. Lý do chưa làm: cấu trúc Canvas còn đổi (root id, parentId khi kéo board).
+- Chưa có: "Theo hệ thống", mục Canvas (grid, zoom), nút reset mặc định, focus trap đầy đủ.
+
+### Fix 2026-10-05 — kéo Board tile sang board khác cập nhật `parentId`
+
+Lỗi gốc: `moveObjectsToUnsort` (đường duy nhất đổi `boardId` cross-board, dùng bởi `useObjectDrag` thả lên tile và
+`useUnsortDrag` kéo từ Unsort lên tile) chỉ đổi object, không đổi `Board.parentId` của board mà tile trỏ tới.
+
+Sửa `engine/actions.ts`:
+- Trong cụm đang chuyển, tile type `board` → `reparentBoards` gán `parentId = targetBoardId`, persist IDB.
+- Undo trả `parentId` cũ (`restoreBoardParents`); redo gọi lại action nên tự reparent lại.
+- Chặn tạo vòng: target là chính board đó hoặc board con của nó → bỏ qua cả thao tác.
+- Không sửa data cũ đã lệch: board đã kéo trước bản fix vẫn trỏ cha cũ. Kéo lại 1 lần là đúng.
+- Bạn đã test và xác nhận chạy đúng (2026-10-05). Bug này đóng, bỏ khỏi danh sách "còn mở" ở mục cuối session 2026-10-02.
+
+### Fix 2026-10-05 — bỏ quy ước `boardId: null` = Home (không spec, bạn duyệt fix thẳng)
+
+Trước: object trên Home lưu `boardId: null`, còn Board Home có id thật → phải đổi `null` ↔ id gốc ở nhiều chỗ
+(nguồn của bug breadcrumb 2026-10-02). Giờ `boardId` luôn là id board thật.
+
+- `types.ts`: `canvasObjectSchema.boardId` là `z.string()`.
+- Chuyển đổi dữ liệu cũ: `api.ts` thêm `loadLegacyRootObjects()` (đọc object còn `boardId: null`) + type
+  `LegacyRootObject`. `lib/board-tree.ts` thêm `migrateRootObjects` (pure), bỏ `findRootBoardId`.
+  `useCanvasBootstrap` chạy chuyển đổi sau khi xác định root, trước khi báo ready → lưu IDB, lần sau rỗng.
+- `route.tsx`: URL `/canvas` vẫn là Home, nhưng `currentBoardId = paramBoardId ?? rootBoard.id`. Store
+  `currentBoardId` null chỉ khi bootstrap chưa xong. `CanvasApp` nhận `currentBoard.id`.
+- `useBoardSync`: bỏ `?? rootBoard.id`, chờ có `currentBoardId`.
+- `engine/actions.ts`: mọi `boardId: string | null` → `string`. `createBoardAt` dùng thẳng `parentBoardId`.
+- Prop `boardId` của CanvasApp / CanvasSurface / Toolbar / UnsortPanel / UnsortToggle là `string`.
+  `objects-store.updateBoardId` nhận `string`.
+- Chỗ đọc store (có thể null lúc chưa xong): `useCanvasKeys` paste, `useUnsortDrag` reorder, `CardClipperButton`
+  → bỏ qua nếu null. Object giả dùng cho preview (toolbar, card clipper) dùng `boardId: ''`.
+- Giữ nguyên: `Board.parentId: null` của Home (Home thật sự không có cha), `isRootBoard`, BreadcrumbList.
+
+Build pass, eslint 0 error. Bạn đã test trên trình duyệt (2026-10-05): dữ liệu Home cũ còn đủ, chạy đúng. Đóng.
+
+### 2026-10-05 — Cài đặt: các mục không cần backend (spec `.kiro/specs/settings/`)
+
+Bạn duyệt checklist rồi bảo làm hết phần không cần backend 1 lượt. 5 task đã tick.
+- Tách `SettingsModal.tsx`: khung + menu + giữ Tab trong modal (`trapTab`). Khối dùng chung `SettingsBlocks.tsx`
+  (Section có `onReset`, Field, Row, OptionCard, Switch, Segmented, SoonBadge). Từng mục ở `settings/sections/`.
+- Giao diện: theme thêm "Theo hệ thống". `theme-store` lưu lựa chọn (`ThemePreference`), `useResolvedTheme()` giải ra
+  dark/light + nghe máy đổi (`useSyncExternalStore` + matchMedia). App/StyleDemo dùng hook này. Đặt lại → Tối + Vẽ tay.
+- Canvas: store mới `src/stores/canvas-settings-store.ts` (key `bibo-canvas-settings`): `showGrid`, `scrollSpeed`
+  (Chậm 0.3 / Vừa 0.5 / Nhanh 0.8). `CanvasSurface` ẩn 2 lớp chấm bằng `hidden`, wheel đọc `getState()` mỗi lần cuộn.
+  Hút cạnh vẫn luôn bật, không có setting.
+- Phím tắt: `ShortcutsSection` danh sách chỉ xem. RULE: thêm/đổi phím ở useCanvasKeys / useDeleteKey /
+  usePointerInteraction / CanvasApp thì sửa danh sách này cùng lúc.
+- Dữ liệu: `api.ts` thêm `countAll()` (đếm key, không đọc value). `DataSection` dùng `useQuery`, import động
+  `@/tools/canvas/api`, dung lượng từ `navigator.storage.estimate` (cả origin). Skeleton lúc chờ, ErrorState khi lỗi.
+- Còn ngoài spec: Thanh công cụ (bàn sau), Font (chờ chọn), Tài khoản / Sao lưu / đồng bộ (chờ backend).
+
+Build pass, lint 0 error (11 warning cũ). Chưa test trên trình duyệt lúc ghi.
+
+### 2026-10-05 — Cài đặt thêm Email và thông báo, Ngôn ngữ và vùng (vỏ)
+
+Bạn yêu cầu bổ sung đủ 5 mục Milanote. Thứ tự menu: Tài khoản, Email và thông báo, Giao diện, Ngôn ngữ và vùng,
+Thanh công cụ (theo Milanote), rồi Canvas, Phím tắt, Dữ liệu (riêng bibo).
+- `sections/NotificationsSection.tsx`: 4 dòng (tóm tắt hoạt động, nhắc tên, mời vào board, tin tức sản phẩm), đều
+  "Sắp có". Khi có backend: thành Switch, lưu theo tài khoản (không localStorage).
+- `sections/LocalizationSection.tsx`: Ngôn ngữ (Tiếng Việt), Định dạng ngày (dd/mm/yyyy), Ngày đầu tuần (Thứ Hai) —
+  hiện giá trị đang dùng + "Chưa đổi được". Đổi ngôn ngữ cần hệ thống dịch = spec riêng; ngày giờ chưa có chỗ hiện.
+- Chữ UI còn lẫn Anh ("Fit content", "Undo", "objects", "New Board") — chưa đổi.
+
+### 2026-10-05 — Plan đa ngôn ngữ (chuyển sang session mới)
+
+Bạn quyết làm đa ngôn ngữ ở session riêng, xong quay lại session Cài đặt. Plan: `.kiro/specs/i18n/`
+(requirements 5 US, design có 3 câu cần chốt, tasks 7 task / 3 phase). Chưa code gì.
+- Session mới bắt đầu bằng: đọc `.kiro/specs/i18n/` → hỏi 3 câu chốt (thư viện hay tự viết; ngôn ngữ lần đầu;
+  tên mặc định "Home"/"New Board") → bạn duyệt tasks → Builder.
+- Session Cài đặt còn việc khi quay lại: Thanh công cụ (bật/tắt nút), Font (chờ chọn). Tài khoản, Email và
+  thông báo, Sao lưu chờ backend. Mục Ngôn ngữ và vùng sẽ được session i18n làm chạy thật (Task 2).

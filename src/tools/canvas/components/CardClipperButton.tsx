@@ -91,7 +91,7 @@ export function CardClipperButton({
     const mockObject: CanvasObject = {
       id: '__card_clipper_preview__',
       type: 'note',
-      boardId: null,
+      boardId: '', // preview không thuộc board nào
       geometry: {
         x: 0,
         y: 0,
@@ -140,7 +140,7 @@ export function CardClipperButton({
       if (!wasDragging) return; // click no-op, chỉ drag mới clip
       if (hitZone(ev.clientX, ev.clientY) !== 'canvas') return; // drop invalid
       const c = clientToCanvas(ev.clientX, ev.clientY, getCameraEngine().getCamera());
-      if (!c) return;
+      if (!c || !boardId) return;
       // Milanote parity: default Cut, Alt = Copy.
       const cut = !ev.altKey;
       clipParagraphToNewNote(sourceId, paragraphIndex, c.x, c.y, boardId, cut);
@@ -177,7 +177,7 @@ export function CardClipperButton({
             {
               id: '__card_clipper_preview__',
               type: 'note',
-              boardId: null,
+              boardId: '',
               geometry: {
                 x: 0,
                 y: 0,

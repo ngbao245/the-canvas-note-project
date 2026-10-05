@@ -11,11 +11,9 @@ import { getCameraEngine } from '../engine/camera-engine';
  *   - Flush camera persist của board trước (tránh mất state đang debounce).
  *   - Hydrate camera của board mới (snap không ramp).
  *   - Update persist callback trỏ đúng boardId mới.
- *   - Load objects theo boardId (null = root, hoặc real id).
+ *   - Load objects theo boardId.
  *
- * `currentBoardId` null = root. Root persist camera qua rootBoard.id thực
- * (Board entity trong DB), object trên root lưu boardId=null (giữ inconsistency
- * đã ship từ Phase A — không migrate).
+ * `currentBoardId` luôn là id thật (Home cũng vậy); null = bootstrap chưa xong.
  */
 export function useBoardSync({
   currentBoardId,
@@ -25,13 +23,12 @@ export function useBoardSync({
   rootBoard: Board | null;
 }) {
   useEffect(() => {
-    if (!rootBoard) return;
+    if (!rootBoard || !currentBoardId) return;
 
     const repo = getCanvasRepository();
     const engine = getCameraEngine();
 
-    // ID để persist camera: null (root) → rootBoard.id thực.
-    const persistBoardId = currentBoardId ?? rootBoard.id;
+    const persistBoardId = currentBoardId;
     const target = useBoardsStore.getState().boards.get(persistBoardId);
     if (!target) return; // Invalid — route.tsx sẽ redirect về `/canvas`.
 
@@ -43,7 +40,6 @@ export function useBoardSync({
       void repo.saveCamera(persistBoardId, camera);
     });
 
-    // Load objects: currentBoardId null → boardId=null; nested → real id.
     let cancelled = false;
     (async () => {
       try {

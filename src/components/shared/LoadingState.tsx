@@ -1,4 +1,5 @@
 import { Loader2 } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 import { Skeleton } from './Skeleton';
 
 /**
@@ -20,10 +21,13 @@ interface LoadingStateProps {
 
 export function LoadingState({
   variant = 'default',
-  label = 'Đang tải...',
+  label: labelProp,
   count = 6,
   className = '',
 }: LoadingStateProps) {
+  // Chữ mặc định dịch lúc render, không đặt ở default param (chạy ngoài lúc dịch theo ngôn ngữ).
+  const { t } = useI18n();
+  const label = labelProp ?? t('COMMON.LOADING');
   if (variant === 'skeleton') {
     return (
       <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 ${className}`}>

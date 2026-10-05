@@ -133,7 +133,7 @@ export function useToolbarDrag(opts: {
         const mockObject: CanvasObject = {
           id: '__toolbar_preview__',
           type: opts.type,
-          boardId: null,
+          boardId: '', // preview không thuộc board nào
           geometry: {
             x: 0,
             y: 0,

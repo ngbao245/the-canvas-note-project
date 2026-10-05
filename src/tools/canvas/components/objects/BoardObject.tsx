@@ -9,16 +9,17 @@ import { useBoardsStore } from '../../store/boards-store';
 import { useObjectsStore } from '../../store/objects-store';
 import { useInteractionStore } from '../../store/interaction-store';
 import { renameBoard } from '../../engine/actions';
-import { boardSlug } from '../../lib/slug';
 import { ObjectShell } from './ObjectShell';
+import { SelectionBox } from '../SelectionBox';
 
 /**
  * BoardObject — tile đại diện board con trên canvas cha (Milanote parity):
  *   - Icon vuông ~72x72 solid tô Board.color, rounded-lg.
  *   - Title editable inline (double-click title bubble tới ObjectsLayer set editingId).
  *   - Secondary "N cards" (shallow count objects direct children).
- *   - QuickLineDot top-right handled bởi SelectionBox (parity Note).
- *   - Double-click icon → navigate `/canvas/:linkedBoardId/:slug`.
+ *   - Viền chọn + QuickLineDot gắn vào khối vuông (SelectionBox đặt trong icon,
+ *     registry `ownSelectionFrame`). Không có icon resize.
+ *   - Double-click icon → navigate `/canvas/:linkedBoardId` (URL chỉ id).
  *   - Hover khi drop cross-board: ring primary + count preview +1.
  */
 function BoardRenderer({ object, isSelected, isEditing, onEditEnd }: ObjectRendererProps) {
@@ -46,7 +47,7 @@ function BoardRenderer({ object, isSelected, isEditing, onEditEnd }: ObjectRende
     // Stop propagation → không bubble lên ObjectsLayer (khỏi kích editing mode).
     e.stopPropagation();
     if (!board) return;
-    navigate(`/canvas/${board.id}/${boardSlug(board.name)}`);
+    navigate(`/canvas/${board.id}`);
   };
 
   return (
@@ -59,12 +60,19 @@ function BoardRenderer({ object, isSelected, isEditing, onEditEnd }: ObjectRende
         {/* Icon — click vào đây double = navigate. Ring highlight khi hover drop. */}
         <div
           onDoubleClick={onIconDoubleClick}
-          className={`h-[72px] w-[72px] rounded-lg shadow-elevation-1 transition-shadow ${
+          className={`relative h-[72px] w-[72px] rounded-lg shadow-elevation-1 transition-shadow ${
             hoveredForDrop ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''
           }`}
           style={{ backgroundColor: color }}
           aria-label={`Vào board ${name}`}
-        />
+        >
+          {/* Milanote parity: viền chọn + chấm QuickLine gắn vào khối vuông, không
+              bọc tên/"N cards". Board size cố định nên không có icon resize.
+              Đặt trong icon → vị trí lấy từ layout thật, không hard-code 13/8. */}
+          {isSelected ? (
+            <SelectionBox id={object.id} resizable={false} radius="var(--radius)" />
+          ) : null}
+        </div>
         {/* Title + count. Title double-click bubble lên ObjectsLayer → editingId set. */}
         {isEditing ? (
           <BoardTitleEditor initial={name} boardId={board?.id} onEditEnd={onEditEnd} />
@@ -149,4 +157,6 @@ registerObjectType({
   defaultData: (): BoardData => ({ linkedBoardId: '' }),
   label: 'Board',
   showInToolbar: true,
+  // Viền chọn chỉ bọc khối vuông (renderer tự đặt SelectionBox trong icon).
+  ownSelectionFrame: true,
 });

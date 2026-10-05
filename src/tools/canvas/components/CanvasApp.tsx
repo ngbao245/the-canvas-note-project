@@ -15,6 +15,7 @@ import {
 } from '../engine/actions';
 import { boardDataSchema } from '../types';
 import { isEditableTarget } from '../lib/dom';
+import { useI18n } from '@/lib/i18n';
 
 type PendingKind =
   | { kind: 'multi'; ids: string[] }
@@ -32,9 +33,10 @@ type PendingKind =
  * clip item khi drag ra panel — overlay để item cầm lên có thể phủ tự nhiên trên
  * panel (Milanote parity). Panel luôn mount, chỉ đổi transform → không state loss.
  */
-export function CanvasApp({ boardId }: { boardId: string | null }) {
+export function CanvasApp({ boardId }: { boardId: string }) {
   const [pending, setPending] = useState<PendingKind | null>(null);
   const unsortOpen = useUnsortStore((s) => s.panelOpen);
+  const { t } = useI18n();
 
   const handleDelete = useCallback((ids: string[]) => {
     const objects = useObjectsStore.getState().objects;
@@ -131,9 +133,11 @@ export function CanvasApp({ boardId }: { boardId: string | null }) {
       {pending?.kind === 'multi' ? (
         <ConfirmDialog
           open
-          title="Xoá nhiều object?"
-          description={`Sẽ xoá ${pending.ids.length} object. Undo được (Ctrl+Z).`}
-          confirmLabel="Xoá"
+          title={t('CANVAS.CONFIRM.DELETE_MANY.TITLE')}
+          description={t('CANVAS.CONFIRM.DELETE_MANY.DESCRIPTION', {
+            items: t('CANVAS.COUNT.OBJECT', { count: pending.ids.length }),
+          })}
+          confirmLabel={t('COMMON.DELETE')}
           destructive
           onConfirm={() => {
             deleteObjects(pending.ids);
@@ -145,17 +149,17 @@ export function CanvasApp({ boardId }: { boardId: string | null }) {
       {pending?.kind === 'board' ? (
         <ConfirmDialog
           open
-          title={`Xoá board "${pending.boardName}"?`}
+          title={t('CANVAS.CONFIRM.DELETE_BOARD.TITLE', { name: pending.boardName })}
           description={
             pending.count === null
-              ? 'Đang tính số content bên trong...'
+              ? t('CANVAS.CONFIRM.DELETE_BOARD.COUNTING')
               : pending.count.objects === 0 && pending.count.boards === 0
-                ? 'Board rỗng. Undo được (Ctrl+Z).'
-                : `Sẽ mất ${pending.count.objects} object` +
-                  (pending.count.boards > 0 ? ` + ${pending.count.boards} board con` : '') +
-                  '. Undo được (Ctrl+Z).'
+                ? t('CANVAS.CONFIRM.DELETE_BOARD.EMPTY')
+                : t('CANVAS.CONFIRM.DELETE_BOARD.DESCRIPTION', {
+                    items: deleteBoardItems(t, pending.count),
+                  })
           }
-          confirmLabel="Xoá cả board"
+          confirmLabel={t('CANVAS.CONFIRM.DELETE_BOARD.CONFIRM')}
           destructive
           onConfirm={() => {
             void deleteBoardCascade(pending.objectId);
@@ -166,4 +170,20 @@ export function CanvasApp({ boardId }: { boardId: string | null }) {
       ) : null}
     </div>
   );
+}
+
+/**
+ * "3 objects + 2 sub-boards": mỗi phần có số nhiều riêng nên dịch từng phần rồi ghép bằng key
+ * `COMMON.LIST_PLUS`, không cộng chuỗi cứng trong JSX.
+ */
+function deleteBoardItems(
+  t: ReturnType<typeof useI18n>['t'],
+  count: { boards: number; objects: number },
+): string {
+  const objects = t('CANVAS.COUNT.OBJECT', { count: count.objects });
+  if (count.boards === 0) return objects;
+  return t('COMMON.LIST_PLUS', {
+    a: objects,
+    b: t('CANVAS.COUNT.SUB_BOARD', { count: count.boards }),
+  });
 }

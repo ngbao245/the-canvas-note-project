@@ -20,27 +20,41 @@ import { MIN_OBJECT_SIZE } from '../types';
  * card khác nằm trên che cả card lẫn viền. Không đặt viền ở tầng riêng với
  * zIndex cố định — bản cũ làm vậy nên viền card dưới nổi đè lên card trên.
  *
- * Khi drag: return null. Card thật đang hidden, preview floating đã có viền
- * qua Renderer isSelected=true. Multi-select resize: Phase C.
+ * Vùng viền:
+ *   - Mặc định ObjectView bọc cả card.
+ *   - Type có vùng thân nhỏ hơn khung (Board: khối vuông 72x72 trong tile
+ *     98x139) đăng ký `ownSelectionFrame` trong registry, renderer tự đặt
+ *     `<SelectionBox>` bên trong phần tử thân. Viền bọc đúng phần tử cha nhờ
+ *     `inset`, không cần hard-code toạ độ.
+ *
+ * Khi drag: không cần ẩn riêng. Card nguồn bị `visibility:hidden` (useObjectDrag)
+ * nên viền con ẩn theo. Preview floating render Renderer isSelected=true → type
+ * tự vẽ viền dùng chính component này nên preview cũng chỉ bọc vùng thân.
+ * Multi-select resize: Phase C.
  */
+/** Bo góc card mặc định = rounded-sm của ObjectShell. */
+const DEFAULT_RADIUS = 'calc(var(--radius) - 4px)';
+
 export function SelectionBox({
   id,
-  width,
-  height,
+  resizable = true,
+  radius,
 }: {
   id: string;
-  width: number;
-  height: number;
+  /** false → không hiện icon resize (Board size cố định, Milanote parity). */
+  resizable?: boolean;
+  /** Bo góc của phần tử được bọc (giá trị CSS, VD 'var(--radius)'). Bỏ trống →
+   *  bo góc card (rounded-sm ObjectShell = var(--radius) - 4px). */
+  radius?: string;
 }) {
   // Subscribe zoom ở đây (chỉ mount khi card được chọn) để card không chọn
   // không re-render theo zoom 60Hz.
   const zoom = useCameraStore((s) => s.camera.zoom);
-  const dragging = useInteractionStore((s) => s.mode === 'dragging');
   const single = useSelectionStore((s) => s.selectedIds.size === 1);
-  if (dragging) return null;
 
   // border 2/zoom → luôn 2px screen. Handle/dot size cũng bù zoom để giữ constant screen.
   const border = 2 / zoom;
+  const cornerRadius = radius ?? DEFAULT_RADIUS;
 
   return (
     <div
@@ -48,22 +62,22 @@ export function SelectionBox({
       // guard check attribute này để KHÔNG kích marquee mode khi user click vào
       // handle/dot bên trong. Native listener không tôn trọng React stopPropagation.
       data-canvas-overlay="true"
-      className="pointer-events-none absolute"
+      className="pointer-events-none absolute inset-0"
       style={{
-        // Toạ độ tương đối với khối card (cha), không phải world.
-        left: -border,
-        top: -border,
-        width: width + border * 2,
-        height: height + border * 2,
-        border: `${border}px solid var(--primary)`,
-        borderRadius: `${6 / zoom}px`, // match rounded-sm của ObjectShell
+        // Hộp trùng đúng khung phần tử cha, viền vẽ bằng box-shadow loang ra ngoài.
+        // Bản cũ đặt hộp lùi ra -border (số lẻ khi zoom ≠ 100%) + border: mép
+        // trong viền và mép phần tử cha làm tròn khác nhau → hở 1 đường mảnh ở
+        // vài cạnh, trông lệch. Box-shadow mọc từ chính mép hộp nên luôn khít,
+        // bo góc ngoài tự = radius + border.
+        boxShadow: `0 0 0 ${border}px var(--primary)`,
+        borderRadius: cornerRadius,
       }}
     >
       {/* Chỉ hiện handle + dot khi 1 object select (Phase A single-resize). */}
       {single ? (
         <>
-          <QuickLineDot zoom={zoom} />
-          <CornerResizeHandle objectId={id} zoom={zoom} />
+          <QuickLineDot zoom={zoom} border={border} radius={cornerRadius} />
+          {resizable ? <CornerResizeHandle objectId={id} zoom={zoom} border={border} /> : null}
         </>
       ) : null}
     </div>
@@ -75,15 +89,30 @@ export function SelectionBox({
  * Phase B: visual only. Drag logic + LineObject → Phase C (xem backlog).
  * White circle 12px screen-space, subtle drop shadow. pointer-events-none.
  */
-function QuickLineDot({ zoom }: { zoom: number }) {
+function QuickLineDot({
+  zoom,
+  border,
+  radius,
+}: {
+  zoom: number;
+  border: number;
+  radius: string;
+}) {
   const size = 12 / zoom;
-  const offset = 6 / zoom; // nhô ra ngoài SelectionBox góc NE
+  // Milanote khối vuông nên chấm đặt ở góc hộp là nằm trên viền. Bibo bo góc:
+  // góc hộp là khoảng trống ngoài đường cong → chấm lơ lửng. Đặt tâm chấm lên
+  // đường giữa viền, tại điểm 45° của cung bo góc:
+  //   tâm cung cách mép hộp r; đường giữa viền có bán kính r + border/2;
+  //   điểm 45° cách mép hộp: r - (r + border/2) * cos45.
+  // Trừ nửa size để ra mép chấm. Tính bằng calc → đổi radius (kể cả 0 = vuông)
+  // chấm tự theo, không hard-code theo type.
+  const inset = `calc(${radius} - (${radius} + ${border / 2}px) * 0.70711 - ${size / 2}px)`;
   return (
     <div
       className="pointer-events-none absolute rounded-full bg-card"
       style={{
-        top: -offset,
-        right: -offset,
+        top: inset,
+        right: inset,
         width: size,
         height: size,
         border: `${2 / zoom}px solid var(--primary)`,
@@ -101,9 +130,18 @@ function QuickLineDot({ zoom }: { zoom: number }) {
  *
  * SVG: 3 đường chéo dark 50% + 3 đường trắng 70% offset → hiệu ứng grip 3D.
  */
-function CornerResizeHandle({ objectId, zoom }: { objectId: string; zoom: number }) {
+function CornerResizeHandle({
+  objectId,
+  zoom,
+  border,
+}: {
+  objectId: string;
+  zoom: number;
+  border: number;
+}) {
   const size = 16 / zoom;
-  const offset = 4 / zoom; // 4px screen từ cạnh card
+  // Giữ vị trí cũ: 4px screen tính từ mép ngoài viền → trong hộp còn 4 - 2 = 2px.
+  const offset = 4 / zoom - border;
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.stopPropagation();

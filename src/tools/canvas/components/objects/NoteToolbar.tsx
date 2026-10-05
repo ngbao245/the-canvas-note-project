@@ -21,6 +21,7 @@ import { updateObjectData } from '../../engine/actions';
 import { noteDataSchema, type CanvasObject } from '../../types';
 import { NOTE_COLOR_PALETTE } from '../../lib/note-colors';
 import { useNoteEditorStore } from '../../store/note-editor-store';
+import { useI18n } from '@/lib/i18n';
 
 /**
  * Note-specific toolbar actions cho element + editing mode.
@@ -339,6 +340,7 @@ function LinkPopup({ editor, onClose }: { editor: Editor; onClose: () => void })
 
 function ColorButton({ selectedObject }: { selectedObject: CanvasObject }) {
   const [open, setOpen] = useState(false);
+  const { t } = useI18n();
   const parsed = noteDataSchema.safeParse(selectedObject.data);
   const currentColor = parsed.success ? parsed.data.color : null;
 
@@ -354,7 +356,12 @@ function ColorButton({ selectedObject }: { selectedObject: CanvasObject }) {
 
   return (
     <div className="relative">
-      <ActionButton icon={Palette} label="Chọn màu" active={open} onClick={() => setOpen((o) => !o)} />
+      <ActionButton
+        icon={Palette}
+        label={t('CANVAS.NOTE_COLOR.PICK')}
+        active={open}
+        onClick={() => setOpen((o) => !o)}
+      />
       {open ? (
         <ColorPopup
           currentColor={currentColor}
@@ -376,22 +383,25 @@ function ColorPopup({
   onClose: () => void;
 }) {
   const popupRef = useRef<HTMLDivElement>(null);
+  const { t } = useI18n();
   // Element mode — không có editor active, không cần onRefocus.
-  useToolbarPopupClose({ popupRef, anchorLabel: 'Chọn màu', onClose });
+  // anchorLabel phải TRÙNG aria-label của nút mở (ToolbarPopup tìm nút theo aria-label) →
+  // dùng cùng key với label của ColorButton, dịch nút mà quên chỗ này thì click nút không đóng popup.
+  useToolbarPopupClose({ popupRef, anchorLabel: t('CANVAS.NOTE_COLOR.PICK'), onClose });
 
   return (
     <ToolbarPopup ref={popupRef} className="flex w-[104px] flex-col gap-2 p-2">
       <button
         type="button"
         onClick={() => onSelect(null)}
-        title="Mặc định"
-        aria-label="Mặc định"
+        title={t('CANVAS.NOTE_COLOR.DEFAULT')}
+        aria-label={t('CANVAS.NOTE_COLOR.DEFAULT')}
         className={`flex h-8 w-full items-center justify-center gap-1 rounded-md border border-border text-xs text-muted-foreground transition-colors duration-[60ms] hover:bg-muted hover:text-foreground ${
           currentColor === null ? 'ring-2 ring-primary' : ''
         }`}
       >
         <Ban className="h-3.5 w-3.5" />
-        <span>Default</span>
+        <span>{t('CANVAS.NOTE_COLOR.DEFAULT')}</span>
       </button>
       <div className="grid grid-cols-2 gap-1.5">
         {NOTE_COLOR_PALETTE.map((c) => (
@@ -399,8 +409,8 @@ function ColorPopup({
             key={c.id}
             type="button"
             onClick={() => onSelect(c.hex)}
-            title={c.label}
-            aria-label={c.label}
+            title={t(c.labelKey)}
+            aria-label={t(c.labelKey)}
             style={{ backgroundColor: c.hex }}
             className={`h-8 w-full rounded-md transition-transform duration-[60ms] hover:scale-105 ${
               currentColor === c.hex ? 'ring-2 ring-primary ring-offset-1 ring-offset-card' : ''

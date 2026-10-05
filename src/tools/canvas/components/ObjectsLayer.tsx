@@ -80,10 +80,9 @@ function ObjectView({ obj }: { obj: CanvasObject }) {
       }}
     >
       <Renderer object={obj} isSelected={selected} isEditing={editing} onEditEnd={onEditEnd} />
-      {/* Viền chọn nằm trong khối card → cùng lớp với card (xem SelectionBox). */}
-      {selected ? (
-        <SelectionBox id={obj.id} width={obj.geometry.width} height={obj.geometry.height} />
-      ) : null}
+      {/* Viền chọn nằm trong khối card → cùng lớp với card (xem SelectionBox).
+          Type có ownSelectionFrame tự đặt viền quanh vùng thân bên trong Renderer. */}
+      {selected && !def.ownSelectionFrame ? <SelectionBox id={obj.id} /> : null}
     </div>
   );
 }

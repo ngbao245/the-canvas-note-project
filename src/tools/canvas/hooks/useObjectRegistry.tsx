@@ -38,6 +38,15 @@ export interface ObjectTypeDefinition {
   /** Có hiện trên toolbar palette không (rect debug thì không). */
   showInToolbar?: boolean;
   /**
+   * true → renderer tự đặt `<SelectionBox>` bên trong phần tử thân của nó
+   * (khi isSelected), ObjectView không vẽ viền bọc cả card. Dùng khi vùng nhìn
+   * thấy nhỏ hơn khung (Board: khối vuông trong tile có tên + "N cards"; Image/
+   * Link sau này nếu cần). Renderer tự quyết có icon resize hay không qua prop
+   * `resizable` của SelectionBox. Viền vẫn nằm trong khối card nên cùng lớp.
+   * Preview kéo cũng ăn theo vì preview render cùng Renderer.
+   */
+  ownSelectionFrame?: boolean;
+  /**
    * Callback sau khi commitResize xong. Type-specific post-processing hook —
    * VD Note dùng để chuyển heightMode 'auto' → 'fixed' khi user kéo corner.
    * Gọi với snapshot geometry before + after drag. Không fire nếu geometry

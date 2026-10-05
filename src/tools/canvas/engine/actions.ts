@@ -48,7 +48,7 @@ function mutateGeometryAndPersist(id: string, geometry: Partial<Geometry>): void
  * trực tiếp làm base). Chỉ đọc store (current view) — đủ vì stacking chỉ cần
  * so với object cùng board đang render.
  */
-function boardCanvasObjects(boardId: string | null): CanvasObject[] {
+function boardCanvasObjects(boardId: string): CanvasObject[] {
   const list: CanvasObject[] = [];
   for (const o of useObjectsStore.getState().objects.values()) {
     if (o.unsortIndex === null && o.boardId === boardId) list.push(o);
@@ -57,7 +57,7 @@ function boardCanvasObjects(boardId: string | null): CanvasObject[] {
 }
 
 /** Max zIndex trong canvas của board. Board rỗng → -1 (để +1 = 0 cho item đầu). */
-function getMaxZIndex(boardId: string | null): number {
+function getMaxZIndex(boardId: string): number {
   const list = boardCanvasObjects(boardId);
   if (list.length === 0) return -1;
   return list.reduce((max, o) => Math.max(max, o.geometry.zIndex), -Infinity);
@@ -74,7 +74,7 @@ export function createObjectAt(
   type: string,
   canvasX: number,
   canvasY: number,
-  boardId: string | null,
+  boardId: string,
   dataOverride?: unknown,
 ): CanvasObject | null {
   const def = getObjectTypeDefinition(type);
@@ -122,7 +122,7 @@ export function createObjectAt(
 }
 
 /** Wrapper tương thích: tạo rect (context menu Phase A vẫn dùng). x,y = tâm. */
-export function createRectAt(canvasX: number, canvasY: number, boardId: string | null): CanvasObject | null {
+export function createRectAt(canvasX: number, canvasY: number, boardId: string): CanvasObject | null {
   return createObjectAt('rect', canvasX, canvasY, boardId);
 }
 
@@ -131,28 +131,30 @@ export function createRectAt(canvasX: number, canvasY: number, boardId: string |
 /**
  * Tạo Board entity mới + BoardObject đại diện trên canvas cha. Atomic undo:
  * Ctrl+Z xoá cả hai. Color rotate qua palette theo số sibling trong cùng parent.
- * `parentBoardId` = null nếu tạo trên root board.
+ * `parentBoardId` = id board đang xem (Home cũng là id thật).
  */
 export function createBoardAt(
   canvasX: number,
   canvasY: number,
-  parentBoardId: string | null,
+  parentBoardId: string,
 ): { board: Board; object: CanvasObject } | null {
   const def = getObjectTypeDefinition('board');
   if (!def) return null;
 
-  // Đếm sibling boards trong cùng parent để chọn color index (rotate palette).
   const boardsMap = useBoardsStore.getState().boards;
+  const parentId = parentBoardId;
+
+  // Đếm sibling boards trong cùng parent để chọn color index (rotate palette).
   let siblingCount = 0;
   for (const b of boardsMap.values()) {
-    if (b.parentId === parentBoardId) siblingCount++;
+    if (b.parentId === parentId) siblingCount++;
   }
 
   const now = new Date().toISOString();
   const board: Board = {
     id: crypto.randomUUID(),
     name: 'New Board',
-    parentId: parentBoardId,
+    parentId,
     color: boardColorForIndex(siblingCount),
     camera: { x: 0, y: 0, zoom: 1 },
     createdAt: now,
@@ -264,6 +266,14 @@ export function moveObjectsToUnsort(ids: string[], targetBoardId: string): void 
   }
   if (snapshots.length === 0) return;
 
+  // Board tile trong cụm: board nó trỏ tới phải đổi cha theo, không thì breadcrumb
+  // vẫn chỉ về cha cũ. Chặn đưa board vào chính nó hoặc board con của nó (tạo vòng).
+  const linkedIds = linkedBoardIdsOf(snapshots);
+  for (const lid of linkedIds) {
+    if (lid === targetBoardId || collectDescendantBoardIds(lid).includes(targetBoardId)) return;
+  }
+  const parentBefore = reparentBoards(linkedIds, targetBoardId);
+
   const now = new Date().toISOString();
   const N = snapshots.length;
 
@@ -313,6 +323,7 @@ export function moveObjectsToUnsort(ids: string[], targetBoardId: string): void 
   useHistoryStore.getState().push({
     label: `Move ${N} object${N === 1 ? '' : 's'} to Unsort`,
     undo: () => {
+      restoreBoardParents(parentBefore);
       void (async () => {
         // Restore snapshots (persist + add lại store nếu view match).
         for (const o of snapshots) {
@@ -339,6 +350,41 @@ export function moveObjectsToUnsort(ids: string[], targetBoardId: string): void 
       moveObjectsToUnsort(ids, targetBoardId);
     },
   });
+}
+
+/** Id các Board mà board tile trong danh sách trỏ tới (bỏ qua object không phải board). */
+function linkedBoardIdsOf(objects: CanvasObject[]): string[] {
+  const out: string[] = [];
+  for (const o of objects) {
+    if (o.type !== 'board') continue;
+    const lid = (o.data as Partial<BoardData> | null)?.linkedBoardId;
+    if (typeof lid === 'string') out.push(lid);
+  }
+  return out;
+}
+
+/** Gán parentId mới cho các board, persist. Trả parentId cũ để undo. */
+function reparentBoards(boardIds: string[], parentId: string): Map<string, string | null> {
+  const before = new Map<string, string | null>();
+  const repo = getCanvasRepository();
+  for (const id of boardIds) {
+    const cur = useBoardsStore.getState().boards.get(id);
+    if (!cur || cur.parentId === parentId) continue;
+    before.set(id, cur.parentId);
+    useBoardsStore.getState().update(id, { parentId });
+    const upd = useBoardsStore.getState().boards.get(id);
+    if (upd) void repo.saveBoard(upd);
+  }
+  return before;
+}
+
+function restoreBoardParents(before: Map<string, string | null>): void {
+  const repo = getCanvasRepository();
+  for (const [id, parentId] of before) {
+    useBoardsStore.getState().update(id, { parentId });
+    const upd = useBoardsStore.getState().boards.get(id);
+    if (upd) void repo.saveBoard(upd);
+  }
 }
 
 // --- Move từ Unsort ra canvas (drag-out) ---
@@ -383,7 +429,7 @@ export function moveFromUnsortToCanvas(ids: string[], canvasX: number, canvasY: 
   }
 
   // Reindex Unsort còn lại.
-  const boardId = snapshots[0]?.boardId ?? null;
+  const boardId = snapshots[0].boardId;
   const remaining = Array.from(store.objects.values())
     .filter((o) => o.unsortIndex !== null && o.boardId === boardId && !ids.includes(o.id))
     .sort((a, b) => (a.unsortIndex ?? 0) - (b.unsortIndex ?? 0));
@@ -426,7 +472,7 @@ export function moveFromUnsortToCanvas(ids: string[], canvasX: number, canvasY: 
  * Gán lại unsortIndex 0..N-1 theo thứ tự orderedIds đưa vào. Chỉ áp dụng
  * cho items có boardId === contextBoardId. Snapshot cũ để undo.
  */
-export function reorderInUnsort(orderedIds: string[], contextBoardId: string | null): void {
+export function reorderInUnsort(orderedIds: string[], contextBoardId: string): void {
   const store = useObjectsStore.getState();
   const repo = getCanvasRepository();
 
@@ -783,7 +829,7 @@ function offsetTemplates(templates: ObjectTemplate[], dx: number, dy: number): O
  */
 function insertObjectsComposite(
   templates: ObjectTemplate[],
-  boardId: string | null,
+  boardId: string,
   label: string,
 ): CanvasObject[] {
   if (templates.length === 0) return [];
@@ -866,7 +912,7 @@ export function duplicateObjects(
 export function pasteObjects(
   templates: ObjectTemplate[],
   offset: { dx: number; dy: number },
-  boardId: string | null,
+  boardId: string,
 ): CanvasObject[] {
   const label = templates.length === 1 ? 'Paste object' : `Paste ${templates.length} objects`;
   return insertObjectsComposite(offsetTemplates(templates, offset.dx, offset.dy), boardId, label);
@@ -1016,7 +1062,7 @@ export function clipParagraphToNewNote(
   paragraphIndex: number,
   canvasX: number,
   canvasY: number,
-  boardId: string | null,
+  boardId: string,
   cut: boolean,
 ): CanvasObject | null {
   const source = useObjectsStore.getState().objects.get(sourceId);

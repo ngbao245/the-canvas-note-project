@@ -1,0 +1,1050 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bibo i18n editor</title>
+<!--
+  Tool sửa vi.json + en.json của bibo. Độc lập với app: mở file này bằng Chrome/Edge là dùng.
+  Ghi thẳng file qua File System Access API, Vite đang chạy sẽ tự nạp lại.
+  vi.json là nguồn chuẩn: thứ tự key lấy theo vi, key chỉ có ở en xếp cuối.
+-->
+<style>
+  :root {
+    --bg: #0f1115; --card: #161a21; --muted: #1d222b; --border: #2a303b;
+    --fg: #e6e8ec; --muted-fg: #8b93a1; --primary: #6d8cff; --primary-fg: #0b0d12;
+    --destructive: #f26d6d; --warning: #e5b04a; --success: #4fc38a;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f7f9; --card: #ffffff; --muted: #eef0f3; --border: #d9dde3;
+      --fg: #0f172a; --muted-fg: #4b5565; --primary: #3e5fe0; --primary-fg: #ffffff;
+      --destructive: #c93636; --warning: #a86f00; --success: #1d8a55;
+      color-scheme: light;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); color: var(--fg); font: 13px/1.45 system-ui, "Segoe UI", sans-serif; display: flex; flex-direction: column; }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 1px solid var(--border); background: var(--card); padding: 5px 10px; border-radius: 6px; transition: background-color 150ms cubic-bezier(0.4,0,0.2,1), border-color 150ms cubic-bezier(0.4,0,0.2,1); }
+  button:hover { background: var(--muted); }
+  button:disabled { opacity: .45; cursor: default; }
+  button.primary { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
+  button.primary:hover { filter: brightness(1.08); }
+  button.danger { color: var(--destructive); }
+  button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+  input[type=text], input[type=search], textarea { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; width: 100%; }
+  textarea { resize: vertical; min-height: 54px; }
+  code, .mono { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12px; }
+
+  header { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--card); }
+  header h1 { font-size: 14px; margin: 0 8px 0 0; }
+  header .status { color: var(--muted-fg); margin-right: auto; }
+  header .status.dirty { color: var(--warning); }
+
+  main { flex: 1; display: grid; grid-template-columns: minmax(320px, 420px) 1fr; min-height: 0; }
+  aside { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
+  .search { padding: 10px; border-bottom: 1px solid var(--border); display: grid; gap: 8px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  select { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; width: 100%; cursor: pointer; }
+  select:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+  .chip { padding: 2px 9px; border-radius: 999px; font-size: 12px; }
+  .chip[aria-pressed=true] { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
+  #list { overflow: auto; flex: 1; padding: 4px 0 20px; }
+  .group { padding: 10px 12px 4px; font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--muted-fg); }
+  .item { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; padding: 6px 12px; background: transparent; border-left: 2px solid transparent; }
+  .item:hover { background: var(--muted); }
+  .item.active { background: var(--muted); border-left-color: var(--primary); }
+  .item .k { display: flex; align-items: center; gap: 6px; }
+  .item .k .rest { color: var(--fg); }
+  .item .k .pre { color: var(--muted-fg); }
+  .item .v { color: var(--muted-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+  .tag { font-size: 10px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--border); color: var(--muted-fg); }
+  .tag.bad { color: var(--destructive); border-color: color-mix(in srgb, var(--destructive) 40%, transparent); }
+  .tag.warn { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 40%, transparent); }
+
+  #detail { overflow: auto; padding: 18px 22px 40px; min-height: 0; }
+  .empty { max-width: 560px; margin: 60px auto; color: var(--muted-fg); }
+  .empty h2 { color: var(--fg); font-size: 16px; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .section { margin-top: 18px; }
+  .section > .label { font-size: 11px; font-weight: 600; color: var(--muted-fg); letter-spacing: .04em; margin-bottom: 6px; }
+  .locales { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .loc { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: grid; gap: 8px; }
+  .loc .name { font-weight: 600; }
+  .form-label { font-size: 11px; color: var(--muted-fg); }
+  .issues { display: flex; gap: 6px; flex-wrap: wrap; }
+  .snip { display: flex; width: 100%; text-align: left; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; margin-bottom: 6px; }
+  .snip:hover { border-color: var(--primary); background: var(--muted); }
+  .snip .desc { width: 150px; flex: none; color: var(--muted-fg); font-size: 12px; }
+  .snip code { flex: 1; overflow-x: auto; white-space: pre; }
+  .hint { color: var(--muted-fg); font-size: 12px; }
+  .err { color: var(--destructive); font-size: 12px; min-height: 16px; }
+  .dup { margin-top: 8px; font-size: 12px; color: var(--warning); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  button.link { border: 0; background: transparent; padding: 0; color: var(--primary); text-decoration: underline; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12px; }
+  button.link:hover { background: transparent; filter: brightness(1.15); }
+  .menu-wrap { position: relative; }
+  .menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 10; min-width: 260px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 4px; box-shadow: 0 4px 12px rgba(0,0,0,.2); display: grid; }
+  .menu[hidden] { display: none; }
+  .menu button { border: 0; text-align: left; background: transparent; }
+  .menu button:hover { background: var(--muted); }
+  #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 7px 14px; border-radius: 6px; opacity: 0; pointer-events: none; transition: opacity 200ms cubic-bezier(0.4,0,0.2,1); }
+  #toast.show { opacity: 1; }
+  #toast.bad { background: var(--destructive); color: #fff; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>bibo i18n</h1>
+  <span id="status" class="status">Chưa mở file</span>
+  <button id="btnReopen" hidden></button>
+  <button id="btnOpen">Mở folder locales</button>
+  <button id="btnFiles" title="Dùng khi trình duyệt không cho mở folder. Lưu sẽ tải file về.">Chọn 2 file</button>
+  <button id="btnReload" disabled>Đọc lại</button>
+  <button id="btnAdd" disabled title="Alt+N">Thêm key</button>
+  <div class="menu-wrap">
+    <button id="btnExport" disabled aria-haspopup="menu" aria-expanded="false">Export</button>
+    <div id="exportMenu" class="menu" role="menu" hidden>
+      <button role="menuitem" data-export="csv">CSV (mở bằng Excel / Google Sheets)</button>
+      <button role="menuitem" data-export="csv-filtered">CSV, chỉ key đang hiện trong danh sách</button>
+      <button role="menuitem" data-export="json">JSON (vi.json + en.json)</button>
+    </div>
+  </div>
+  <button id="btnSave" class="primary" disabled title="Ctrl+S">Lưu</button>
+</header>
+<main>
+  <aside>
+    <div class="search">
+      <input id="q" type="search" placeholder="Tìm key hoặc chữ (Ctrl+K)" aria-label="Tìm key hoặc chữ" />
+      <select id="category" aria-label="Lọc theo category"><option value="">Tất cả category</option></select>
+      <div class="chips" role="group" aria-label="Lọc">
+        <button class="chip" data-f="all" aria-pressed="true">Tất cả</button>
+        <button class="chip" data-f="issue" aria-pressed="false">Có lỗi</button>
+        <button class="chip" data-f="missing-en" aria-pressed="false">Thiếu en</button>
+        <button class="chip" data-f="missing-vi" aria-pressed="false">Thiếu vi</button>
+        <button class="chip" data-f="plural" aria-pressed="false">Số nhiều</button>
+      </div>
+    </div>
+    <div id="list"></div>
+  </aside>
+  <section id="detail"></section>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+<input id="fileInput" type="file" accept=".json,application/json" multiple hidden />
+
+<script>
+'use strict';
+
+// ---------- Hằng số + state ----------
+const LOCALES = ['vi', 'en'];
+const LOC_LABEL = { vi: 'vi.json (nguồn chuẩn)', en: 'en.json' };
+const PLURAL_FORMS = ['zero', 'one', 'two', 'few', 'many', 'other'];
+const KEY_RE = /^[A-Z0-9_]+(\.[A-Z0-9_]+)*$/;
+const PARAM_RE = /\{(\w+)\}/g;
+
+const S = {
+  dir: null,          // FileSystemDirectoryHandle khi mở folder; null = chế độ tải file về
+  loaded: false,
+  keys: [],           // thứ tự key phẳng, quyết định thứ tự khi ghi file
+  data: { vi: new Map(), en: new Map() }, // key -> string | { one?, other, ... }
+  saved: { vi: '', en: '' },              // nội dung đã ghi lần cuối, để biết có thay đổi chưa
+  disk: { vi: '', en: '' },               // chữ thô trong file lúc đọc/ghi gần nhất, để biết file bị sửa ngoài tool
+  conflict: false,    // file bị sửa ngoài tool khi web cũng đang sửa → dừng tự lưu
+  format: { vi: null, en: null }, // kiểu xuống dòng của từng file gốc
+  autoName: '',       // tên key tool tự gợi ý từ chữ en, để biết người dùng đã tự gõ đè chưa
+  selected: null,
+  creating: false,
+  recent: [],         // key tạo trong lượt "thêm tiếp" hiện tại, mới nhất trước
+  lastSavedAt: null,  // lần tự lưu gần nhất, hiện trên thanh trạng thái
+  filter: 'all',
+  category: '',       // tiền tố key đang lọc, vd "SETTINGS" hoặc "SETTINGS.ACCOUNT"; rỗng = tất cả
+  query: '',
+};
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fold = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+
+// ---------- Đọc / ghi cấu trúc JSON ----------
+function isPluralNode(v) {
+  if (!v || typeof v !== 'object' || Array.isArray(v) || !('other' in v)) return false;
+  return Object.entries(v).every(([k, x]) => PLURAL_FORMS.includes(k) && typeof x === 'string');
+}
+
+function flatten(obj, prefix, out) {
+  for (const [k, v] of Object.entries(obj)) {
+    const path = prefix ? prefix + '.' + k : k;
+    if (typeof v === 'string') out.set(path, v);
+    else if (isPluralNode(v)) out.set(path, { ...v });
+    else if (v && typeof v === 'object' && !Array.isArray(v)) flatten(v, path, out);
+    else out.set(path, String(v));
+  }
+  return out;
+}
+
+function cleanPlural(v) {
+  const o = {};
+  for (const f of PLURAL_FORMS) {
+    if (!(f in v)) continue;
+    // Dạng phụ để trống thì bỏ, chỉ giữ `other` dù rỗng để key không biến mất.
+    if (f === 'other' || v[f] !== '') o[f] = v[f];
+  }
+  return o;
+}
+
+function serialize(loc) {
+  const root = {};
+  for (const k of S.keys) {
+    const v = S.data[loc].get(k);
+    if (v === undefined) continue;
+    const parts = k.split('.');
+    let node = root;
+    for (let i = 0; i < parts.length - 1; i++) {
+      const p = parts[i];
+      if (typeof node[p] !== 'object' || node[p] === null) node[p] = {};
+      node = node[p];
+    }
+    node[parts[parts.length - 1]] = typeof v === 'string' ? v : cleanPlural(v);
+  }
+  // Giữ kiểu xuống dòng của file gốc để Lưu không tạo diff thừa.
+  const fmt = S.format[loc] || { eol: '\n', finalNewline: true };
+  const body = JSON.stringify(root, null, 2).replace(/\n/g, fmt.eol);
+  return fmt.finalNewline ? body + fmt.eol : body;
+}
+
+function detectFormat(text) {
+  return { eol: text.includes('\r\n') ? '\r\n' : '\n', finalNewline: /\n$/.test(text) };
+}
+
+function loadTexts(texts) {
+  const parsed = {};
+  for (const loc of LOCALES) {
+    try { parsed[loc] = JSON.parse(texts[loc]); }
+    catch (e) { throw new Error(loc + '.json không phải JSON hợp lệ: ' + e.message); }
+  }
+  S.format = { vi: detectFormat(texts.vi), en: detectFormat(texts.en) };
+  S.data.vi = flatten(parsed.vi, '', new Map());
+  S.data.en = flatten(parsed.en, '', new Map());
+  const keys = [...S.data.vi.keys()];
+  for (const k of S.data.en.keys()) if (!S.data.vi.has(k)) keys.push(k);
+  S.keys = keys;
+  S.saved = { vi: serialize('vi'), en: serialize('en') };
+  S.disk = { vi: texts.vi, en: texts.en };
+  S.conflict = false;
+  S.loaded = true;
+  if (S.selected && !S.keys.includes(S.selected)) S.selected = null;
+  S.creating = false;
+}
+
+// ---------- Phân tích từng key ----------
+function paramsOf(v) {
+  const set = new Set();
+  if (v === undefined) return set;
+  const strs = typeof v === 'string' ? [v] : Object.values(v);
+  for (const s of strs) for (const m of s.matchAll(PARAM_RE)) set.add(m[1]);
+  return set;
+}
+const isEmpty = (v) => v === undefined || (typeof v === 'string' ? v.trim() === '' : !v.other || v.other.trim() === '');
+const isPluralKey = (k) => typeof S.data.vi.get(k) === 'object' || typeof S.data.en.get(k) === 'object';
+
+function issuesOf(k) {
+  const vi = S.data.vi.get(k), en = S.data.en.get(k);
+  const out = [];
+  if (isEmpty(vi)) out.push({ id: 'missing-vi', text: 'Thiếu vi', level: 'bad' });
+  if (isEmpty(en)) out.push({ id: 'missing-en', text: 'Thiếu en', level: 'bad' });
+  if (vi !== undefined && en !== undefined) {
+    if ((typeof vi === 'string') !== (typeof en === 'string')) out.push({ id: 'shape', text: 'Lệch kiểu chuỗi / số nhiều', level: 'bad' });
+    const a = paramsOf(vi), b = paramsOf(en);
+    if (a.size !== b.size || [...a].some((x) => !b.has(x))) out.push({ id: 'param', text: 'Biến {..} 2 bên khác nhau', level: 'warn' });
+  }
+  if (en && typeof en === 'object' && !en.one) out.push({ id: 'plural-one', text: 'en thiếu dạng one', level: 'warn' });
+  return out;
+}
+
+function snippetsOf(k) {
+  const ps = new Set([...paramsOf(S.data.vi.get(k)), ...paramsOf(S.data.en.get(k))]);
+  if (isPluralKey(k)) ps.add('count');
+  const arg = ps.size ? `, { ${[...ps].join(', ')} }` : '';
+  const call = `t('${k}'${arg})`;
+  return [
+    { desc: 'Gọi hàm', code: call },
+    { desc: 'Giữa thẻ JSX', code: `{${call}}` },
+    { desc: 'Thuộc tính', code: `title={${call}}` },
+    { desc: 'Đầu component', code: `const { t } = useI18n();` },
+    { desc: 'Import (component)', code: `import { useI18n } from '@/lib/i18n';` },
+    { desc: 'Import (ngoài React)', code: `import { t } from '@/lib/i18n';` },
+  ];
+}
+
+// Key khác đang có đúng câu này (không phân biệt hoa thường), để dùng lại thay vì tạo trùng.
+function sameText(text, exceptKey) {
+  const q = text.trim().toLowerCase();
+  if (!q) return [];
+  return S.keys.filter((k) => k !== exceptKey && LOCALES.some((loc) => {
+    const v = S.data[loc].get(k);
+    return typeof v === 'string' && v.trim().toLowerCase() === q;
+  }));
+}
+
+function dupHtml(keys) {
+  if (!keys.length) return '';
+  const links = keys.slice(0, 5).map((k) => `<button class="link" data-goto="${esc(k)}">${esc(k)}</button>`).join(' ');
+  return `<div class="dup">Đã có câu giống: ${links} <span class="hint">(bấm để dùng key đó, tự copy code)</span></div>`;
+}
+
+// Gợi ý tên key từ chữ en: "Zoom in" → ZOOM_IN. Bỏ {biến}, lấy tối đa 4 từ.
+function suggestName(text) {
+  return fold(text.replace(PARAM_RE, ' ')).toUpperCase().replace(/[^A-Z0-9]+/g, ' ')
+    .trim().split(/\s+/).filter(Boolean).slice(0, 4).join('_');
+}
+
+function displayValue(v) {
+  if (v === undefined) return '';
+  if (typeof v === 'string') return v;
+  return v.other || v.one || '';
+}
+
+// ---------- Thêm / đổi tên / xoá key ----------
+function normalizeKey(raw) {
+  return raw.trim().toUpperCase().replace(/\s+/g, '_').replace(/\.+$/, '');
+}
+
+function keyConflict(newKey, oldKey) {
+  if (!KEY_RE.test(newKey)) return 'Key chỉ gồm A-Z, 0-9, _ và dấu chấm phân cấp, vd CANVAS.HEADER.UNDO';
+  for (const k of S.keys) {
+    if (k === oldKey) continue;
+    if (k === newKey) return 'Key đã tồn tại';
+    if (k.startsWith(newKey + '.')) return `"${newKey}" đang là nhóm (có ${k})`;
+    if (newKey.startsWith(k + '.')) return `"${k}" đang là 1 câu, không lồng thêm được`;
+  }
+  return null;
+}
+
+function insertKey(k) {
+  // Chèn ngay sau key cuối cùng cùng nhóm sâu nhất, để key mới nằm cạnh anh em của nó.
+  const segs = k.split('.');
+  let best = -1, bestLen = 0;
+  S.keys.forEach((x, i) => {
+    const xs = x.split('.');
+    let n = 0;
+    while (n < xs.length - 1 && n < segs.length - 1 && xs[n] === segs[n]) n++;
+    if (n > 0 && n >= bestLen) { bestLen = n; best = i; }
+  });
+  if (best < 0) S.keys.push(k); else S.keys.splice(best + 1, 0, k);
+}
+
+const parentOf = (k) => k.split('.').slice(0, -1).join('.');
+
+function renameKey(oldKey, newKey) {
+  for (const loc of LOCALES) {
+    const m = S.data[loc];
+    if (m.has(oldKey)) { m.set(newKey, m.get(oldKey)); m.delete(oldKey); }
+  }
+  const idx = S.keys.indexOf(oldKey);
+  if (parentOf(oldKey) === parentOf(newKey)) S.keys[idx] = newKey;
+  else { S.keys.splice(idx, 1); insertKey(newKey); }
+  S.selected = newKey;
+}
+
+function deleteKey(k) {
+  S.keys = S.keys.filter((x) => x !== k);
+  for (const loc of LOCALES) S.data[loc].delete(k);
+  S.selected = null;
+}
+
+function setPlural(k, on) {
+  for (const loc of LOCALES) {
+    const v = S.data[loc].get(k);
+    if (on && typeof v !== 'object') {
+      const s = v ?? '';
+      S.data[loc].set(k, loc === 'en' ? { one: s, other: s } : { other: s });
+    } else if (!on && typeof v === 'object') {
+      S.data[loc].set(k, v.other ?? '');
+    }
+  }
+}
+
+function writeValue(k, loc, form, value) {
+  const m = S.data[loc];
+  if (!form) { m.set(k, value); return; }
+  let v = m.get(k);
+  if (typeof v !== 'object') { v = { other: typeof v === 'string' ? v : '' }; m.set(k, v); }
+  v[form] = value;
+}
+
+// ---------- Render ----------
+function isDirty() {
+  return S.loaded && LOCALES.some((loc) => serialize(loc) !== S.saved[loc]);
+}
+
+function renderStatus() {
+  const el = $('#status');
+  if (!S.loaded) { el.textContent = 'Chưa mở file'; el.className = 'status'; return; }
+  const issueCount = S.keys.filter((k) => issuesOf(k).length).length;
+  const where = S.dir ? `folder "${S.dir.name}"` : 'chế độ tải về';
+  const dirty = isDirty();
+  let state = '';
+  if (S.conflict) state = ' (file bị sửa ngoài tool, tự lưu đã dừng)';
+  else if (dirty) state = S.dir ? ' (đang lưu...)' : ' (chưa lưu)';
+  else if (S.dir && S.lastSavedAt) state = ` (đã lưu ${S.lastSavedAt.toLocaleTimeString('vi-VN')})`;
+  el.textContent = `${S.keys.length} key, ${issueCount} có lỗi, ${where}` + state;
+  el.className = 'status' + (dirty ? ' dirty' : '');
+  $('#btnSave').disabled = !dirty;
+  document.title = (dirty ? '* ' : '') + 'bibo i18n';
+  // Mọi thao tác sửa đều đi qua renderStatus, nên hẹn tự lưu ở đây là đủ.
+  scheduleAutosave();
+}
+
+// Category = nhóm trong JSON. Lấy 2 cấp đầu (CANVAS, CANVAS.HEADER) cho danh sách khỏi dài.
+const CATEGORY_DEPTH = 2;
+
+function categoriesOf() {
+  const counts = new Map();
+  for (const k of S.keys) {
+    const parts = k.split('.');
+    for (let d = 1; d <= Math.min(CATEGORY_DEPTH, parts.length - 1); d++) {
+      const p = parts.slice(0, d).join('.');
+      counts.set(p, (counts.get(p) || 0) + 1);
+    }
+  }
+  return [...counts.entries()]; // giữ thứ tự xuất hiện theo S.keys
+}
+
+function renderCategories() {
+  const sel = $('#category');
+  const cats = S.loaded ? categoriesOf() : [];
+  if (S.category && !cats.some(([c]) => c === S.category)) S.category = '';
+  sel.innerHTML = `<option value="">Tất cả category (${S.keys.length})</option>` +
+    cats.map(([c, n]) => {
+      const depth = c.split('.').length - 1;
+      // Cấp con thụt vào bằng khoảng trắng cứng, <option> không nhận padding.
+      const label = '\u00a0\u00a0\u00a0\u00a0'.repeat(depth) + c.split('.').pop() + ` (${n})`;
+      return `<option value="${esc(c)}"${c === S.category ? ' selected' : ''}>${esc(label)}</option>`;
+    }).join('');
+  sel.disabled = !S.loaded;
+}
+
+function matches(k) {
+  if (S.category && !k.startsWith(S.category + '.')) return false;
+  const f = S.filter;
+  if (f === 'plural' && !isPluralKey(k)) return false;
+  if (f !== 'all' && f !== 'plural') {
+    const iss = issuesOf(k);
+    if (f === 'issue' && !iss.length) return false;
+    if ((f === 'missing-en' || f === 'missing-vi') && !iss.some((i) => i.id === f)) return false;
+  }
+  if (!S.query) return true;
+  const q = fold(S.query);
+  if (fold(k).includes(q)) return true;
+  return LOCALES.some((loc) => {
+    const v = S.data[loc].get(k);
+    if (v === undefined) return false;
+    return fold(typeof v === 'string' ? v : Object.values(v).join(' ')).includes(q);
+  });
+}
+
+function renderList() {
+  const list = $('#list');
+  if (!S.loaded) { list.innerHTML = ''; return; }
+  const shown = S.keys.filter(matches);
+  if (!shown.length) { list.innerHTML = '<div class="group">Không có key nào khớp</div>'; return; }
+  let html = '', group = null;
+  for (const k of shown) {
+    const top = k.split('.')[0];
+    if (top !== group) { group = top; html += `<div class="group">${esc(top)}</div>`; }
+    const rest = k.slice(top.length + 1) || top;
+    const iss = issuesOf(k);
+    const tags = (isPluralKey(k) ? '<span class="tag">số nhiều</span>' : '') +
+      iss.map((i) => `<span class="tag ${i.level}">${esc(i.text)}</span>`).join('');
+    const preview = displayValue(S.data.vi.get(k)) || displayValue(S.data.en.get(k));
+    html += `<button class="item${k === S.selected ? ' active' : ''}" data-key="${esc(k)}">
+      <div class="k mono"><span class="rest">${esc(rest)}</span>${tags}</div>
+      <div class="v">${esc(preview) || '<i>(trống)</i>'}</div></button>`;
+  }
+  list.innerHTML = html;
+}
+
+function renderEmpty() {
+  const support = 'showDirectoryPicker' in window;
+  $('#detail').innerHTML = `<div class="empty">
+    <h2>Mở bộ chữ để bắt đầu</h2>
+    <p>Bấm <b>Mở folder locales</b> rồi chọn <code>bibo/src/lib/i18n/locales</code>
+      (chọn <code>bibo</code> hoặc <code>src</code> cũng được, tool tự tìm).</p>
+    <p>Sửa tới đâu tool tự ghi vào <code>vi.json</code> và <code>en.json</code> tới đó, không cần bấm Lưu.
+      Vite đang chạy sẽ tự nạp lại.</p>
+    <p>Chọn 1 key bên trái để lấy code <code>t('...')</code> paste vào component.</p>
+    ${support ? '' : '<p class="err">Trình duyệt này không mở được folder. Dùng Chrome hoặc Edge, hoặc bấm "Chọn 2 file" (lưu sẽ tải file về).</p>'}
+  </div>`;
+}
+
+function fieldsHtml(k, loc) {
+  const v = S.data[loc].get(k);
+  const plural = isPluralKey(k);
+  let inner = '';
+  if (!plural) {
+    inner = `<textarea data-loc="${loc}" data-form="" rows="2" aria-label="${esc(loc)}">${esc(typeof v === 'string' ? v : '')}</textarea>`;
+  } else {
+    const obj = typeof v === 'object' ? v : {};
+    const forms = PLURAL_FORMS.filter((f) => f === 'one' || f === 'other' || f in obj);
+    inner = forms.map((f) => `<div><div class="form-label">${f}${f === 'one' && loc === 'vi' ? ' (vi không cần, để trống)' : ''}${f === 'other' ? ' (bắt buộc)' : ''}</div>
+      <textarea data-loc="${loc}" data-form="${f}" rows="2" aria-label="${esc(loc + ' ' + f)}">${esc(obj[f] ?? '')}</textarea></div>`).join('');
+  }
+  const missing = v === undefined ? ' <span class="tag bad">chưa có key</span>' : '';
+  return `<div class="loc"><div class="name">${LOC_LABEL[loc]}${missing}</div>${inner}</div>`;
+}
+
+function liveHtml(k) {
+  const iss = issuesOf(k);
+  const issues = iss.length
+    ? `<div class="issues">${iss.map((i) => `<span class="tag ${i.level}">${esc(i.text)}</span>`).join('')}</div>`
+    : '<span class="hint">Không có lỗi.</span>';
+  const snips = snippetsOf(k).map((s) => `<button class="snip" data-copy="${esc(s.code)}" title="Bấm để copy">
+    <span class="desc">${esc(s.desc)}</span><code>${esc(s.code)}</code></button>`).join('');
+  const dups = [...new Set(LOCALES.flatMap((loc) => {
+    const v = S.data[loc].get(k);
+    return typeof v === 'string' ? sameText(v, k) : [];
+  }))];
+  return `<div class="section"><div class="label">KIỂM TRA</div>${issues}${dupHtml(dups)}</div>
+    <div class="section"><div class="label">CODE ĐỂ PASTE</div>${snips}
+    <div class="hint">Có biến thì đổi <code>{ name }</code> thành <code>{ name: board.name }</code> nếu tên biến khác.</div></div>`;
+}
+
+function renderDetail() {
+  const d = $('#detail');
+  if (!S.loaded) { renderEmpty(); return; }
+  if (S.creating) { renderCreate(); return; }
+  const k = S.selected;
+  if (!k) {
+    d.innerHTML = '<div class="empty"><h2>Chọn 1 key bên trái</h2><p>Hoặc bấm <b>Thêm key</b> để tạo câu mới.</p></div>';
+    return;
+  }
+  d.innerHTML = `
+    <div class="row"><code style="font-size:15px">${esc(k)}</code>
+      <button data-copy="${esc(k)}">Copy key</button>
+      <span style="flex:1"></span>
+      <button class="danger" id="btnDelete">Xoá key</button></div>
+    <div class="section"><div class="label">ĐỔI TÊN KEY</div>
+      <div class="row"><input id="renameInput" type="text" class="mono" value="${esc(k)}" aria-label="Tên key mới" />
+        <button id="btnRename">Đổi</button></div>
+      <div class="err" id="renameErr"></div></div>
+    <div class="section"><label class="row"><input type="checkbox" id="pluralToggle" ${isPluralKey(k) ? 'checked' : ''} />
+      Số nhiều (truyền <code>count</code>, en có one / other)</label></div>
+    <div class="section"><div class="label">NỘI DUNG</div>
+      <div class="locales">${LOCALES.map((loc) => fieldsHtml(k, loc)).join('')}</div>
+      <div class="hint" style="margin-top:6px">Chèn biến bằng <code>{tên}</code>, vd <code>Xoá board "{name}"?</code>.</div></div>
+    <div id="live">${liveHtml(k)}</div>`;
+}
+
+// Key vừa tạo trong lượt "thêm tiếp": clipboard chỉ giữ cái cuối, nên để sẵn ở đây bấm copy lại từng cái.
+function recentHtml() {
+  const keys = S.recent.filter((k) => S.keys.includes(k));
+  if (!keys.length) return '';
+  const rows = keys.map((k) => {
+    const code = snippetsOf(k)[0].code;
+    return `<button class="snip" data-copy="${esc(code)}" title="Bấm để copy"><code>${esc(code)}</code></button>`;
+  }).join('');
+  return `<div class="section"><div class="label">VỪA TẠO (${keys.length}, bấm để copy)</div>${rows}</div>`;
+}
+
+function renderCreate() {
+  const base = S.selected ? parentOf(S.selected) : S.category;
+  S.createBase = base; // nhớ tiền tố đang điền để đổi category thì thay đúng phần này
+  $('#detail').innerHTML = `
+    <h2 style="font-size:15px;margin:0">Thêm key mới</h2>
+    <div class="section"><div class="label">KEY</div>
+      <input id="newKey" type="text" class="mono" value="${esc(base ? base + '.' : '')}" placeholder="VD CANVAS.HEADER.ZOOM_IN" aria-label="Key mới" />
+      <div class="hint">Viết hoa, chấm để phân cấp. Vùng: COMMON, SETTINGS, CANVAS, ACCOUNT, LANDING. Câu dùng nhiều nơi để ở COMMON.</div>
+      <div class="err" id="newErr"></div></div>
+    <div class="section"><label class="row"><input type="checkbox" id="newPlural" /> Số nhiều</label></div>
+    <div class="section locales">
+      <div class="loc"><div class="name">${LOC_LABEL.vi}</div><textarea id="newVi" rows="2" aria-label="vi"></textarea></div>
+      <div class="loc"><div class="name">${LOC_LABEL.en}</div><textarea id="newEn" rows="2" aria-label="en"></textarea></div>
+    </div>
+    <div id="newDup"></div>
+    <div class="hint">Enter để nhảy ô: KEY → vi → en → tạo và thêm tiếp. Shift+Enter xuống dòng. Ctrl+Enter tạo rồi đóng form.
+      Để trống tên key rồi gõ en thì tool tự gợi ý tên. Số nhiều: chữ nhập thành dạng <code>other</code>, en chép thêm sang <code>one</code>.</div>
+    <div class="section row"><button class="primary" id="btnCreateMore" title="Enter ở ô en, hoặc Ctrl+Shift+Enter">Tạo và thêm tiếp</button>
+      <button id="btnCreate" title="Ctrl+Enter">Tạo rồi đóng</button>
+      <button id="btnCancelCreate" title="Esc">Huỷ</button></div>
+    ${recentHtml()}`;
+  S.autoName = '';
+  const inp = $('#newKey');
+  inp.focus();
+  inp.setSelectionRange(inp.value.length, inp.value.length);
+}
+
+function renderAll() {
+  renderStatus();
+  renderCategories();
+  renderList();
+  renderDetail();
+  $('#btnReload').disabled = !S.loaded || !S.dir;
+  $('#btnAdd').disabled = !S.loaded;
+  $('#btnExport').disabled = !S.loaded;
+}
+
+// ---------- Mở / lưu file ----------
+async function findLocalesDir(root) {
+  const paths = [[], ['locales'], ['i18n', 'locales'], ['lib', 'i18n', 'locales'], ['src', 'lib', 'i18n', 'locales']];
+  for (const p of paths) {
+    try {
+      let d = root;
+      for (const seg of p) d = await d.getDirectoryHandle(seg);
+      await d.getFileHandle('vi.json');
+      await d.getFileHandle('en.json');
+      return d;
+    } catch { /* thử đường kế tiếp */ }
+  }
+  throw new Error('Không thấy vi.json + en.json trong folder đã chọn');
+}
+
+async function readDiskTexts() {
+  const texts = {};
+  for (const loc of LOCALES) {
+    const fh = await S.dir.getFileHandle(loc + '.json');
+    texts[loc] = await (await fh.getFile()).text();
+  }
+  return texts;
+}
+
+async function readFromDir() {
+  loadTexts(await readDiskTexts());
+}
+
+// Quay lại tab: file đổi ngoài tool mà web chưa sửa gì thì đọc lại luôn, đang sửa thì báo xung đột.
+async function syncFromDisk() {
+  if (!S.dir || !S.loaded || saving) return;
+  try {
+    if ((await S.dir.queryPermission({ mode: 'read' })) !== 'granted') return;
+    const now = await readDiskTexts();
+    if (now.vi === S.disk.vi && now.en === S.disk.en) return;
+    if (!isDirty()) {
+      loadTexts(now);
+      renderAll();
+      toast('File đổi ngoài tool, đã đọc lại');
+    } else {
+      S.conflict = true;
+      clearTimeout(autosaveTimer);
+      renderStatus();
+      toast('File bị sửa ngoài tool. Bấm Lưu để ghi đè hoặc Đọc lại để lấy bản file', true);
+    }
+  } catch { /* file đang bị khoá hoặc mất quyền, lần sau thử lại */ }
+}
+
+async function openDirHandle(handle) {
+  const perm = await handle.requestPermission({ mode: 'readwrite' });
+  if (perm !== 'granted') throw new Error('Chưa cấp quyền ghi folder');
+  S.dir = await findLocalesDir(handle);
+  await readFromDir();
+  await idbSet('dir', S.dir);
+  $('#btnReopen').hidden = true;
+  renderAll();
+  toast('Đã mở ' + S.dir.name);
+}
+
+// Tự lưu: mở bằng folder thì mỗi lần sửa, ngừng gõ 400ms là ghi file luôn.
+// Chế độ "Chọn 2 file" không ghi thẳng được nên vẫn phải bấm Lưu để tải về.
+const AUTOSAVE_MS = 400;
+let autosaveTimer = 0;
+let saving = false;
+
+function scheduleAutosave() {
+  if (!S.dir || S.conflict || !isDirty()) return;
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(() => save({ auto: true }), AUTOSAVE_MS);
+}
+
+async function save({ auto = false } = {}) {
+  if (!isDirty()) return;
+  if (saving) { scheduleAutosave(); return; }
+  clearTimeout(autosaveTimer);
+  saving = true;
+  const out = { vi: serialize('vi'), en: serialize('en') };
+  try {
+    if (S.dir) {
+      // Tự lưu không có thao tác bấm nên không xin quyền được, chỉ kiểm tra quyền sẵn có.
+      const perm = auto
+        ? await S.dir.queryPermission({ mode: 'readwrite' })
+        : await S.dir.requestPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') throw new Error('Chưa cấp quyền ghi, bấm Lưu để cấp');
+      // File đổi so với lúc đọc → có người sửa ngoài tool. Tự lưu thì dừng, bấm Lưu tay thì hỏi.
+      const now = await readDiskTexts();
+      if (now.vi !== S.disk.vi || now.en !== S.disk.en) {
+        if (auto || !confirm('vi.json / en.json vừa bị sửa ngoài tool. Ghi đè bằng bản trên web?\n(Huỷ để giữ file, rồi bấm "Đọc lại")')) {
+          S.conflict = true;
+          return;
+        }
+      }
+      for (const loc of LOCALES) {
+        if (out[loc] === S.saved[loc] && now[loc] === S.disk[loc]) continue;
+        const w = await (await S.dir.getFileHandle(loc + '.json')).createWritable();
+        await w.write(out[loc]);
+        await w.close();
+      }
+      S.disk = { ...out };
+      S.conflict = false;
+    } else {
+      for (const loc of LOCALES) if (out[loc] !== S.saved[loc]) download(loc + '.json', out[loc]);
+    }
+    S.saved = out;
+    S.lastSavedAt = new Date();
+    if (!auto) toast(S.dir ? 'Đã lưu' : 'Đã tải file về, chép đè vào folder locales');
+  } catch (e) {
+    toast('Lưu lỗi: ' + e.message, true);
+  } finally {
+    saving = false;
+    // Có sửa thêm trong lúc đang ghi thì renderStatus sẽ hẹn ghi tiếp.
+    renderStatus();
+  }
+}
+
+function download(name, text, type = 'application/json') {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// ---------- Export ----------
+// CSV: mỗi dòng 1 câu. Key số nhiều tách thành nhiều dòng theo cột "form" (one / other...).
+function csvCell(s) {
+  const v = String(s ?? '');
+  return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+
+function buildCsv(keys) {
+  const rows = [['key', 'form', 'vi', 'en']];
+  for (const k of keys) {
+    const vi = S.data.vi.get(k), en = S.data.en.get(k);
+    if (!isPluralKey(k)) {
+      rows.push([k, '', typeof vi === 'string' ? vi : '', typeof en === 'string' ? en : '']);
+      continue;
+    }
+    const a = typeof vi === 'object' ? vi : {}, b = typeof en === 'object' ? en : {};
+    for (const f of PLURAL_FORMS) {
+      if (!(f in a) && !(f in b) && f !== 'other') continue;
+      rows.push([k, f, a[f] ?? '', b[f] ?? '']);
+    }
+  }
+  // BOM để Excel đọc đúng tiếng Việt (UTF-8).
+  return '\uFEFF' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
+}
+
+function stamp() {
+  const d = new Date(), p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+}
+
+function doExport(kind) {
+  if (kind === 'json') {
+    for (const loc of LOCALES) download(loc + '.json', serialize(loc), 'application/json');
+    toast('Đã tải vi.json + en.json');
+    return;
+  }
+  const keys = kind === 'csv-filtered' ? S.keys.filter(matches) : S.keys;
+  if (!keys.length) { toast('Không có key nào để export', true); return; }
+  download(`bibo-i18n-${stamp()}.csv`, buildCsv(keys), 'text/csv;charset=utf-8');
+  toast(`Đã export ${keys.length} key ra CSV`);
+}
+
+// Nhớ folder đã mở để lần sau chỉ cần 1 click cấp quyền.
+function idb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('bibo-i18n-editor', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function idbGet(key) {
+  try {
+    const db = await idb();
+    return await new Promise((res) => { const q = db.transaction('kv').objectStore('kv').get(key); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); });
+  } catch { return undefined; }
+}
+async function idbSet(key, val) {
+  try {
+    const db = await idb();
+    await new Promise((res) => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(val, key); tx.oncomplete = res; tx.onerror = res; });
+  } catch { /* không nhớ được thì thôi */ }
+}
+
+// ---------- Tiện ích UI ----------
+let toastTimer = 0;
+function toast(msg, bad = false) {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.className = 'show' + (bad ? ' bad' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, bad ? 4000 : 1600);
+}
+
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove();
+  }
+  toast('Đã copy: ' + (text.length > 60 ? text.slice(0, 60) + '...' : text));
+}
+
+function select(k) {
+  S.selected = k;
+  S.creating = false;
+  renderList();
+  renderDetail();
+}
+
+// ---------- Sự kiện ----------
+$('#btnOpen').addEventListener('click', async () => {
+  if (!('showDirectoryPicker' in window)) { toast('Trình duyệt không hỗ trợ, dùng Chrome/Edge hoặc "Chọn 2 file"', true); return; }
+  if (isDirty() && !confirm('Có thay đổi chưa lưu. Mở folder khác sẽ mất. Tiếp tục?')) return;
+  try {
+    const h = await window.showDirectoryPicker({ id: 'bibo-i18n', mode: 'readwrite' });
+    await openDirHandle(h);
+  } catch (e) {
+    if (e.name !== 'AbortError') toast(e.message, true);
+  }
+});
+
+$('#btnReopen').addEventListener('click', async () => {
+  const h = await idbGet('dir');
+  if (!h) return;
+  try { await openDirHandle(h); } catch (e) { toast(e.message, true); }
+});
+
+$('#btnFiles').addEventListener('click', () => $('#fileInput').click());
+$('#fileInput').addEventListener('change', async (e) => {
+  const files = [...e.target.files];
+  e.target.value = '';
+  const texts = {};
+  for (const f of files) {
+    const loc = LOCALES.find((l) => f.name.toLowerCase() === l + '.json');
+    if (loc) texts[loc] = await f.text();
+  }
+  if (!texts.vi || !texts.en) { toast('Chọn cùng lúc 2 file vi.json và en.json', true); return; }
+  try { S.dir = null; loadTexts(texts); renderAll(); toast('Đã đọc 2 file'); }
+  catch (err) { toast(err.message, true); }
+});
+
+$('#btnReload').addEventListener('click', async () => {
+  if (isDirty() && !confirm('Bỏ thay đổi chưa lưu và đọc lại từ file?')) return;
+  try { await readFromDir(); renderAll(); toast('Đã đọc lại'); } catch (e) { toast(e.message, true); }
+});
+
+$('#btnAdd').addEventListener('click', () => { S.creating = true; S.recent = []; renderDetail(); });
+$('#btnSave').addEventListener('click', () => save());
+
+function setExportMenu(open) {
+  $('#exportMenu').hidden = !open;
+  $('#btnExport').setAttribute('aria-expanded', String(open));
+}
+$('#btnExport').addEventListener('click', (e) => {
+  e.stopPropagation();
+  setExportMenu($('#exportMenu').hidden);
+});
+$('#exportMenu').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-export]');
+  if (!b) return;
+  setExportMenu(false);
+  doExport(b.dataset.export);
+});
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.menu-wrap')) setExportMenu(false);
+});
+
+$('#q').addEventListener('input', (e) => { S.query = e.target.value.trim(); renderList(); });
+$('#category').addEventListener('change', (e) => {
+  S.category = e.target.value;
+  renderList();
+  if (S.creating) applyCategoryToNewKey(S.category);
+});
+
+// Đang tạo key mà đổi category: thay phần tiền tố trong ô KEY, giữ phần tên đã gõ.
+function applyCategoryToNewKey(cat) {
+  const inp = $('#newKey');
+  if (!inp) return;
+  const oldPrefix = S.createBase ? S.createBase + '.' : '';
+  const v = inp.value;
+  const name = oldPrefix && v.startsWith(oldPrefix) ? v.slice(oldPrefix.length) : v.split('.').pop();
+  inp.value = (cat ? cat + '.' : '') + name;
+  S.createBase = cat;
+  $('#newErr').textContent = '';
+  inp.focus();
+  inp.setSelectionRange(inp.value.length, inp.value.length);
+}
+document.querySelectorAll('.chip').forEach((b) => b.addEventListener('click', () => {
+  S.filter = b.dataset.f;
+  document.querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  renderList();
+}));
+
+$('#list').addEventListener('click', (e) => {
+  const item = e.target.closest('.item');
+  if (item) select(item.dataset.key);
+});
+
+$('#detail').addEventListener('click', (e) => {
+  const t = e.target;
+  // closest: bấm trúng span/code bên trong dòng snippet vẫn tính là bấm cả dòng.
+  const copyEl = t.closest('[data-copy]');
+  if (copyEl) { copy(copyEl.dataset.copy); return; }
+  const k = S.selected;
+  if (t.id === 'btnDelete' && k) {
+    if (!confirm(`Xoá key ${k} ở cả vi và en?`)) return;
+    deleteKey(k);
+    renderAll();
+    return;
+  }
+  if (t.id === 'btnRename' && k) {
+    const nk = normalizeKey($('#renameInput').value);
+    if (nk === k) return;
+    const err = keyConflict(nk, k);
+    if (err) { $('#renameErr').textContent = err; return; }
+    renameKey(k, nk);
+    renderAll();
+    toast('Đã đổi tên. Nhớ sửa chỗ dùng key cũ trong code (tsc sẽ báo).');
+    return;
+  }
+  const gotoEl = t.closest('[data-goto]');
+  if (gotoEl) {
+    // Dùng lại key có sẵn thay vì tạo câu trùng: mở key đó và copy luôn code.
+    const gk = gotoEl.dataset.goto;
+    select(gk);
+    const el = document.querySelector(`.item[data-key="${CSS.escape(gk)}"]`);
+    if (el) el.scrollIntoView({ block: 'center' });
+    copy(snippetsOf(gk)[0].code);
+    return;
+  }
+  if (t.id === 'btnCancelCreate') { S.creating = false; renderDetail(); return; }
+  if (t.id === 'btnCreate' || t.id === 'btnCreateMore') {
+    const more = t.id === 'btnCreateMore';
+    const nk = normalizeKey($('#newKey').value);
+    if (!nk) { $('#newErr').textContent = 'Nhập tên key'; $('#newKey').focus(); return; }
+    if (S.createBase && nk === S.createBase) { $('#newErr').textContent = 'Nhập tên key sau dấu chấm'; $('#newKey').focus(); return; }
+    const err = keyConflict(nk, null);
+    if (err) { $('#newErr').textContent = err; $('#newKey').focus(); return; }
+    const vi = $('#newVi').value, en = $('#newEn').value;
+    if (!vi.trim() && !en.trim()) { $('#newErr').textContent = 'Nhập chữ vi hoặc en'; $('#newVi').focus(); return; }
+    insertKey(nk);
+    if (more) S.recent.unshift(nk);
+    if ($('#newPlural').checked) {
+      S.data.vi.set(nk, { other: vi });
+      S.data.en.set(nk, { one: en, other: en });
+    } else {
+      S.data.vi.set(nk, vi);
+      S.data.en.set(nk, en);
+    }
+    S.selected = nk;
+    S.filter = 'all';
+    if (S.category && !nk.startsWith(S.category + '.')) S.category = '';
+    document.querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.f === 'all')));
+    // "Tạo và thêm tiếp": giữ form mở, cùng category với key vừa tạo, để thêm nhiều câu liền tay.
+    S.creating = more;
+    renderAll();
+    const el = document.querySelector(`.item[data-key="${CSS.escape(nk)}"]`);
+    if (el) el.scrollIntoView({ block: 'center' });
+    copy(snippetsOf(nk)[0].code);
+  }
+});
+
+$('#detail').addEventListener('change', (e) => {
+  if (e.target.id === 'pluralToggle' && S.selected) {
+    setPlural(S.selected, e.target.checked);
+    renderAll();
+  }
+});
+
+$('#detail').addEventListener('input', (e) => {
+  const t = e.target;
+  if (t.id === 'newKey' || t.id === 'renameInput') {
+    // Gõ thường cũng được, tự viết hoa để khỏi phải giữ Shift.
+    const pos = t.selectionStart;
+    t.value = t.value.toUpperCase().replace(/\s/g, '_');
+    t.setSelectionRange(pos, pos);
+    const err = $(t.id === 'newKey' ? '#newErr' : '#renameErr');
+    if (err) err.textContent = '';
+    return;
+  }
+  if (t.id === 'newVi' || t.id === 'newEn') {
+    const dups = [...new Set([...sameText($('#newVi').value), ...sameText($('#newEn').value)])];
+    $('#newDup').innerHTML = dupHtml(dups);
+    if (t.id === 'newEn') {
+      // Chỉ gợi ý khi phần tên còn trống hoặc vẫn là gợi ý cũ, không ghi đè tên người dùng tự gõ.
+      const inp = $('#newKey');
+      const prefix = S.createBase ? S.createBase + '.' : '';
+      const cur = inp.value.startsWith(prefix) ? inp.value.slice(prefix.length) : null;
+      if (cur !== null && (cur === '' || cur === S.autoName)) {
+        S.autoName = suggestName(t.value);
+        inp.value = prefix + S.autoName;
+      }
+    }
+    return;
+  }
+  if (t.tagName === 'TEXTAREA' && t.dataset.loc && S.selected) {
+    writeValue(S.selected, t.dataset.loc, t.dataset.form, t.value);
+    // Chỉ vẽ lại phần phụ, không vẽ lại ô đang gõ để giữ con trỏ.
+    $('#live').innerHTML = liveHtml(S.selected);
+    renderList();
+    renderStatus();
+  }
+});
+
+$('#detail').addEventListener('keydown', (e) => {
+  // Ctrl+Enter để handler chung xử lý; isComposing: bộ gõ tiếng Việt đang ghép chữ thì bỏ qua.
+  if (e.key !== 'Enter' || e.isComposing || e.ctrlKey || e.metaKey) return;
+  const id = e.target.id;
+  if (id === 'renameInput') { e.preventDefault(); $('#btnRename').click(); return; }
+  // Form thêm key: Enter nhảy ô kế, Enter ở ô en là tạo + thêm tiếp. Shift+Enter xuống dòng trong ô chữ.
+  if (e.shiftKey) return;
+  if (id === 'newKey') { e.preventDefault(); $('#newVi').focus(); }
+  else if (id === 'newVi') { e.preventDefault(); $('#newEn').focus(); }
+  else if (id === 'newEn') { e.preventDefault(); $('#btnCreateMore').click(); }
+});
+
+document.addEventListener('keydown', (e) => {
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && e.key === 'Enter' && S.creating) {
+    e.preventDefault();
+    $(e.shiftKey ? '#btnCreateMore' : '#btnCreate').click();
+    return;
+  }
+  // Alt+N mở form thêm key (Ctrl+N bị trình duyệt giữ để mở cửa sổ mới).
+  if (e.altKey && e.key.toLowerCase() === 'n' && S.loaded) { e.preventDefault(); $('#btnAdd').click(); return; }
+  if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); save(); }
+  if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); $('#q').focus(); $('#q').select(); }
+  if (e.key === 'Escape') {
+    if (!$('#exportMenu').hidden) { setExportMenu(false); $('#btnExport').focus(); return; }
+    if (S.creating) { S.creating = false; renderDetail(); }
+  }
+});
+
+window.addEventListener('focus', syncFromDisk);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncFromDisk(); });
+
+window.addEventListener('beforeunload', (e) => {
+  if (isDirty()) { e.preventDefault(); e.returnValue = ''; }
+});
+
+// ---------- Khởi động ----------
+(async () => {
+  renderAll();
+  const h = await idbGet('dir');
+  if (h) {
+    const btn = $('#btnReopen');
+    btn.textContent = 'Mở lại "' + h.name + '"';
+    btn.hidden = false;
+    // Đã có quyền từ lần trước thì mở luôn, khỏi bấm.
+    if ((await h.queryPermission({ mode: 'readwrite' })) === 'granted') {
+      try { await openDirHandle(h); } catch { /* để người dùng bấm tay */ }
+    }
+  }
+})();
+</script>
+</body>
+</html>

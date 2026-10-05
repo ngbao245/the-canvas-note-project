@@ -7,7 +7,7 @@ import {
   ErrorState,
 } from '@/components/shared';
 import { useUiStyleStore } from '@/stores/ui-style-store';
-import { useThemeStore } from '@/stores/theme-store';
+import { useResolvedTheme, useThemeStore } from '@/stores/theme-store';
 
 /**
  * Trang demo phong cách hiển thị nội bộ.
@@ -19,7 +19,7 @@ import { useThemeStore } from '@/stores/theme-store';
 export default function StyleDemo() {
   const uiStyle = useUiStyleStore((s) => s.style);
   const toggleStyle = useUiStyleStore((s) => s.toggle);
-  const theme = useThemeStore((s) => s.theme);
+  const theme = useResolvedTheme();
   const toggleTheme = useThemeStore((s) => s.toggle);
   const isDark = theme === 'dark';
 

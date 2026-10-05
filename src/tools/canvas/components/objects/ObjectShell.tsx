@@ -47,17 +47,11 @@ export function ObjectShell({
   const colorBarClass = colorBarStyle ? '' : (colorBar ?? 'bg-primary/60');
 
   if (variant === 'bare') {
-    // Bare: ảnh tự fill, chỉ ring khi selected. Hand/flat cùng behavior (không có
-    // shell cho ảnh — hand-drawn frame quanh ảnh gây rối).
-    return (
-      <div
-        className={`relative h-full w-full overflow-hidden rounded-sm transition-colors duration-[60ms] ${
-          selected ? 'ring-2 ring-primary' : ''
-        }`}
-      >
-        {children}
-      </div>
-    );
+    // Bare: không shell, không ring. Type dùng bare tự vẽ viền chọn quanh vùng
+    // thân qua `<SelectionBox>` (registry `ownSelectionFrame`). Ring ở đây sẽ bọc
+    // cả khung → viền đôi, sai vùng (Board: bọc luôn tên + "N cards").
+    // Không overflow-hidden: viền + chấm QuickLine lấn ra ngoài vùng thân.
+    return <div className="relative h-full w-full">{children}</div>;
   }
 
   if (style === 'hand') {

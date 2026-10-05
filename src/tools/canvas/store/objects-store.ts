@@ -8,7 +8,7 @@ interface ObjectsState {
   updateGeometry: (id: string, geometry: Partial<Geometry>) => void;
   updateData: (id: string, data: unknown) => void;
   /** Chuyển object sang board khác. Dùng cho drop-onto-tile cross-board. */
-  updateBoardId: (id: string, boardId: string | null) => void;
+  updateBoardId: (id: string, boardId: string) => void;
   remove: (id: string) => void;
   removeMany: (ids: string[]) => void;
   get: (id: string) => CanvasObject | undefined;

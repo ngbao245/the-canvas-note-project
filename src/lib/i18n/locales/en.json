@@ -1,0 +1,219 @@
+{
+  "COMMON": {
+    "OK": "OK",
+    "CANCEL": "Cancel",
+    "DELETE": "Delete",
+    "UNKNOWN": "Unknown",
+    "LIST_PLUS": "{a} + {b}",
+    "COMING_SOON": "Coming soon",
+    "RESET_DEFAULT": "Reset to default",
+    "ERROR_TITLE": "Something went wrong",
+    "RETRY": "Retry",
+    "LOADING": "Loading...",
+    "OR": "or"
+  },
+  "LOCALE": {
+    "VI": "Tiếng Việt",
+    "EN": "English"
+  },
+  "SETTINGS": {
+    "TITLE": "Settings",
+    "CLOSE": "Close settings",
+    "CLOSE_TITLE": "Close (Esc)",
+    "NAV": "Settings sections",
+    "COMING_SOON_DESCRIPTION": "This section is being designed.",
+    "ACCOUNT": {
+      "TITLE": "Account",
+      "DESCRIPTION": "Sign-in and sync will be available once bibo has a backend.",
+      "STATUS": {
+        "TITLE": "Status",
+        "DESCRIPTION": "You are in guest mode. All boards are saved in this browser.",
+        "GUEST": "Guest"
+      },
+      "MENU": {
+        "NOT_SIGNED_IN": "Not signed in",
+        "SIGN_IN": "Sign in",
+        "SIGN_IN_SOON": "Coming soon, waiting on the backend",
+        "LOCAL_TITLE": "Saved in this browser",
+        "LOCAL_DESCRIPTION": "Not synced to the cloud. Clearing browser data will delete your boards."
+      }
+    },
+    "NOTIFICATIONS": {
+      "TITLE": "Email and notifications",
+      "DESCRIPTION": "Choose when bibo notifies you. Available once bibo has a backend and accounts.",
+      "DIGEST": {
+        "TITLE": "Activity digest email",
+        "DESCRIPTION": "Email a summary of changes on boards you take part in."
+      },
+      "MENTION": {
+        "TITLE": "When someone mentions you",
+        "DESCRIPTION": "Notify you when someone mentions you in a note or comment."
+      },
+      "INVITE": {
+        "TITLE": "When invited to a board",
+        "DESCRIPTION": "Notify you when someone shares a board with you."
+      },
+      "NEWS": {
+        "TITLE": "Product news",
+        "DESCRIPTION": "Occasional emails about new bibo features."
+      }
+    },
+    "APPEARANCE": {
+      "TITLE": "Appearance",
+      "DESCRIPTION": "Customize how bibo looks. Saved in this browser.",
+      "THEME": "Theme",
+      "MODE": {
+        "DARK": "Dark mode",
+        "LIGHT": "Light mode",
+        "SYSTEM": "System default"
+      },
+      "STYLE": {
+        "TITLE": "Style",
+        "HAND": "Hand-drawn",
+        "HAND_HINT": "Sketchy outlines with a drafted feel.",
+        "FLAT": "Flat",
+        "FLAT_HINT": "Clean straight outlines that follow the theme tokens."
+      },
+      "FONT": {
+        "TITLE": "Font",
+        "DESCRIPTION": "Choosing a font for the app. This section opens once decided."
+      }
+    },
+    "TOOLBAR": {
+      "TITLE": "Toolbar",
+      "DESCRIPTION": "Choose which buttons appear on the canvas toolbar."
+    },
+    "CANVAS": {
+      "TITLE": "Canvas",
+      "DESCRIPTION": "Background grid and scrolling on the canvas. Saved in this browser.",
+      "GRID": {
+        "TITLE": "Background grid",
+        "DESCRIPTION": "Show dots on the canvas background."
+      },
+      "SCROLL_SPEED": {
+        "TITLE": "Scroll speed",
+        "DESCRIPTION": "Distance moved per mouse wheel step. Ctrl + wheel still zooms.",
+        "SLOW": "Slow",
+        "NORMAL": "Normal",
+        "FAST": "Fast"
+      }
+    },
+    "SHORTCUTS": {
+      "TITLE": "Shortcuts",
+      "DESCRIPTION": "List of available keyboard shortcuts. On Mac, use Cmd instead of Ctrl.",
+      "DRAG": "drag",
+      "GROUP": {
+        "EDIT": "Editing",
+        "SELECT": "Selection",
+        "VIEW": "View",
+        "LAYER": "Layers",
+        "UNSORT": "Unsort"
+      },
+      "ACTION": {
+        "UNDO": "Undo",
+        "REDO": "Redo",
+        "COPY": "Copy",
+        "CUT": "Cut",
+        "PASTE": "Paste",
+        "DUPLICATE": "Duplicate",
+        "DELETE": "Delete",
+        "EDIT_SELECTED": "Edit selected object",
+        "SELECT_ALL": "Select everything on the canvas",
+        "DESELECT": "Deselect",
+        "FIT": "Fit content",
+        "RESET_VIEW": "Reset view",
+        "ZOOM_IN": "Zoom in",
+        "ZOOM_OUT": "Zoom out",
+        "PAN": "Drag to move the canvas",
+        "LAYER_UP": "Bring forward",
+        "LAYER_DOWN": "Send backward",
+        "LAYER_TOP": "Bring to front",
+        "LAYER_BOTTOM": "Send to back",
+        "TO_UNSORT": "Move selected objects to Unsort",
+        "CLOSE_UNSORT": "Close Unsort"
+      }
+    },
+    "LOCALIZATION": {
+      "TITLE": "Language and region",
+      "DESCRIPTION": "Interface language and how dates are shown.",
+      "LANGUAGE": {
+        "TITLE": "Language",
+        "DESCRIPTION": "Language used across the interface."
+      },
+      "DATE_FORMAT": {
+        "TITLE": "Date format",
+        "DESCRIPTION": "How dates are shown in the app."
+      },
+      "WEEK_START": {
+        "TITLE": "First day of week",
+        "DESCRIPTION": "Used for calendars and date pickers.",
+        "MONDAY": "Monday"
+      },
+      "NOT_AVAILABLE": "Not available yet"
+    },
+    "DATA": {
+      "TITLE": "Data",
+      "DESCRIPTION": "Boards, objects and storage in use.",
+      "BOARDS": {
+        "TITLE": "Boards",
+        "DESCRIPTION": "Number of boards, including Home and sub-boards."
+      },
+      "OBJECTS": {
+        "TITLE": "Objects",
+        "DESCRIPTION": "Total notes, board tiles and other objects, including Unsort."
+      },
+      "USAGE": {
+        "TITLE": "Storage",
+        "DESCRIPTION": "Estimated storage bibo uses in this browser."
+      },
+      "BACKUP": {
+        "TITLE": "Backup",
+        "DESCRIPTION": "Download all boards to your device. Available once bibo has a backend and sync."
+      },
+      "READ_ERROR": "Could not read data"
+    }
+  },
+  "CANVAS": {
+    "COUNT": {
+      "OBJECT": {
+        "one": "{count} object",
+        "other": "{count} objects"
+      },
+      "SUB_BOARD": {
+        "one": "{count} sub-board",
+        "other": "{count} sub-boards"
+      }
+    },
+    "NOTE_COLOR": {
+      "PICK": "Pick color",
+      "DEFAULT": "Default",
+      "RED": "Red",
+      "ORANGE": "Orange",
+      "YELLOW": "Yellow",
+      "GREEN": "Green",
+      "BLUE": "Blue",
+      "PURPLE": "Purple"
+    },
+    "HEADER": {
+      "UNDO": "Undo",
+      "UNDO_TITLE": "Undo (Ctrl+Z)",
+      "REDO": "Redo",
+      "REDO_TITLE": "Redo (Ctrl+Shift+Z)",
+      "FIT_CONTENT": "Fit content",
+      "RESET_VIEW": "Reset view"
+    },
+    "CONFIRM": {
+      "DELETE_MANY": {
+        "TITLE": "Delete multiple objects?",
+        "DESCRIPTION": "This deletes {items}. You can undo this (Ctrl+Z)."
+      },
+      "DELETE_BOARD": {
+        "TITLE": "Delete board \"{name}\"?",
+        "COUNTING": "Counting content inside...",
+        "EMPTY": "This board is empty. You can undo this (Ctrl+Z).",
+        "DESCRIPTION": "This removes {items}. You can undo this (Ctrl+Z).",
+        "CONFIRM": "Delete board"
+      }
+    }
+  }
+}

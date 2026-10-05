@@ -103,7 +103,7 @@ function ToolTile({
   type: string;
   tileType: TileType;
   label: string;
-  boardId: string | null;
+  boardId: string;
   def: ReturnType<typeof getToolbarObjectTypes>[number];
 }) {
   const create = (x: number, y: number) => {
@@ -148,7 +148,7 @@ const REGISTRY_TO_TILE: Record<string, TileType> = {
   board: 'board',
 };
 
-function CreationTools({ boardId }: { boardId: string | null }) {
+function CreationTools({ boardId }: { boardId: string }) {
   const types = getToolbarObjectTypes();
   return (
     <>
@@ -272,7 +272,7 @@ function GenericEditingActions() {
 // Root Toolbar
 // ============================================================
 
-export function Toolbar({ boardId }: { boardId: string | null }) {
+export function Toolbar({ boardId }: { boardId: string }) {
   const selectedIds = useSelectionStore((s) => s.selectedIds);
   const objectsMap = useObjectsStore((s) => s.objects);
   const editingId = useInteractionStore((s) => s.editingId);

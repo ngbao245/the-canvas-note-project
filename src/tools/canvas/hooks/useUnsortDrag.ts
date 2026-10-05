@@ -183,7 +183,7 @@ export function useUnsortDrag(getListItems: () => CanvasObject[]) {
         ordered.splice(drag.targetIndex, 0, moved);
 
         const currentBoardId = useCurrentBoardStore.getState().currentBoardId;
-        reorderInUnsort(ordered, currentBoardId);
+        if (currentBoardId) reorderInUnsort(ordered, currentBoardId);
       };
 
       window.addEventListener('pointermove', onMove);

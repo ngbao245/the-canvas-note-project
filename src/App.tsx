@@ -2,13 +2,17 @@ import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Landing from '@/routes/Landing';
 import { applyUiStyleAttr, useUiStyleStore } from '@/stores/ui-style-store';
-import { applyThemeAttr, useThemeStore } from '@/stores/theme-store';
+import { applyThemeAttr, useResolvedTheme } from '@/stores/theme-store';
+import { SettingsModal } from '@/components/settings/SettingsModal';
+import { applyLangAttr, useLocaleStore } from '@/lib/i18n';
 
 // Trang thử nghiệm drawably (phong cách vẽ tay) — lazy load, tách bundle.
 const LandingDraw = lazy(() => import('@/experiments/drawably/LandingDraw'));
 const CanvasDraw = lazy(() => import('@/experiments/drawably/CanvasDraw'));
 const StyleDemo = lazy(() => import('@/routes/StyleDemo'));
 const Canvas = lazy(() => import('@/tools/canvas/route'));
+// Nút đổi ngôn ngữ nhanh cho dev. Ở bản build, DEV = false → nhánh bị bỏ, file không vào bundle.
+const DevLocaleSwitch = import.meta.env.DEV ? lazy(() => import('@/dev/DevLocaleSwitch')) : null;
 
 export default function App() {
   // Đồng bộ phong cách hiển thị lên <html data-ui-style> khi mount và mỗi lần đổi.
@@ -17,11 +21,17 @@ export default function App() {
     applyUiStyleAttr(uiStyle);
   }, [uiStyle]);
 
-  // Đồng bộ theme màu lên <html data-theme>. Persist localStorage.
-  const theme = useThemeStore((s) => s.theme);
+  // Đồng bộ theme thật (đã giải 'system') lên <html data-theme>. Persist localStorage.
+  const theme = useResolvedTheme();
   useEffect(() => {
     applyThemeAttr(theme);
   }, [theme]);
+
+  // Đồng bộ ngôn ngữ lên <html lang> để trình đọc màn hình phát âm đúng tiếng.
+  const locale = useLocaleStore((s) => s.locale);
+  useEffect(() => {
+    applyLangAttr(locale);
+  }, [locale]);
 
   // Chặn browser page zoom qua trackpad pinch (wheel với ctrlKey — convention
   // native trackpad). Global listener trên window, passive:false để preventDefault
@@ -58,6 +68,13 @@ export default function App() {
           <Route path="*" element={<Landing />} />
         </Routes>
       </Suspense>
+      {/* Modal Cài đặt toàn app, mở qua useSettingsModalStore. */}
+      <SettingsModal />
+      {DevLocaleSwitch && (
+        <Suspense fallback={null}>
+          <DevLocaleSwitch />
+        </Suspense>
+      )}
     </BrowserRouter>
   );
 }

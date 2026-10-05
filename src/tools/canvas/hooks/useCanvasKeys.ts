@@ -176,11 +176,9 @@ export function useCanvasKeys({
           const n = useInteractionStore.getState().pasteCounter + 1;
           useInteractionStore.getState().setPasteCounter(n);
           const step = n * PASTE_OFFSET_STEP;
-          pasteObjects(
-            payload.objects,
-            { dx: step, dy: step },
-            useCurrentBoardStore.getState().currentBoardId,
-          );
+          const boardId = useCurrentBoardStore.getState().currentBoardId;
+          if (!boardId) return; // bootstrap chưa xong
+          pasteObjects(payload.objects, { dx: step, dy: step }, boardId);
         })();
         return;
       }

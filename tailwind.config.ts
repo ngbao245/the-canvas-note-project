@@ -76,6 +76,7 @@ const config: Config = {
         'drag-layer': 'var(--z-drag-layer)',
         modal: 'var(--z-modal)',
         tooltip: 'var(--z-tooltip)',
+        dev: 'var(--z-dev)',
       },
       fontFamily: {
         serif: [

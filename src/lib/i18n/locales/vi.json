@@ -1,0 +1,217 @@
+{
+  "COMMON": {
+    "OK": "OK",
+    "CANCEL": "Huỷ",
+    "DELETE": "Xoá",
+    "UNKNOWN": "Không rõ",
+    "LIST_PLUS": "{a} + {b}",
+    "COMING_SOON": "Sắp có",
+    "RESET_DEFAULT": "Đặt lại mặc định",
+    "ERROR_TITLE": "Đã có lỗi",
+    "RETRY": "Thử lại",
+    "LOADING": "Đang tải...",
+    "OR": "hoặc"
+  },
+  "LOCALE": {
+    "VI": "Tiếng Việt",
+    "EN": "English"
+  },
+  "SETTINGS": {
+    "TITLE": "Cài đặt",
+    "CLOSE": "Đóng cài đặt",
+    "CLOSE_TITLE": "Đóng (Esc)",
+    "NAV": "Mục cài đặt",
+    "COMING_SOON_DESCRIPTION": "Mục này đang được thiết kế.",
+    "ACCOUNT": {
+      "TITLE": "Tài khoản",
+      "DESCRIPTION": "Đăng nhập và đồng bộ sẽ có khi bibo chốt backend.",
+      "STATUS": {
+        "TITLE": "Trạng thái",
+        "DESCRIPTION": "Đang dùng chế độ khách. Mọi board lưu trên trình duyệt này.",
+        "GUEST": "Khách"
+      },
+      "MENU": {
+        "NOT_SIGNED_IN": "Chưa đăng nhập",
+        "SIGN_IN": "Đăng nhập",
+        "SIGN_IN_SOON": "Sắp có, chờ chốt backend",
+        "LOCAL_TITLE": "Lưu trên trình duyệt này",
+        "LOCAL_DESCRIPTION": "Chưa đồng bộ đám mây. Xoá dữ liệu trình duyệt sẽ mất board."
+      }
+    },
+    "NOTIFICATIONS": {
+      "TITLE": "Email và thông báo",
+      "DESCRIPTION": "Chọn khi nào bibo báo cho bạn. Sẽ có khi bibo có backend và tài khoản.",
+      "DIGEST": {
+        "TITLE": "Email tóm tắt hoạt động",
+        "DESCRIPTION": "Gửi email tổng hợp thay đổi trên các board bạn tham gia."
+      },
+      "MENTION": {
+        "TITLE": "Khi có người nhắc tới bạn",
+        "DESCRIPTION": "Báo khi ai đó nhắc tên bạn trong note hoặc bình luận."
+      },
+      "INVITE": {
+        "TITLE": "Khi được mời vào board",
+        "DESCRIPTION": "Báo khi có người chia sẻ board với bạn."
+      },
+      "NEWS": {
+        "TITLE": "Tin tức sản phẩm",
+        "DESCRIPTION": "Thỉnh thoảng gửi email về tính năng mới của bibo."
+      }
+    },
+    "APPEARANCE": {
+      "TITLE": "Giao diện",
+      "DESCRIPTION": "Tuỳ chỉnh cách bibo hiển thị. Lưu trên trình duyệt này.",
+      "THEME": "Chủ đề",
+      "MODE": {
+        "DARK": "Chế độ Tối",
+        "LIGHT": "Chế độ Sáng",
+        "SYSTEM": "Theo hệ thống"
+      },
+      "STYLE": {
+        "TITLE": "Phong cách",
+        "HAND": "Vẽ tay",
+        "HAND_HINT": "Nét viền nguệch ngoạc, cảm giác phác thảo.",
+        "FLAT": "Phẳng",
+        "FLAT_HINT": "Viền thẳng, gọn, theo token theme."
+      },
+      "FONT": {
+        "TITLE": "Font chữ",
+        "DESCRIPTION": "Đang chọn font cho app. Có kết quả sẽ mở mục này."
+      }
+    },
+    "TOOLBAR": {
+      "TITLE": "Thanh công cụ",
+      "DESCRIPTION": "Chọn nút nào hiện trên thanh công cụ canvas."
+    },
+    "CANVAS": {
+      "TITLE": "Canvas",
+      "DESCRIPTION": "Lưới nền và cách cuộn trên canvas. Lưu trên trình duyệt này.",
+      "GRID": {
+        "TITLE": "Lưới nền",
+        "DESCRIPTION": "Hiện các chấm trên nền canvas."
+      },
+      "SCROLL_SPEED": {
+        "TITLE": "Tốc độ cuộn",
+        "DESCRIPTION": "Quãng di chuyển mỗi lần lăn chuột. Ctrl + lăn chuột vẫn là zoom.",
+        "SLOW": "Chậm",
+        "NORMAL": "Vừa",
+        "FAST": "Nhanh"
+      }
+    },
+    "SHORTCUTS": {
+      "TITLE": "Phím tắt",
+      "DESCRIPTION": "Danh sách phím tắt đang có. Trên Mac dùng Cmd thay cho Ctrl.",
+      "DRAG": "kéo chuột",
+      "GROUP": {
+        "EDIT": "Chỉnh sửa",
+        "SELECT": "Chọn",
+        "VIEW": "Xem",
+        "LAYER": "Sắp lớp",
+        "UNSORT": "Unsort"
+      },
+      "ACTION": {
+        "UNDO": "Hoàn tác",
+        "REDO": "Làm lại",
+        "COPY": "Sao chép",
+        "CUT": "Cắt",
+        "PASTE": "Dán",
+        "DUPLICATE": "Nhân bản",
+        "DELETE": "Xoá",
+        "EDIT_SELECTED": "Sửa object đang chọn",
+        "SELECT_ALL": "Chọn tất cả trên canvas",
+        "DESELECT": "Bỏ chọn",
+        "FIT": "Vừa khít nội dung",
+        "RESET_VIEW": "Đặt lại góc nhìn",
+        "ZOOM_IN": "Phóng to",
+        "ZOOM_OUT": "Thu nhỏ",
+        "PAN": "Kéo để di chuyển canvas",
+        "LAYER_UP": "Lên 1 lớp",
+        "LAYER_DOWN": "Xuống 1 lớp",
+        "LAYER_TOP": "Lên trên cùng",
+        "LAYER_BOTTOM": "Xuống dưới cùng",
+        "TO_UNSORT": "Đưa object đang chọn vào Unsort",
+        "CLOSE_UNSORT": "Đóng Unsort"
+      }
+    },
+    "LOCALIZATION": {
+      "TITLE": "Ngôn ngữ và vùng",
+      "DESCRIPTION": "Ngôn ngữ giao diện và cách hiện ngày tháng.",
+      "LANGUAGE": {
+        "TITLE": "Ngôn ngữ",
+        "DESCRIPTION": "Ngôn ngữ hiển thị trên giao diện."
+      },
+      "DATE_FORMAT": {
+        "TITLE": "Định dạng ngày",
+        "DESCRIPTION": "Cách hiện ngày tháng trong app."
+      },
+      "WEEK_START": {
+        "TITLE": "Ngày đầu tuần",
+        "DESCRIPTION": "Dùng cho lịch và chọn ngày.",
+        "MONDAY": "Thứ Hai"
+      },
+      "NOT_AVAILABLE": "Chưa đổi được"
+    },
+    "DATA": {
+      "TITLE": "Dữ liệu",
+      "DESCRIPTION": "Số board, object và dung lượng đang dùng.",
+      "BOARDS": {
+        "TITLE": "Board",
+        "DESCRIPTION": "Số board đang có, tính cả Home và board con."
+      },
+      "OBJECTS": {
+        "TITLE": "Object",
+        "DESCRIPTION": "Tổng số note, board tile và object khác, kể cả trong Unsort."
+      },
+      "USAGE": {
+        "TITLE": "Dung lượng",
+        "DESCRIPTION": "Ước tính dung lượng bibo đang dùng trên trình duyệt này."
+      },
+      "BACKUP": {
+        "TITLE": "Sao lưu",
+        "DESCRIPTION": "Tải toàn bộ board về máy. Sẽ có khi bibo có backend và đồng bộ."
+      },
+      "READ_ERROR": "Không đọc được dữ liệu"
+    }
+  },
+  "CANVAS": {
+    "COUNT": {
+      "OBJECT": {
+        "other": "{count} object"
+      },
+      "SUB_BOARD": {
+        "other": "{count} board con"
+      }
+    },
+    "NOTE_COLOR": {
+      "PICK": "Chọn màu",
+      "DEFAULT": "Mặc định",
+      "RED": "Đỏ",
+      "ORANGE": "Cam",
+      "YELLOW": "Vàng",
+      "GREEN": "Xanh lá",
+      "BLUE": "Xanh dương",
+      "PURPLE": "Tím"
+    },
+    "HEADER": {
+      "UNDO": "Undo",
+      "UNDO_TITLE": "Undo (Ctrl+Z)",
+      "REDO": "Redo",
+      "REDO_TITLE": "Redo (Ctrl+Shift+Z)",
+      "FIT_CONTENT": "Vừa nội dung",
+      "RESET_VIEW": "Đặt lại góc nhìn"
+    },
+    "CONFIRM": {
+      "DELETE_MANY": {
+        "TITLE": "Xoá nhiều object?",
+        "DESCRIPTION": "Sẽ xoá {items}. Undo được (Ctrl+Z)."
+      },
+      "DELETE_BOARD": {
+        "TITLE": "Xoá board \"{name}\"?",
+        "COUNTING": "Đang tính số nội dung bên trong...",
+        "EMPTY": "Board rỗng. Undo được (Ctrl+Z).",
+        "DESCRIPTION": "Sẽ mất {items}. Undo được (Ctrl+Z).",
+        "CONFIRM": "Xoá cả board"
+      }
+    }
+  }
+}

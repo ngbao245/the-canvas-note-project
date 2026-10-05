@@ -4,6 +4,7 @@ import { useObjectsStore } from '../store/objects-store';
 import { useInteractionStore } from '../store/interaction-store';
 import { useSelectionStore } from '../store/selection-store';
 import { useUnsortStore } from '../store/unsort-store';
+import { SCROLL_SPEED_FACTOR, useCanvasSettingsStore } from '@/stores/canvas-settings-store';
 import { getCameraEngine } from '../engine/camera-engine';
 import { screenToCanvas } from '../engine/coord';
 import { createObjectAt } from '../engine/actions';
@@ -33,13 +34,13 @@ import './objects'; // side-effect: register mọi object type vào registry
  *   - Notch dồn dập → cộng dồn velocity → đà mượt. Notch thưa → glide liên tục,
  *     không "khựng" từng nấc. Ngừng scroll → "luôn trượt đi" rồi tắt.
  *
- * WHEEL_PAN_SPEED = 0.5 → giảm khoảng cách pan per notch (deltaY=100 → 50px).
+ * Tốc độ cuộn lấy từ Cài đặt → Canvas (SCROLL_SPEED_FACTOR, mặc định 0.5:
+ * deltaY=100 → 50px). Đọc getState mỗi lần cuộn → đổi setting không cần gắn lại listener.
+ * Lưới nền ẩn/hiện theo Cài đặt (chỉ ẩn 2 lớp chấm, engine vẫn ghi style qua ref).
  *
  * ResizeObserver track viewport, recompute dynamic zoom min + pan bounds mỗi khi
  * objects hoặc viewport đổi.
  */
-
-const WHEEL_PAN_SPEED = 0.5;
 
 function normalizeWheelDelta(e: WheelEvent): { dx: number; dy: number } {
   let dx = e.deltaX;
@@ -56,12 +57,14 @@ function normalizeWheelDelta(e: WheelEvent): { dx: number; dy: number } {
   return { dx, dy };
 }
 
-export function CanvasSurface({ boardId }: { boardId: string | null }) {
+export function CanvasSurface({ boardId }: { boardId: string }) {
   const surfaceRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const gridDenseRef = useRef<HTMLDivElement>(null);
   const gridSparseRef = useRef<HTMLDivElement>(null);
   const objectsMap = useObjectsStore((s) => s.objects);
+  const showGrid = useCanvasSettingsStore((s) => s.showGrid);
+  const gridVisibilityCls = showGrid ? '' : 'hidden';
   const [menu, setMenu] = useState<{
     screenX: number;
     screenY: number;
@@ -159,7 +162,8 @@ export function CanvasSurface({ boardId }: { boardId: string | null }) {
         dy = 0;
       }
       // panSmooth: engine ramp ~80ms → wheel notch (deltaY=100) glide thay vì jump.
-      engine.panSmooth({ x: -dx * WHEEL_PAN_SPEED, y: -dy * WHEEL_PAN_SPEED });
+      const speed = SCROLL_SPEED_FACTOR[useCanvasSettingsStore.getState().scrollSpeed];
+      engine.panSmooth({ x: -dx * speed, y: -dy * speed });
     };
 
     el.addEventListener('wheel', onWheel, { passive: false });
@@ -214,7 +218,7 @@ export function CanvasSurface({ boardId }: { boardId: string | null }) {
       />
       <div
         ref={gridDenseRef}
-        className="pointer-events-none absolute inset-0"
+        className={`pointer-events-none absolute inset-0 ${gridVisibilityCls}`}
         style={{
           backgroundImage:
             'radial-gradient(circle at 4px 4px, color-mix(in srgb, var(--foreground) 9%, transparent) 3px, transparent 3.75px)',
@@ -225,7 +229,7 @@ export function CanvasSurface({ boardId }: { boardId: string | null }) {
       />
       <div
         ref={gridSparseRef}
-        className="pointer-events-none absolute inset-0"
+        className={`pointer-events-none absolute inset-0 ${gridVisibilityCls}`}
         style={{
           backgroundImage:
             'radial-gradient(circle at 4px 4px, color-mix(in srgb, var(--foreground) 9%, transparent) 3px, transparent 3.75px)',
