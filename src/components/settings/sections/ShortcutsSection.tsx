@@ -1,10 +1,10 @@
 import { useI18n, type MessageKey } from '@/lib/i18n';
-import { Section } from '../SettingsBlocks';
+import { Kbd, Section } from '../SettingsBlocks';
 
 /**
  * Cài đặt → Phím tắt: danh sách chỉ xem.
  *
- * Nguồn: useCanvasKeys, useDeleteKey, usePointerInteraction (Space), CanvasApp
+ * Nguồn: useGlobalShortcuts (Ctrl+Shift+< / > kích thước giao diện, Ctrl+Shift+D đảo theme), useCanvasKeys, useDeleteKey, usePointerInteraction (Space), CanvasApp
  * (Ctrl+Shift+U, Esc đóng Unsort). Thêm/đổi phím ở các file đó thì sửa danh sách
  * này cùng lúc, không thì lệch nhau.
  *
@@ -52,6 +52,9 @@ const GROUPS: { titleKey: MessageKey; items: Shortcut[] }[] = [
       { labelKey: 'SETTINGS.SHORTCUTS.ACTION.ZOOM_IN', keys: [['Ctrl', '+']] },
       { labelKey: 'SETTINGS.SHORTCUTS.ACTION.ZOOM_OUT', keys: [['Ctrl', '-']] },
       { labelKey: 'SETTINGS.SHORTCUTS.ACTION.PAN', keys: [['Space', DRAG]] },
+      { labelKey: 'SETTINGS.SHORTCUTS.ACTION.SIZE_DOWN', keys: [['Ctrl', 'Shift', '<']] },
+      { labelKey: 'SETTINGS.SHORTCUTS.ACTION.SIZE_UP', keys: [['Ctrl', 'Shift', '>']] },
+      { labelKey: 'SETTINGS.SHORTCUTS.ACTION.TOGGLE_THEME', keys: [['Ctrl', 'Shift', 'D']] },
     ],
   },
   {
@@ -119,12 +122,7 @@ function KeyCombo({ combo }: { combo: KeyPart[] }) {
   return (
     <span className="flex items-center gap-1">
       {combo.map((part) => (
-        <kbd
-          key={partId(part)}
-          className="min-w-[1.5rem] rounded border border-border bg-muted px-1.5 py-0.5 text-center font-sans text-[11px] text-foreground"
-        >
-          {typeof part === 'string' ? part : t(part.labelKey)}
-        </kbd>
+        <Kbd key={partId(part)}>{typeof part === 'string' ? part : t(part.labelKey)}</Kbd>
       ))}
     </span>
   );

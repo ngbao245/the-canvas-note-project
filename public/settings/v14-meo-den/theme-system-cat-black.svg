@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="224" viewBox="0 0 160 112" fill="none" role="img">
+  <title>Giao diện theo hệ thống</title>
+  <style>
+    .bg{fill:var(--bg)} .hd{fill:var(--hd)} .ln{fill:var(--ln)} .shd{fill:var(--shd)}
+    .tx{fill:var(--tx)} .mf{fill:var(--mf)} .tl{fill:var(--tl)} .mu{fill:var(--mu)}
+    .pr{fill:var(--pr)} .ok{fill:var(--ok)}
+    .cd{fill:var(--cd);stroke:var(--cs);stroke-width:.5}
+    .tb{fill:var(--cd);stroke:var(--ln);stroke-width:.6}
+    .pp{fill:var(--cd);stroke:var(--tl);stroke-width:.6}
+    .sp{stroke:var(--pr);fill:none}
+    .tk{stroke:var(--tk);fill:none}
+    .ob{stroke:var(--mf);fill:none} .cat{fill:var(--cat);stroke:var(--catline);stroke-width:1.1;stroke-linejoin:round} .tailo{stroke:var(--catline)} .tail{stroke:var(--cat)} .rim{stroke:var(--catrim)} .eye{fill:var(--eye)}
+  </style>
+  <defs>
+    <clipPath id="win"><rect x=".5" y=".5" width="159" height="111" rx="8"/></clipPath>
+    <clipPath id="cN"><rect x="30" y="24" width="58" height="38" rx="2"/></clipPath>
+    <clipPath id="cI"><rect x="101" y="65" width="48" height="27" rx="1.5"/></clipPath>
+
+    <!-- Cảnh canvas bibo vẽ ở đúng kích thước hiển thị (~160px), ít chi tiết -->
+    <g id="scene">
+      <rect class="bg" width="160" height="112"/>
+
+      <!-- Header: logo + breadcrumb + avatar -->
+      <rect class="hd" width="160" height="15"/>
+      <rect class="ln" y="15" width="160" height="1"/>
+      <circle class="tx" cx="9" cy="7.5" r="2.5"/>
+      <rect class="mf" x="15" y="6" width="20" height="3" rx="1.5"/>
+           <rect class="tx" x="40" y="6" width="20" height="3" rx="1.5"/>
+      <circle class="mu" cx="151" cy="7.5" r="3.5"/>
+
+      <!-- Thanh bên kiểu v0: 3 ô trên (ô giữa đang chọn) + 1 ô dưới, nằm trong khung chứa -->
+ <rect class="shd" x="5" y="23" width="15" height="83" rx="5"/>
+ <rect class="tb" x="5" y="22" width="15" height="83" rx="5"/>
+ <rect class="tl" x="8.5" y="27" width="8" height="8" rx="2"/>
+ <rect class="pr" x="8.5" y="39" width="8" height="8" rx="2"/>
+ <rect class="tl" x="8.5" y="51" width="8" height="8" rx="2"/>
+ <rect class="tl" x="8.5" y="93" width="8" height="8" rx="2" opacity=".55"/>
+
+      <!-- Note đang chọn -->
+ <g transform="translate(0 20)">
+      <rect class="shd" x="30" y="25" width="58" height="38" rx="2"/>
+      <rect class="cd" x="30" y="24" width="58" height="38" rx="2"/>
+      <rect class="pr" clip-path="url(#cN)" x="30" y="24" width="58" height="2" opacity=".6"/>
+      <rect class="tx" x="35" y="31" width="30" height="3.5" rx="1.2"/>
+      <rect class="tl" x="35" y="39" width="48" height="2.2" rx="1.1"/>
+      <rect class="tl" x="35" y="44" width="44" height="2.2" rx="1.1"/>
+      <rect class="tl" x="35" y="49" width="28" height="2.2" rx="1.1"/>
+ </g>
+
+      <!-- Card ảnh: mèo đen ngồi in bóng trước trăng tròn, Pop Art pha street mural trên tường gạch mờ.
+           Màu là nội dung ảnh nên giữ nguyên ở cả 2 theme -->
+      <g transform="translate(0 -20)">
+      <rect class="shd" x="100" y="65" width="50" height="38" rx="2"/>
+      <rect class="cd" x="100" y="64" width="50" height="38" rx="2"/>
+      <g clip-path="url(#cI)">
+        <!-- Tường gạch mờ -->
+        <rect x="101" y="65" width="48" height="27" fill="#CC7A62"/>
+        <path d="M101 69.5H149M101 74H149M101 78.5H149M101 83H149M101 87.5H149M110 65V69.5M119 65V69.5M128 65V69.5M137 65V69.5M146 65V69.5M105.5 69.5V74M114.5 69.5V74M123.5 69.5V74M132.5 69.5V74M141.5 69.5V74M110 74V78.5M119 74V78.5M128 74V78.5M137 74V78.5M146 74V78.5M105.5 78.5V83M114.5 78.5V83M123.5 78.5V83M132.5 78.5V83M141.5 78.5V83M110 83V87.5M119 83V87.5M128 83V87.5M137 83V87.5M146 83V87.5M105.5 87.5V92M114.5 87.5V92M123.5 87.5V92M132.5 87.5V92M141.5 87.5V92" stroke="#D68C75" stroke-width=".5"/>
+
+        <!-- Mảng sơn hồng mép thô -->
+        <path d="M105 66.5L140.8 66.1L146.1 70.6L146.2 86.9L141 91.2L107.6 91L103.7 85.9L104.4 70.5Z" fill="#F3A6C2"/>
+
+        <!-- Trăng tròn to phía sau, mèo che một phần -->
+        <circle cx="134" cy="76" r="9.5" fill="#F2D35B" stroke="#151515" stroke-width="1.3"/>
+        <circle cx="137.5" cy="73" r="1.6" fill="#E8BF38"/>
+        <circle cx="136" cy="80.5" r="1.1" fill="#E8BF38"/>
+
+        <!-- Đuôi cong -->
+        <path class="tailo" d="M130.5 91.2C137 91.2 139.6 86.4 137.2 83.2C136.2 81.9 134.6 82.5 135 83.9" stroke-width="4.4" stroke-linecap="round"/>
+ <path class="tail" d="M130.5 91.2C137 91.2 139.6 86.4 137.2 83.2C136.2 81.9 134.6 82.5 135 83.9" stroke-width="2.4" stroke-linecap="round"/>
+
+        <!-- Thân + đầu + tai liền 1 khối -->
+        <path d="M114 92C114 86 116 82.6 118.6 81.6C117.1 80.6 116.6 78.6 117 76.6L116.6 70.4L120.2 73C122.1 72.4 123.9 72.4 125.8 73L129.4 70.4L129 76.6C129.4 78.6 128.9 80.6 127.4 81.6C130 82.6 132 86 132 92Z" class="cat"/>
+        <path d="M117.4 71.8L117.6 74.3L119.3 73.2Z" fill="#F3A6C2"/>
+        <path d="M128.6 71.8L128.4 74.3L126.7 73.2Z" fill="#F3A6C2"/>
+
+        <!-- Mắt vàng con ngươi dọc -->
+        <ellipse class="eye" cx="120.8" cy="77.2" rx="1.5" ry="1.1"/>
+        <ellipse class="eye" cx="125.2" cy="77.2" rx="1.5" ry="1.1"/>
+        <rect x="120.5" y="76.2" width=".6" height="2" rx=".3" fill="#151515"/>
+        <rect x="124.9" y="76.2" width=".6" height="2" rx=".3" fill="#151515"/>
+
+        <!-- Vệt sáng viền thân + sao lấp lánh -->
+        <path class="rim" d="M116.2 89.5C116.2 86.5 117 84.6 118.4 83.6" stroke-width=".9" stroke-linecap="round" opacity=".7"/>
+        <path d="M109 70V73.4M107.3 71.7H110.7M111.5 82V84.4M110.3 83.2H112.7" stroke="#ffffff" stroke-width="1.1" stroke-linecap="round"/>
+
+        <!-- Vân gạch rất mờ lộ qua sơn -->
+        <path d="M101 69.5H149M101 74H149M101 78.5H149M101 83H149M101 87.5H149M110 65V69.5M119 65V69.5M128 65V69.5M137 65V69.5M146 65V69.5M105.5 69.5V74M114.5 69.5V74M123.5 69.5V74M132.5 69.5V74M141.5 69.5V74M110 74V78.5M119 74V78.5M128 74V78.5M137 74V78.5M146 74V78.5M105.5 78.5V83M114.5 78.5V83M123.5 78.5V83M132.5 78.5V83M141.5 78.5V83M110 83V87.5M119 83V87.5M128 83V87.5M137 83V87.5M146 83V87.5M105.5 87.5V92M114.5 87.5V92M123.5 87.5V92M132.5 87.5V92M141.5 87.5V92" stroke="#151515" stroke-width=".4" opacity=".06"/>
+      </g>
+      <rect class="tx" x="104" y="95.5" width="22" height="2.5" rx="1.25"/>
+ </g>
+
+    </g>
+  </defs>
+
+ <defs><clipPath id="hl"><rect width="94" height="112"/></clipPath><clipPath id="hr"><rect x="94" width="66" height="112"/></clipPath></defs>
+ <g clip-path="url(#win)">
+ <g clip-path="url(#hl)"><use href="#scene" style="--bg:#f8f9fb;--hd:#ffffff;--ln:#dfe1e7;--cd:#ffffff;--cs:#e6e8ed;--shd:rgba(28,33,45,.08);--tx:#17171b;--mf:#565963;--tl:#c9ccd4;--mu:#eceef2;--pr:#007acc;--ok:#15803d;--tk:#ffffff;--cat:#151515;--catline:#151515;--catrim:#ffffff;--eye:#F2D35B"/></g>
+ <g clip-path="url(#hr)"><use href="#scene" style="--bg:#1e1e1e;--hd:#252526;--ln:#3e3e42;--cd:#2a2a2c;--cs:#38383c;--shd:rgba(0,0,0,.35);--tx:#e5e7eb;--mf:#a1a1aa;--tl:#4f4f56;--mu:#333337;--pr:#007acc;--ok:#22c55e;--tk:#ffffff;--cat:#151515;--catline:#151515;--catrim:#ffffff;--eye:#F2D35B"/></g>
+ </g>
+ <g clip-path="url(#hl)"><rect x=".5" y=".5" width="159" height="111" rx="8" fill="none" stroke="#cfd2da" stroke-width="1"/></g>
+ <g clip-path="url(#hr)"><rect x=".5" y=".5" width="159" height="111" rx="8" fill="none" stroke="#3e3e42" stroke-width="1"/></g>
+</svg>

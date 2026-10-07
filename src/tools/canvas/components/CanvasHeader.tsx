@@ -1,34 +1,24 @@
-import { useEffect, useRef, useState } from 'react';
-import {
-  RotateCcw,
-  Maximize2,
-  Undo2,
-  Redo2,
-  ChevronDown,
-  type LucideIcon,
-} from 'lucide-react';
+import { Undo2, Redo2, type LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/style';
 import { AccountMenu } from '@/components/settings/AccountMenu';
 import { useI18n } from '@/lib/i18n';
 import { useObjectsStore } from '../store/objects-store';
-import { useCameraStore } from '../store/camera-store';
 import { useHistoryStore } from '../store/history-store';
 import type { Board } from '../types';
 import { BreadcrumbList } from './BreadcrumbList';
+import { BoardTitleRow } from './BoardTitleRow';
+import { useInterfaceScale } from '@/stores/interface-store';
 
 /**
  * CanvasHeader — 2 hàng:
- *   - Hàng 1: breadcrumb các cấp (trái, tự rút theo bề rộng) + công cụ (phải:
- *     Undo/Redo + avatar mở popup tài khoản → Cài đặt).
- *   - Hàng 2: số object (trái) + View (phải).
+ *   - Hàng 1: breadcrumb (trái, tự rút theo bề rộng) + số object + Undo/Redo +
+ *     avatar (phải).
+ *   - Hàng 2 (BoardTitleRow): trạng thái lưu / tên board / Chia sẻ + Xuất + % zoom.
  *
- * Không có title board ở giữa: breadcrumb đã cho biết đang ở board nào.
- * Đổi tên board: double-click tên trên tile ở board cha.
+ * Co dãn: breadcrumb `flex-1 min-w-0` co tới 0 và tự ẩn bớt cấp; cụm bên phải
+ * không co (`shrink-0`) nên không bao giờ mất nút.
  *
- * Co dãn hàng 1: breadcrumb `flex-1 min-w-0` co tới 0 và tự ẩn bớt cấp; cụm
- * công cụ không co (`shrink-0`) nên không bao giờ mất nút.
- *
- * Các cụm subscribe store riêng (UndoRedoCluster / ObjectCountBadge / ZoomBadge)
+ * Các cụm subscribe store riêng (UndoRedoCluster / ObjectCountBadge / ZoomBadge ở HeaderPopups)
  * để cô lập re-render — push history hay zoom 60Hz không đụng cả header.
  */
 export function CanvasHeader({
@@ -40,18 +30,24 @@ export function CanvasHeader({
   onFit: () => void;
   onReset: () => void;
 }) {
+  const uiScale = useInterfaceScale();
   return (
-    <header className="flex flex-col border-b border-border bg-card">
-      <div className="flex h-10 items-center gap-3 px-4">
+    // Kích thước giao diện: zoom (không transform) để header thấp lại thật, canvas lấp phần dư.
+    // Menu tài khoản + View nằm trong header nên nhỏ theo.
+    <header style={{ zoom: uiScale }} className="flex flex-col border-b border-border bg-card">
+      {/* px-2 (8px) cả 2 hàng, để thẳng mép nhau: khoảng nhỏ với mép màn hình như Milanote. */}
+      <div className="flex h-11 items-center gap-3 px-2">
         <div className="flex min-w-0 flex-1 items-center">
           <BreadcrumbList board={board} />
         </div>
-        <ToolsCluster />
+        {/* shrink-0: breadcrumb co trước, cụm bên phải không bao giờ bị ép mất. */}
+        <div className="flex shrink-0 items-center gap-1">
+          <ObjectCountBadge />
+          <div className="mx-1 h-4 w-px bg-border" />
+          <ToolsCluster />
+        </div>
       </div>
-      <div className="flex h-10 items-center justify-between gap-3 border-t border-border/50 px-4">
-        <ObjectCountBadge />
-        <ViewMenu onFit={onFit} onReset={onReset} />
-      </div>
+      <BoardTitleRow board={board} onFit={onFit} onReset={onReset} />
     </header>
   );
 }
@@ -94,12 +90,11 @@ function IconButton({
 }
 
 // ============================================================
-// Hàng 1 — cụm công cụ bên phải
+// Cụm công cụ bên phải
 // ============================================================
 
 // Theme + phong cách đã chuyển vào modal Cài đặt (avatar → Cài đặt → Giao diện).
 function ToolsCluster() {
-  // shrink-0: breadcrumb co trước, cụm nút không bao giờ bị ép mất.
   return (
     <div className="flex shrink-0 items-center gap-1">
       <UndoRedoCluster />
@@ -138,7 +133,7 @@ function UndoRedoCluster() {
 }
 
 // ============================================================
-// Hàng 2 — số object + View
+// Số object (bên phải, trước Undo/Redo)
 // ============================================================
 
 function ObjectCountBadge() {
@@ -151,97 +146,4 @@ function ObjectCountBadge() {
       <Badge tone="default">{t('CANVAS.COUNT.OBJECT', { count: objectCount })}</Badge>
     </span>
   );
-}
-
-// View dropdown — inline mini menu. Zoom% liên tục update qua ZoomBadge (subscribe
-// riêng, cô lập re-render 60Hz trong ramp). Menu items: Fit, Reset.
-function ViewMenu({ onFit, onReset }: { onFit: () => void; onReset: () => void }) {
-  const [open, setOpen] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const { t } = useI18n();
-
-  // Click outside close.
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (!wrapperRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [open]);
-
-  return (
-    <div ref={wrapperRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-        aria-haspopup="menu"
-        aria-expanded={open}
-      >
-        {/* <span>View</span> */}
-        <ZoomBadge />
-        <ChevronDown className="h-3.5 w-3.5" />
-      </button>
-      {open ? (
-        <div
-          role="menu"
-          className="absolute right-0 top-full z-tooltip mt-1 w-40 rounded-md border border-border bg-popover p-1 shadow-elevation-2"
-        >
-          <ViewMenuItem
-            icon={Maximize2}
-            label={t('CANVAS.HEADER.FIT_CONTENT')}
-            hint="F"
-            onClick={() => {
-              setOpen(false);
-              onFit();
-            }}
-          />
-          <ViewMenuItem
-            icon={RotateCcw}
-            label={t('CANVAS.HEADER.RESET_VIEW')}
-            hint="0"
-            onClick={() => {
-              setOpen(false);
-              onReset();
-            }}
-          />
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function ViewMenuItem({
-  icon: Icon,
-  label,
-  hint,
-  onClick,
-}: {
-  icon: typeof Maximize2;
-  label: string;
-  hint?: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-foreground hover:bg-muted"
-    >
-      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-      <span className="flex-1 text-left">{label}</span>
-      {hint ? (
-        <span className="text-[10px] tabular-nums text-muted-foreground/70">{hint}</span>
-      ) : null}
-    </button>
-  );
-}
-
-// Isolate zoom subscription — cô lập re-render 60Hz trong ramp. Chỉ span nhỏ này
-// re-render, ViewMenu button + BoardRow không bị đụng.
-function ZoomBadge() {
-  const zoom = useCameraStore((s) => s.camera.zoom);
-  return <span className="text-xs tabular-nums text-foreground/80">{Math.round(zoom * 100)}%</span>;
 }

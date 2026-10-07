@@ -46,11 +46,13 @@ Ngoài phạm vi: chọn bộ font, công tắc "font riêng cho tiêu đề" (b
 
 ## US-8: Chọn kích thước giao diện
 Là người dùng, tôi muốn chữ và card trên canvas to / nhỏ hơn để vừa mắt và vừa màn hình.
-- Cho mục Giao diện, thì thấy 3 thẻ Nhỏ / Vừa / Lớn. Lớn có nhãn "Khuyên dùng". Thẻ đang chọn có dấu tick.
-- Cho đang ở Lớn (mặc định), thì canvas trông y như trước khi có setting.
-- Khi chọn Vừa hoặc Nhỏ, thì card, chữ trong card và khoảng cách giữa các card trên canvas cùng nhỏ lại theo 1 tỉ lệ.
+- Cho mục Giao diện, thì thấy 3 thẻ Nhỏ / Vừa / Lớn. Vừa có nhãn "Khuyên dùng". Thẻ đang chọn tô viền + nền như thẻ Theme (không tick, bạn chốt 2026-10-05).
+- (Đổi 2026-10-06) Cho đang ở Vừa (mặc định), thì canvas trông y như trước khi có setting. Trước đó mặc định là Lớn.
+- Khi chọn Nhỏ, thì card, chữ trong card và khoảng cách giữa các card cùng nhỏ lại theo 1 tỉ lệ. Chọn Lớn thì to lên.
   Card không đè lên nhau.
-- Toolbar trái và panel Unsort nhỏ lại cùng tỉ lệ. Header và modal Cài đặt giữ nguyên.
+- Toolbar trái và panel Unsort nhỏ lại cùng tỉ lệ.
+- (Đổi 2026-10-06, bạn chọn B) Header canvas, menu tài khoản và modal Cài đặt cũng nhỏ lại cùng tỉ lệ, để đổi kích
+  thước ngay trong Cài đặt là thấy khác. Trước đó spec giữ nguyên 3 phần này theo Milanote.
 - Mức zoom hiện trên header không đổi khi đổi kích thước.
 - Lựa chọn giữ sau khi tải lại trang, áp cho mọi board.
 - Kéo thả, hút cạnh, chọn vùng, dán, tách đoạn (card clipper), kéo từ toolbar, kéo trong Unsort vẫn đúng chỗ ở cả 3 mức.
@@ -62,4 +64,4 @@ Là người dùng bàn phím, tôi muốn đổi kích thước nhanh mà khôn
 - Cho mục Phím tắt, thì có dòng cho 2 phím này. Mục Giao diện hiện gợi ý phím cạnh tiêu đề.
 
 ## US-4 (bổ sung)
-- Cho mục Giao diện, khi bấm "Đặt lại mặc định", thì kích thước cũng về Lớn.
+- Cho mục Giao diện, khi bấm "Đặt lại mặc định", thì kích thước cũng về Vừa (đổi 2026-10-06, trước là Lớn).

@@ -3,7 +3,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 /**
- * Store theme màu (trục màu). Mặc định dark.
+ * Store theme màu (trục màu). Mặc định light (bạn chốt 2026-10-05, trước là dark).
+ * Người dùng đã lưu lựa chọn trong 'bibo-theme' thì giữ nguyên, chỉ người mới nhận light.
  * Lưu localStorage key 'bibo-theme'. Lưu LỰA CHỌN của người dùng (có 'system'),
  * còn <html data-theme> luôn nhận theme thật (dark/light) qua useResolvedTheme.
  *
@@ -15,7 +16,7 @@ export type Theme = 'dark' | 'light';
 /** Lựa chọn trong Cài đặt. 'system' = theo dark/light của máy. */
 export type ThemePreference = Theme | 'system';
 
-export const DEFAULT_THEME: ThemePreference = 'dark';
+export const DEFAULT_THEME: ThemePreference = 'light';
 
 interface ThemeState {
   theme: ThemePreference;

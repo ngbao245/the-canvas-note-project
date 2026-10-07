@@ -28,6 +28,7 @@ import {
 } from './camera';
 import { clampCameraToBounds } from './pan-bounds';
 import { computeGridLod } from './grid-lod';
+import { INTERFACE_SCALE, getInterfaceScale, useInterfaceStore } from '@/stores/interface-store';
 
 // --- Constants ---
 
@@ -77,7 +78,8 @@ const PERSIST_DEBOUNCE_MS = 500;
 
 // --- Types ---
 
-type CameraListener = (camera: Camera) => void;
+/** camera = camera hiệu dụng (zoom đã nhân tỉ lệ giao diện), boardZoom = zoom board (hiện trên header). */
+type CameraListener = (camera: Camera, boardZoom: number) => void;
 type PersistCallback = (camera: Camera) => void;
 
 interface EngineElements {
@@ -98,6 +100,12 @@ export class CameraEngine {
   private gridDenseEl: HTMLElement | null = null;
   private gridSparseEl: HTMLElement | null = null;
 
+  // Kích thước giao diện (Cài đặt). targetRef/currentRef lưu zoom HIỆU DỤNG = zoom board × scale,
+  // nên mọi chỗ đổi toạ độ (kéo, thả, chọn vùng, preview...) đọc getCamera() là tự đúng.
+  // Chỉ lưu IDB, giới hạn zoom, mốc 100% và badge zoom quy về zoom board (chia scale).
+  private scale = 1;
+
+  /** dynamicMin + maxZoom là giá trị zoom BOARD. */
   private dynamicMin: number = ZOOM_MIN;
   private readonly maxZoom: number = ZOOM_MAX;
 
@@ -147,6 +155,13 @@ export class CameraEngine {
   }
   getTargetCamera(): Camera {
     return this.targetRef;
+  }
+  /** Zoom board (không gồm tỉ lệ giao diện) — cái hiện trên header và lưu IDB. */
+  getBoardZoom(): number {
+    return this.currentRef.zoom / this.scale;
+  }
+  getInterfaceScale(): number {
+    return this.scale;
   }
   getDynamicZoomMin(): number {
     return this.dynamicMin;
@@ -203,6 +218,36 @@ export class CameraEngine {
     }
   }
 
+  /**
+   * Đổi tỉ lệ giao diện. Zoom board giữ nguyên, x/y giữ nguyên → nội dung phóng quanh gốc toạ độ
+   * (Milanote parity). Vẽ lại ngay, không tween, không persist (zoom board không đổi).
+   */
+  setInterfaceScale(next: number): void {
+    if (!(next > 0) || next === this.scale) return;
+    const ratio = next / this.scale;
+    this.scale = next;
+    this.cancelRamp();
+    this.zoomAnchor = null;
+    this.detentHeld = false;
+    const scaled: Camera = { ...this.targetRef, zoom: this.targetRef.zoom * ratio };
+    this.targetRef = clampCameraToBounds(scaled, this.panBoundsRef, this.viewportRef);
+    this.currentRef = this.targetRef;
+    this.scheduleRender();
+  }
+
+  /** Giới hạn zoom quy ra zoom hiệu dụng. */
+  private minEff(): number {
+    return this.dynamicMin * this.scale;
+  }
+  private maxEff(): number {
+    return this.maxZoom * this.scale;
+  }
+
+  /** Zoom board → kẹp theo giới hạn board → zoom hiệu dụng. */
+  private boardToEff(boardZoom: number): number {
+    return clampZoom(boardZoom, this.dynamicMin, this.maxZoom) * this.scale;
+  }
+
   // --- Write actions ---
 
   /**
@@ -212,7 +257,7 @@ export class CameraEngine {
     const clampedZoom: Camera = {
       x: camera.x,
       y: camera.y,
-      zoom: clampZoom(camera.zoom, this.dynamicMin, this.maxZoom),
+      zoom: this.boardToEff(camera.zoom),
     };
     const clamped = clampCameraToBounds(clampedZoom, this.panBoundsRef, this.viewportRef);
     this.targetRef = clamped;
@@ -272,11 +317,11 @@ export class CameraEngine {
     this.schedulePersist();
   }
 
-  /** Zoom tới zoom cụ thể quanh 1 điểm screen. */
+  /** Zoom tới zoom board cụ thể quanh 1 điểm screen. */
   zoomAt(pointer: Point, newZoom: number): void {
     this.cacheZoomAnchor(pointer);
     this.targetRef = clampCameraToBounds(
-      zoomAroundPoint(this.targetRef, pointer, newZoom, this.dynamicMin, this.maxZoom),
+      zoomAroundPoint(this.targetRef, pointer, newZoom * this.scale, this.minEff(), this.maxEff()),
       this.panBoundsRef,
       this.viewportRef,
     );
@@ -288,7 +333,7 @@ export class CameraEngine {
   zoomByAt(pointer: Point, factor: number): void {
     this.cacheZoomAnchor(pointer);
     this.targetRef = clampCameraToBounds(
-      zoomByFactor(this.targetRef, pointer, factor, this.dynamicMin, this.maxZoom),
+      zoomByFactor(this.targetRef, pointer, factor, this.minEff(), this.maxEff()),
       this.panBoundsRef,
       this.viewportRef,
     );
@@ -315,19 +360,15 @@ export class CameraEngine {
     this.lastZoomNotchAt = now;
 
     const zoomingIn = deltaY < 0;
-    const current = this.targetRef.zoom;
+    // So trên zoom board: mốc 100% và nấc zoom không đổi theo tỉ lệ giao diện.
+    const current = this.targetRef.zoom / this.scale;
 
     // Đang kẹp detent tại 100%. Chỉ vượt nếu user đã NGỪNG lăn 1 nhịp (gap đủ
     // lớn = nhả tay rồi lăn lại). Lăn liên tục (gap nhỏ) → nuốt notch, giữ 100%.
     if (this.detentHeld) {
       if (gap < DETENT_RELEASE_MS) return; // vẫn đang lăn liên tục → nuốt
       this.detentHeld = false;
-      const escaped = clampZoom(
-        1 * (zoomingIn ? ZOOM_STEP_IN : ZOOM_STEP_OUT),
-        this.dynamicMin,
-        this.maxZoom,
-      );
-      this.applyStepTarget(pointer, escaped);
+      this.applyStepTarget(pointer, this.boardToEff(zoomingIn ? ZOOM_STEP_IN : ZOOM_STEP_OUT));
       return;
     }
 
@@ -338,18 +379,18 @@ export class CameraEngine {
     const crosses = (current > 1 && next < 1) || (current < 1 && next > 1);
     if (crosses) {
       this.detentHeld = true;
-      this.applyStepTarget(pointer, 1);
+      this.applyStepTarget(pointer, this.scale);
       return;
     }
 
-    this.applyStepTarget(pointer, clampZoom(next, this.dynamicMin, this.maxZoom));
+    this.applyStepTarget(pointer, this.boardToEff(next));
   }
 
-  /** Set target zoom quanh anchor + kick ramp + persist. Dùng bởi zoomImpulse. */
+  /** Set target zoom (hiệu dụng) quanh anchor + kick ramp + persist. Dùng bởi zoomImpulse. */
   private applyStepTarget(pointer: Point, targetZoom: number): void {
     this.cacheZoomAnchor(pointer);
     this.targetRef = clampCameraToBounds(
-      zoomAroundPoint(this.targetRef, pointer, targetZoom, this.dynamicMin, this.maxZoom),
+      zoomAroundPoint(this.targetRef, pointer, targetZoom, this.minEff(), this.maxEff()),
       this.panBoundsRef,
       this.viewportRef,
     );
@@ -369,7 +410,7 @@ export class CameraEngine {
     const anchor = { x: vp.width / 2, y: vp.height / 2 };
     this.cacheZoomAnchor(anchor);
     this.targetRef = clampCameraToBounds(
-      zoomAroundPoint(this.targetRef, anchor, zoom, this.dynamicMin, this.maxZoom),
+      zoomAroundPoint(this.targetRef, anchor, zoom * this.scale, this.minEff(), this.maxEff()),
       this.panBoundsRef,
       this.viewportRef,
     );
@@ -384,7 +425,8 @@ export class CameraEngine {
       {
         x: target.x,
         y: target.y,
-        zoom: clampZoom(target.zoom, this.dynamicMin, this.maxZoom),
+        // fitBounds tính zoom hiệu dụng vừa khung → clamp theo giới hạn hiệu dụng.
+        zoom: clampZoom(target.zoom, this.minEff(), this.maxEff()),
       },
       this.panBoundsRef,
       this.viewportRef,
@@ -396,7 +438,7 @@ export class CameraEngine {
   reset(): void {
     this.zoomAnchor = null;
     const initial = resetCamera();
-    initial.zoom = clampZoom(1, this.dynamicMin, this.maxZoom);
+    initial.zoom = this.boardToEff(1);
     this.targetRef = clampCameraToBounds(initial, this.panBoundsRef, this.viewportRef);
     this.scheduleRamp();
     this.schedulePersist();
@@ -418,7 +460,8 @@ export class CameraEngine {
     }
     if (!this.persistCb) return;
     if (this.targetRef === this.lastPersistedRef) return;
-    const snapshot: Camera = { ...this.targetRef };
+    // IDB lưu zoom board, không gồm tỉ lệ giao diện.
+    const snapshot: Camera = { ...this.targetRef, zoom: this.targetRef.zoom / this.scale };
     this.lastPersistedRef = this.targetRef;
     try {
       this.persistCb(snapshot);
@@ -548,9 +591,10 @@ export class CameraEngine {
 
   private notifyListeners(): void {
     const snapshot: Camera = { ...this.currentRef };
+    const boardZoom = this.getBoardZoom();
     this.listeners.forEach((fn) => {
       try {
-        fn(snapshot);
+        fn(snapshot, boardZoom);
       } catch (err) {
         console.warn('[cameraEngine] listener error', err);
       }
@@ -569,6 +613,10 @@ export class CameraEngine {
 
 // --- Singleton ---
 const engine = new CameraEngine({ x: 0, y: 0, zoom: 1 });
+
+// Đồng bộ tỉ lệ giao diện từ Cài đặt. localStorage hydrate sync nên getState() đã có giá trị đã lưu.
+engine.setInterfaceScale(getInterfaceScale());
+useInterfaceStore.subscribe((s) => engine.setInterfaceScale(INTERFACE_SCALE[s.size]));
 
 export function getCameraEngine(): CameraEngine {
   return engine;

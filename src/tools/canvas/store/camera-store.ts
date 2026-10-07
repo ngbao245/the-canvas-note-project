@@ -16,7 +16,10 @@ import type { Point, Bounds } from '../engine/coord';
 import { getCameraEngine } from '../engine/camera-engine';
 
 interface CameraState {
+  /** Camera hiệu dụng (zoom đã nhân tỉ lệ giao diện) — dùng cho mọi phép đổi toạ độ / kích thước màn hình. */
   camera: Camera;
+  /** Zoom board (không gồm tỉ lệ giao diện) — chỉ để hiện % trên header. */
+  boardZoom: number;
 
   hydrate: (camera: Camera) => void;
   setZoom: (zoom: number, viewport?: { width: number; height: number }) => void;
@@ -35,6 +38,7 @@ const engine = getCameraEngine();
 
 export const useCameraStore = create<CameraState>(() => ({
   camera: engine.getCamera(),
+  boardZoom: engine.getBoardZoom(),
 
   hydrate: (camera) => engine.hydrate(camera),
   setZoom: (zoom, viewport) => engine.setZoom(zoom, viewport),
@@ -49,6 +53,6 @@ export const useCameraStore = create<CameraState>(() => ({
 
 // Wire engine → store snapshot. Zustand subscribers fire, React consumer
 // re-render 60Hz throttled trong lúc ramp.
-engine.subscribe((camera) => {
-  useCameraStore.setState({ camera });
+engine.subscribe((camera, boardZoom) => {
+  useCameraStore.setState({ camera, boardZoom });
 });

@@ -35,7 +35,7 @@ Liên quan: `.kiro/notes/canvas-backlog.md` (backlog feature chưa làm).
 - SVG grip 2-layer (dark 50% + light 70%).
 - SelectionBox có `data-canvas-overlay="true"` → click handle/dot KHÔNG kích marquee.
 
-### 4. Header 2-row (`route.tsx`)
+### 4. Header 2-row (`route.tsx`) — LỖI THỜI, xem "Header hiện tại (chốt 2026-10-06)" cuối file
 - Row 1 (Tools): back home + breadcrumb (`board.name`) + spacer + Undo/Redo (subscribe history-store) + divider + Theme toggle + Style toggle (drawably/flat) + Settings (placeholder chưa logic).
 - Row 2 (Board): ObjectCountBadge trái + Title center (CHỈ hiện khi `!isRootBoard`, root ẩn theo yêu cầu user) + View dropdown phải (zoom% + Fit + Reset).
 - Subscribe cô lập: ObjectCountBadge / UndoRedoCluster / ZoomBadge riêng để tránh re-render thừa.
@@ -734,8 +734,7 @@ Sửa:
 - URL chỉ id: `/canvas/:id`. Link cũ `/canvas/:id/:slug` redirect về `/canvas/:id`. Đổi tên không sửa URL.
   `lib/slug.ts` không còn chỗ dùng (giữ lại).
 
-Còn mở: kéo Board tile sang board khác (cross-board / Unsort) KHÔNG cập nhật `parentId` của Board entity → sau khi
-chuyển, breadcrumb board đó vẫn chỉ về cha cũ. Bug có từ trước, chưa sửa.
+Kéo Board tile sang board khác không cập nhật `parentId`: đã sửa 2026-10-05 (xem mục Fix 2026-10-05).
 
 ### Fix 2026-10-02 — viền chọn lệch so với khối màu Board
 
@@ -750,31 +749,10 @@ Milanote khối vuông nên chấm ở góc hộp nằm đúng trên viền. Bib
 là khoảng trống ngoài đường cong, chấm lơ lửng. `QuickLineDot` nhận `radius`, đặt tâm lên đường giữa viền tại điểm 45° của
 cung: `inset = r - (r + border/2) * 0.70711 - size/2` (CSS calc). Đổi radius (kể cả 0) chấm tự theo.
 
-### 2026-10-02 — Header 1 hàng 3 phần + breadcrumb rút theo bề rộng
+### 2026-10-02 — Header + breadcrumb
 
-- `CanvasHeader.tsx`: bỏ 2 hàng (ToolsRow/BoardRow). Giờ 1 hàng `h-11`: left (breadcrumb) / center (title, ẩn ở Home,
-  tối đa 40%) / right (số object + View + Undo/Redo + theme/style/settings). Left và right cùng `flex-1` → title nằm giữa
-  khi đủ chỗ; right không co dưới cụm nút; left co tới 0. Title tạm cắt "…" 1 dòng (cách hiển thị tên dài: bàn sau).
-- `BreadcrumbList.tsx` (mới): Home (logo tròn đen) + ô màu `Board.color` mỗi cấp + tên. Cấp giữa tối đa 160px cắt "…".
-  Thiếu chỗ → ẩn dần cấp giữa từ gần Home, thay bằng nút "..." mở menu các cấp ẩn (Esc/bấm ngoài đóng, Esc không lọt
-  xuống canvas). Ẩn hết vẫn thiếu → tên hiện tại cắt "…". Lúc đo, mục hiện tại tính tối đa 240px để tên rất dài không
-  đẩy ẩn mất cấp cha (giống DOM Milanote).
-- `hooks/useBreadcrumbFit.ts` (mới): lớp đo ẩn + ResizeObserver (khung + lớp đo) + `computeHiddenCount` pure.
-- Số 160/240px và thứ tự ẩn là Kiro tự chọn theo DOM Milanote, không có quy tắc công khai.
-
-### 2026-10-02 (cuối session) — header chốt lại 2 hàng, không title giữa
-
-Thay mục "Header 1 hàng 3 phần" ở trên (đã lỗi thời):
-- `CanvasHeader.tsx` 2 hàng: hàng 1 = breadcrumb (trái, `flex-1 min-w-0`) + `ToolsCluster` (phải, `shrink-0`: Undo/Redo,
-  theme, style, Settings "sắp có"). Hàng 2 = số object (trái) + View (phải).
-- Bỏ title board ở giữa header (`TitleEditable` đã xoá). Breadcrumb đủ để biết đang ở đâu. Đổi tên board: double-click
-  tên trên tile ở board cha.
-- Breadcrumb: mọi mục max-w 300px (Milanote `max-width: 30rem`). Mục hiện tại chữ mờ `text-muted-foreground`, không
-  phải link, `aria-current="page"`. Cấp cha `text-foreground`, hover nền `bg-muted`.
-- Font: app khai báo `'Plus Jakarta Sans', Inter` nhưng KHÔNG tải font nào ngoài Fraunces → đang hiện Segoe UI. Chưa
-  quyết font. Đang so trong `mockups/typography-playground.html` (12 concept A–L + Tự phối, hover hiện tên font).
-- Còn mở: tên dài ở title (không còn title giữa nên có thể bỏ câu hỏi này). Hai việc "lưu id board gốc thay `null`"
-  và "kéo Board tile không cập nhật `parentId`" đã xong 2026-10-05 (xem các mục Fix 2026-10-05 bên dưới).
+Đã gộp vào mục "Header hiện tại (chốt 2026-10-06)" ở cuối file. Các bản giữa chừng (1 hàng 3 phần, 2 hàng không
+title) đã lỗi thời.
 
 ## Session 2026-10-05 — Popup tài khoản + modal Cài đặt (bản thử, chưa có spec)
 
@@ -871,3 +849,75 @@ Bạn quyết làm đa ngôn ngữ ở session riêng, xong quay lại session C
   tên mặc định "Home"/"New Board") → bạn duyệt tasks → Builder.
 - Session Cài đặt còn việc khi quay lại: Thanh công cụ (bật/tắt nút), Font (chờ chọn). Tài khoản, Email và
   thông báo, Sao lưu chờ backend. Mục Ngôn ngữ và vùng sẽ được session i18n làm chạy thật (Task 2).
+
+### 2026-10-06 — Kích thước giao diện chạy trên canvas (spec `settings` Task 7)
+
+- `engine/camera-engine.ts`: thêm `scale` (tỉ lệ giao diện). `targetRef/currentRef` giờ lưu zoom HIỆU DỤNG = zoom board × scale,
+  nên mọi chỗ đổi toạ độ đọc `getCamera()` (kéo, thả, hút cạnh, chọn vùng, preview, card clipper, lưới, SelectionBox) tự đúng.
+  Quy về zoom board: hydrate (× scale), persist IDB (÷ scale), giới hạn zoom (`minEff/maxEff`), nấc + mốc 100% trong `zoomImpulse`,
+  `reset`, `setZoom`, `zoomAt`. `fit` clamp theo giới hạn hiệu dụng.
+- `setInterfaceScale(next)`: zoom board và x/y giữ nguyên, nội dung phóng quanh gốc toạ độ, vẽ lại ngay, không persist.
+  Engine tự subscribe `useInterfaceStore` (cuối file engine).
+- Listener nhận thêm `boardZoom`. `camera-store` có field `boardZoom`, `ZoomBadge` đọc field này → đổi kích thước không đổi %.
+- `computeDynamicZoomMin(bounds, viewport, scale)` chia fit zoom cho scale. `CanvasSurface` tính lại khi đổi kích thước.
+- RULE: chỗ nào cần zoom để đổi toạ độ / kích thước màn hình → `camera.zoom` (hiệu dụng). Chỗ nào hiện % cho người dùng hoặc
+  so với hằng ZOOM_* → zoom board. Đọc nhầm sẽ lệch ở mức Nhỏ/Vừa.
+- Task 8 (cùng ngày): toolbar trái + panel Unsort phóng theo tỉ lệ bằng `transform: scale` (hit-test, `getBoundingClientRect`
+  đều theo transform). Layout bên trong giữ cỡ gốc.
+  - `Toolbar.tsx`: khung ngoài `pointer-events-none` lo vị trí + chiều cao màn hình cố định; khung trong mang giao diện +
+    `data-canvas-overlay`, cao `100% / tỉ lệ` rồi scale. Popup trong toolbar scale theo.
+  - `CanvasApp.tsx`: khung panel rộng `260 × tỉ lệ`, panel bên trong rộng 260, cao `100% / tỉ lệ`, scale từ góc trái trên.
+  - `useUnsortDrag.ts`: `ITEM_HEIGHT` (148) + `LIST_OFFSET_TOP` (88) là px layout, nhân tỉ lệ khi so với `clientY`.
+    `DropIndicatorLine` dùng px layout bên trong panel nên không phải sửa.
+  - `interface-store.ts`: thêm `useInterfaceScale()` (React) + `getInterfaceScale()` (handler).
+  - RULE: số đo cứng trong toolbar/Unsort là px layout. So với toạ độ chuột (clientX/Y) thì phải nhân `getInterfaceScale()`.
+- Task 9 (cùng ngày, bạn chọn B, khác Milanote): header canvas, menu tài khoản, modal Cài đặt cũng phóng theo tỉ lệ bằng
+  CSS `zoom` (không phải transform, để header thấp lại thật). Modal: zoom trên `<header>` + khối nội dung trong vùng cuộn,
+  không trên khung `fixed inset-0`. `useBreadcrumbFit` đo khung bằng `getBoundingClientRect` (trước là `clientWidth`,
+  không tính zoom → trộn 2 kiểu ẩn sai số cấp).
+- Thang đổi (bạn chốt cùng ngày): Nhỏ 0.9 / **Vừa 1 (mặc định)** / Lớn 1.1. Vừa = cỡ canvas như trước khi có setting.
+- Chưa test trình duyệt cả Task 7 + 8 + 9.
+
+## Header hiện tại (chốt 2026-10-06) — nguồn chuẩn
+
+Mục này thay mọi mục header cũ trong file (4. Header 2-row, các mục header 2026-10-02). Đường đi: 1 hàng 3 phần →
+2 hàng không title → 1 hàng → 2 hàng có hàng tiêu đề theo Milanote (bạn chọn).
+
+`CanvasHeader.tsx` 2 hàng. Cả header `zoom: uiScale` (Kích thước giao diện). Cả 2 hàng `px-2` (8px, ước lượng theo
+Milanote `--ui-section-spacing-xxsmall`, chưa đo padding thật).
+- Hàng 1 `h-11`: trái = `BreadcrumbList` (`flex-1 min-w-0`). Phải (`shrink-0`) = số object + Undo/Redo + avatar
+  (`AccountMenu` → Cài đặt). Theme / phong cách đã chuyển vào modal Cài đặt.
+- Hàng 2 `h-12` = `BoardTitleRow.tsx`: trái trạng thái lưu / giữa tên board 18px / phải Chia sẻ + Xuất ▾ + % zoom ▾.
+  Trái và phải cùng `flex-1 basis-0` → tên nằm giữa. Luôn hiện; tuỳ chọn ẩn/hiện chờ bạn (specs/settings Task 11).
+  - Tên: double-click sửa (Home không sửa), ô sửa không viền, tự giãn theo chữ (span ẩn chung ô grid với input).
+  - Chia sẻ: `aria-disabled` + tooltip "Sắp có" (không dùng `disabled` vì mất hover → mất tooltip).
+
+Breadcrumb (`BreadcrumbList.tsx` + `hooks/useBreadcrumbFit.ts`):
+- Home = logo tạm tròn đen 18px. Mỗi cấp = ô màu `Board.color` + tên. Mọi mục max-w 300px, cắt "…".
+- Mục hiện tại chữ mờ, không phải link, `aria-current="page"`. Cấp cha hover `bg-muted`.
+- Rút theo bề rộng thật (lớp đo ẩn + ResizeObserver): ẩn dần cấp giữa từ gần Home thành nút "..." (menu các cấp ẩn).
+  Ẩn hết vẫn thiếu → tên hiện tại cắt "…". `computeHiddenCount` pure.
+- URL chỉ id `/canvas/:id`; link cũ có slug redirect về id.
+
+Popup (`HeaderPopups.tsx` + `hooks/usePopup.ts`):
+- `usePopup()` trả `{ open, ref, close, toggle }`; bấm ngoài / Esc đóng, Esc bắt ở capture nên không lọt xuống canvas
+  (canvas dùng Esc bỏ chọn). Dùng chung cho View, Xuất, "..." breadcrumb.
+- `HeaderMenu` = nút chữ + mũi tên, tô nền khi mở. Popup canh theo nút (`right-0`). Đã thử neo theo hàng để sát mép
+  màn hình rồi hoàn lại — sai ý bạn (thứ cần chỉnh là padding hàng, không phải popup).
+- View: thanh zoom thang log `ZOOM_MIN..ZOOM_MAX` theo `boardZoom`, vạch 100%. Nút "Về 100%" ↔ "Vừa nội dung" chạy
+  thật. +/-, kéo thanh, Trình chiếu + 3 công tắc = "Sắp có". Phím F / 0 vẫn chạy (menu Fit/Reset cũ đã bỏ).
+- Xuất: 3 nhóm (PDF/PNG; Word/Markdown/Text + công tắc board con; tải file) — tất cả "Sắp có". Dòng tải file đếm
+  object `image`/`file` (hiện luôn 0).
+- `Switch` (SettingsBlocks) có prop `disabled` (aria-disabled, vẫn nhận hover).
+- Key i18n: `CANVAS.HEADER.*`, `CANVAS.VIEW_POPUP.*`, `CANVAS.EXPORT_POPUP.*`; "Sắp có" dùng `COMMON.COMING_SOON`.
+
+Trạng thái lưu (`store/save-status-store.ts` + `withSaveTracking` trong `api.ts`):
+- Bọc saveBoard / deleteBoard / saveObject / deleteObject / deleteObjectsByBoard. saveCamera KHÔNG tính (pan/zoom lưu
+  liên tục → nhiễu). Bọc viết tay từng hàm vì repository là class (spread mất method).
+- "Đang lưu…" chỉ hiện nếu ghi > 300ms; "Đã lưu" 2s rồi ẩn; "Lưu lỗi" giữ tới lần lưu thành công sau.
+
+Còn mở:
+- Tính năng thật: Chia sẻ (cần backend), Xuất, Trình chiếu, +/- và kéo thanh zoom.
+- Task 11: tuỳ chọn ẩn/hiện hàng tiêu đề trong Cài đặt.
+- Font app chưa chốt: khai báo `'Plus Jakarta Sans', Inter` nhưng chỉ tải Fraunces → đang hiện Segoe UI. Đang so trong
+  `mockups/typography-playground.html` (12 concept A–L + Tự phối, hover hiện tên font).

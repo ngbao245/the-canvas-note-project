@@ -15,7 +15,12 @@ import {
 } from '../engine/actions';
 import { boardDataSchema } from '../types';
 import { isEditableTarget } from '../lib/dom';
+import { scaledFillStyle } from '../lib/scaled-box';
 import { useI18n } from '@/lib/i18n';
+import { useInterfaceScale } from '@/stores/interface-store';
+
+/** Bề rộng panel Unsort ở mức Lớn (tỉ lệ 1). */
+const UNSORT_PANEL_WIDTH = 260;
 
 type PendingKind =
   | { kind: 'multi'; ids: string[] }
@@ -36,6 +41,7 @@ type PendingKind =
 export function CanvasApp({ boardId }: { boardId: string }) {
   const [pending, setPending] = useState<PendingKind | null>(null);
   const unsortOpen = useUnsortStore((s) => s.panelOpen);
+  const uiScale = useInterfaceScale();
   const { t } = useI18n();
 
   const handleDelete = useCallback((ids: string[]) => {
@@ -122,12 +128,19 @@ export function CanvasApp({ boardId }: { boardId: string }) {
        * Slide in/out qua translateX. z-toolbar để panel nổi trên canvas surface
        * nhưng dưới drag-layer (item đang kéo).
        */}
+      {/*
+       * Kích thước giao diện: khung ngoài rộng 260 × tỉ lệ (chiếm đúng chỗ trên màn hình), panel bên
+       * trong vẫn layout ở 260px rồi scale xuống. Chiều cao chia tỉ lệ để sau khi scale vẫn cao bằng canvas.
+       */}
       <div
-        className={`absolute right-0 top-0 h-full w-[260px] z-toolbar transition-transform duration-normal ease-standard ${
+        className={`absolute right-0 top-0 h-full z-toolbar transition-transform duration-normal ease-standard ${
           unsortOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
+        style={{ width: UNSORT_PANEL_WIDTH * uiScale }}
       >
-        <UnsortPanel boardId={boardId} />
+        <div style={{ width: UNSORT_PANEL_WIDTH, ...scaledFillStyle(uiScale) }}>
+          <UnsortPanel boardId={boardId} />
+        </div>
       </div>
 
       {pending?.kind === 'multi' ? (

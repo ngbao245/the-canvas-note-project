@@ -74,9 +74,14 @@
         "FLAT": "Flat",
         "FLAT_HINT": "Clean straight outlines that follow the theme tokens."
       },
-      "FONT": {
-        "TITLE": "Font",
-        "DESCRIPTION": "Choosing a font for the app. This section opens once decided."
+      "SIZE": {
+        "TITLE": "Interface size",
+        "SMALL": "Small",
+        "MEDIUM": "Medium",
+        "LARGE": "Large",
+        "RECOMMENDED": "Recommended",
+        "PREVIEW_TITLE": "Quick note",
+        "PREVIEW_BODY": "Collect scattered ideas, drag them into order and see the whole picture on a single board without losing a thing."
       }
     },
     "TOOLBAR": {
@@ -125,6 +130,9 @@
         "ZOOM_IN": "Zoom in",
         "ZOOM_OUT": "Zoom out",
         "PAN": "Drag to move the canvas",
+        "SIZE_DOWN": "Make interface smaller",
+        "SIZE_UP": "Make interface larger",
+        "TOGGLE_THEME": "Switch light / dark mode",
         "LAYER_UP": "Bring forward",
         "LAYER_DOWN": "Send backward",
         "LAYER_TOP": "Bring to front",
@@ -200,7 +208,42 @@
       "REDO": "Redo",
       "REDO_TITLE": "Redo (Ctrl+Shift+Z)",
       "FIT_CONTENT": "Fit content",
-      "RESET_VIEW": "Reset view"
+      "RESET_VIEW": "Reset view",
+      "SAVING": "Saving…",
+      "SAVED": "Saved",
+      "SAVE_ERROR": "Save failed",
+      "RENAME_HINT": "Double-click to rename",
+      "BOARD_NAME": "Board name",
+      "SHARE": "Share",
+      "EXPORT": "Export"
+    },
+    "VIEW_POPUP": {
+      "ZOOM": "Zoom",
+      "ZOOM_TIP": "Tip: hold Ctrl and use the mouse wheel to zoom",
+      "ZOOM_IN": "Zoom in",
+      "ZOOM_OUT": "Zoom out",
+      "RESET_100": "Reset to 100%",
+      "SCALE_TO_FIT": "Scale to fit",
+      "PRESENTATION": "Presentation mode",
+      "PRESENTATION_TIP": "Go full-screen & hide toolbar, dot grid etc.",
+      "PRESENT": "Present",
+      "FOCUS_SELECTED": "Focus on selected cards",
+      "HIDE_COMMENTS": "Hide comments",
+      "PREVENT_EDITING": "Prevent editing"
+    },
+    "EXPORT_POPUP": {
+      "LAYOUT_TITLE": "Export the current board layout",
+      "PDF_STANDARD": "PDF standard (small file size)",
+      "PDF_HIGH": "PDF high quality (large file size)",
+      "PNG": "PNG image",
+      "LINEAR_TITLE": "Convert to a linear document",
+      "INCLUDE_SUB_BOARDS": "Include sub-boards",
+      "WORD": "Word document",
+      "MARKDOWN": "Markdown",
+      "PLAIN_TEXT": "Plain text",
+      "FILES_TITLE": "Download all images and files",
+      "NO_FILES": "No files found on this board",
+      "DOWNLOAD_FILES": "Download {count} files"
     },
     "CONFIRM": {
       "DELETE_MANY": {

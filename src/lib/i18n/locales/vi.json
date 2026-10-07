@@ -74,9 +74,14 @@
         "FLAT": "Phẳng",
         "FLAT_HINT": "Viền thẳng, gọn, theo token theme."
       },
-      "FONT": {
-        "TITLE": "Font chữ",
-        "DESCRIPTION": "Đang chọn font cho app. Có kết quả sẽ mở mục này."
+      "SIZE": {
+        "TITLE": "Kích thước giao diện",
+        "SMALL": "Nhỏ",
+        "MEDIUM": "Vừa",
+        "LARGE": "Lớn",
+        "RECOMMENDED": "Khuyên dùng",
+        "PREVIEW_TITLE": "Ghi chú nhanh",
+        "PREVIEW_BODY": "Gom ý tưởng rời rạc, kéo thả sắp xếp lại rồi nhìn toàn cảnh trên cùng một bảng, không sót điều gì."
       }
     },
     "TOOLBAR": {
@@ -125,6 +130,9 @@
         "ZOOM_IN": "Phóng to",
         "ZOOM_OUT": "Thu nhỏ",
         "PAN": "Kéo để di chuyển canvas",
+        "SIZE_DOWN": "Giao diện nhỏ đi",
+        "SIZE_UP": "Giao diện to lên",
+        "TOGGLE_THEME": "Đổi giao diện sáng / tối",
         "LAYER_UP": "Lên 1 lớp",
         "LAYER_DOWN": "Xuống 1 lớp",
         "LAYER_TOP": "Lên trên cùng",
@@ -198,7 +206,42 @@
       "REDO": "Redo",
       "REDO_TITLE": "Redo (Ctrl+Shift+Z)",
       "FIT_CONTENT": "Vừa nội dung",
-      "RESET_VIEW": "Đặt lại góc nhìn"
+      "RESET_VIEW": "Đặt lại góc nhìn",
+      "SAVING": "Đang lưu…",
+      "SAVED": "Đã lưu",
+      "SAVE_ERROR": "Lưu lỗi",
+      "RENAME_HINT": "Double-click để đổi tên",
+      "BOARD_NAME": "Tên board",
+      "SHARE": "Chia sẻ",
+      "EXPORT": "Xuất"
+    },
+    "VIEW_POPUP": {
+      "ZOOM": "Thu phóng",
+      "ZOOM_TIP": "Mẹo: giữ Ctrl và lăn chuột để thu phóng",
+      "ZOOM_IN": "Phóng to",
+      "ZOOM_OUT": "Thu nhỏ",
+      "RESET_100": "Về 100%",
+      "SCALE_TO_FIT": "Vừa nội dung",
+      "PRESENTATION": "Chế độ trình chiếu",
+      "PRESENTATION_TIP": "Toàn màn hình, ẩn thanh công cụ, lưới chấm…",
+      "PRESENT": "Trình chiếu",
+      "FOCUS_SELECTED": "Chỉ hiện card đang chọn",
+      "HIDE_COMMENTS": "Ẩn bình luận",
+      "PREVENT_EDITING": "Không cho sửa"
+    },
+    "EXPORT_POPUP": {
+      "LAYOUT_TITLE": "Xuất bố cục board hiện tại",
+      "PDF_STANDARD": "PDF thường (file nhỏ)",
+      "PDF_HIGH": "PDF chất lượng cao (file lớn)",
+      "PNG": "Ảnh PNG",
+      "LINEAR_TITLE": "Chuyển thành tài liệu dạng dòng",
+      "INCLUDE_SUB_BOARDS": "Gồm cả board con",
+      "WORD": "Tài liệu Word",
+      "MARKDOWN": "Markdown",
+      "PLAIN_TEXT": "Văn bản thuần",
+      "FILES_TITLE": "Tải mọi ảnh và file",
+      "NO_FILES": "Board này chưa có file nào",
+      "DOWNLOAD_FILES": "Tải {count} file"
     },
     "CONFIRM": {
       "DELETE_MANY": {

@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, type ComponentType, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  type ComponentType,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import {
   ArrowLeft,
   Bold,
@@ -25,6 +31,8 @@ import { useObjectsStore } from '../store/objects-store';
 import { useInteractionStore } from '../store/interaction-store';
 import { useToolbarDrag } from '../hooks/useToolbarDrag';
 import { TileIcon, type TileType } from './TileIcons';
+import { scaledFillStyle } from '../lib/scaled-box';
+import { useInterfaceScale } from '@/stores/interface-store';
 
 /**
  * Toolbar palette dọc — screen-space overlay trong canvas.
@@ -280,6 +288,7 @@ export function Toolbar({ boardId }: { boardId: string }) {
   const clearSelection = useSelectionStore((s) => s.clear);
   const hasSelection = selectedIds.size > 0;
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const uiScale = useInterfaceScale();
 
   // Detect single-object selection để switch mode. Multi-select giữ creation
   // (element-actions cho multi = task Phase sau, cần semantic áp cho tất cả).
@@ -321,48 +330,54 @@ export function Toolbar({ boardId }: { boardId: string }) {
   };
 
   return (
-    <div
-      ref={wrapperRef}
-      data-canvas-overlay="true"
-      // Height CỐ ĐỊNH (h, không phải max-h): cả 3 mode dài như nhau. Mode ít
-      // button thì list flex-1 còn empty space bên dưới, không co toolbar ngắn.
-      // Creation mode nhiều button tràn → list bên trong scroll. Trash footer
-      // fixed height ở đáy.
-      className="absolute left-3 top-1/2 z-toolbar flex h-[calc(100vh-8rem)] -translate-y-1/2 flex-col rounded-xl border border-border bg-card/90 shadow-lg backdrop-blur"
-    >
-      <div className="no-scrollbar flex flex-1 flex-col items-center gap-1.5 overflow-y-auto p-2">
-        {mode === 'editing' && editingObject ? (
-          <>
-            <DismissButton onClick={() => setEditingId(null, null)} label="Thoát edit" />
-            {getObjectTypeDefinition(editingObject.type)?.renderEditingActions?.(editingObject) ?? (
-              <GenericEditingActions />
-            )}
-          </>
-        ) : mode === 'element' && selectedObject ? (
-          <>
-            <DismissButton onClick={clearSelection} label="Bỏ chọn" />
-            {getObjectTypeDefinition(selectedObject.type)?.renderElementActions?.(selectedObject) ?? (
-              <GenericElementActions />
-            )}
-          </>
-        ) : (
-          <CreationTools boardId={boardId} />
-        )}
-      </div>
-      {/* Trash sticky footer, chung 3 mode */}
-      <div className="border-t border-border p-2">
-        <button
-          type="button"
-          data-trash-drop="true"
-          title="Xoá object đang chọn (kéo vào đây cũng được)"
-          aria-label="Xoá object đang chọn"
-          disabled={!hasSelection}
-          onClick={onTrash}
-          className="group flex w-12 flex-col items-center gap-0.5 rounded-lg py-1.5 text-muted-foreground transition-all duration-[80ms] hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
-        >
-          <Trash2 className="h-5 w-5" />
-          <span className="text-[9px] font-medium leading-tight">Xoá</span>
-        </button>
+    // Khung ngoài: chỉ lo vị trí + chiều cao màn hình (cố định, không theo Kích thước giao diện).
+    // pointer-events-none: khung này rộng theo layout chưa scale, phần thừa trong suốt không được chặn chuột.
+    <div className="pointer-events-none absolute left-3 top-1/2 z-toolbar h-[calc(100vh-8rem)] -translate-y-1/2">
+      <div
+        ref={wrapperRef}
+        data-canvas-overlay="true"
+        // Height CỐ ĐỊNH (h, không phải max-h): cả 3 mode dài như nhau. Mode ít
+        // button thì list flex-1 còn empty space bên dưới, không co toolbar ngắn.
+        // Creation mode nhiều button tràn → list bên trong scroll. Trash footer
+        // fixed height ở đáy.
+        // Kích thước giao diện: layout ở cỡ gốc rồi scale (xem scaledFillStyle).
+        style={scaledFillStyle(uiScale)}
+        className="pointer-events-auto flex flex-col rounded-xl border border-border bg-card/90 shadow-lg backdrop-blur"
+      >
+        <div className="no-scrollbar flex flex-1 flex-col items-center gap-1.5 overflow-y-auto p-2">
+          {mode === 'editing' && editingObject ? (
+            <>
+              <DismissButton onClick={() => setEditingId(null, null)} label="Thoát edit" />
+              {getObjectTypeDefinition(editingObject.type)?.renderEditingActions?.(
+                editingObject,
+              ) ?? <GenericEditingActions />}
+            </>
+          ) : mode === 'element' && selectedObject ? (
+            <>
+              <DismissButton onClick={clearSelection} label="Bỏ chọn" />
+              {getObjectTypeDefinition(selectedObject.type)?.renderElementActions?.(
+                selectedObject,
+              ) ?? <GenericElementActions />}
+            </>
+          ) : (
+            <CreationTools boardId={boardId} />
+          )}
+        </div>
+        {/* Trash sticky footer, chung 3 mode */}
+        <div className="border-t border-border p-2">
+          <button
+            type="button"
+            data-trash-drop="true"
+            title="Xoá object đang chọn (kéo vào đây cũng được)"
+            aria-label="Xoá object đang chọn"
+            disabled={!hasSelection}
+            onClick={onTrash}
+            className="group flex w-12 flex-col items-center gap-0.5 rounded-lg py-1.5 text-muted-foreground transition-all duration-[80ms] hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
+          >
+            <Trash2 className="h-5 w-5" />
+            <span className="text-[9px] font-medium leading-tight">Xoá</span>
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -9,6 +9,7 @@
 
 import { createStore, get, set, del, keys, type UseStore } from 'idb-keyval';
 import type { Board, CanvasObject, Camera } from './types';
+import { trackSave } from './store/save-status-store';
 
 /** Object bản cũ trên Home: giống CanvasObject nhưng `boardId` là null. */
 export type LegacyRootObject = Omit<CanvasObject, 'boardId'> & { boardId: null };
@@ -122,10 +123,30 @@ class IndexedDbCanvasRepository implements CanvasRepository {
   }
 }
 
+// --- Theo dõi trạng thái lưu ---
+// Bọc các lệnh ghi dữ liệu để hàng tiêu đề board hiện "Đang lưu… / Đã lưu".
+// Bọc ở đây (1 chỗ) thay vì ở từng caller. Đổi adapter (Supabase) vẫn giữ.
+// saveCamera KHÔNG tính: pan/zoom lưu liên tục, báo "Đã lưu" mỗi lần kéo canvas
+// là nhiễu, và vị trí nhìn không phải nội dung người dùng tạo.
+function withSaveTracking(inner: CanvasRepository): CanvasRepository {
+  return {
+    loadBoards: () => inner.loadBoards(),
+    saveBoard: (board) => trackSave(inner.saveBoard(board)),
+    deleteBoard: (id) => trackSave(inner.deleteBoard(id)),
+    loadObjects: (boardId) => inner.loadObjects(boardId),
+    loadLegacyRootObjects: () => inner.loadLegacyRootObjects(),
+    saveObject: (obj) => trackSave(inner.saveObject(obj)),
+    deleteObject: (id) => trackSave(inner.deleteObject(id)),
+    deleteObjectsByBoard: (boardId) => trackSave(inner.deleteObjectsByBoard(boardId)),
+    saveCamera: (boardId, camera) => inner.saveCamera(boardId, camera),
+    countAll: () => inner.countAll(),
+  };
+}
+
 // --- Singleton ---
 let repo: CanvasRepository | null = null;
 
 export function getCanvasRepository(): CanvasRepository {
-  if (!repo) repo = new IndexedDbCanvasRepository();
+  if (!repo) repo = withSaveTracking(new IndexedDbCanvasRepository());
   return repo;
 }

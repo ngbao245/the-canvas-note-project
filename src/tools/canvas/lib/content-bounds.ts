@@ -38,9 +38,11 @@ export function computeContentBounds(objects: Iterable<CanvasObject>): Bounds | 
 export function computeDynamicZoomMin(
   bounds: Bounds | null,
   viewport: { width: number; height: number },
+  /** Tỉ lệ giao diện. Fit zoom tính ở không gian hiệu dụng → chia scale ra zoom board. */
+  interfaceScale = 1,
 ): number {
   if (!bounds) return ZOOM_OUT_BASELINE;
-  return Math.min(ZOOM_OUT_BASELINE, computeFitZoom(bounds, viewport));
+  return Math.min(ZOOM_OUT_BASELINE, computeFitZoom(bounds, viewport) / interfaceScale);
 }
 
 /**

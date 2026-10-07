@@ -27,7 +27,9 @@ export function useBreadcrumbFit(key: string) {
       const widths = Array.from(items, (el) => el.getBoundingClientRect().width);
       const ellipsis = measure.querySelector<HTMLElement>('[data-crumb-ellipsis]');
       const ellipsisWidth = ellipsis?.getBoundingClientRect().width ?? 0;
-      setHidden(computeHiddenCount(container.clientWidth, widths, ellipsisWidth));
+      // Cùng đo bằng getBoundingClientRect: header có CSS zoom (Kích thước giao diện), clientWidth
+      // không tính zoom còn rect thì có → trộn 2 kiểu sẽ ẩn sai số cấp.
+      setHidden(computeHiddenCount(container.getBoundingClientRect().width, widths, ellipsisWidth));
     };
 
     recompute();

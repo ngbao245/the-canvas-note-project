@@ -47,6 +47,7 @@ function selectedCanvasObjects(): CanvasObject[] {
  *   Ctrl/Cmd + = / +      → zoom in (override browser page zoom, notch ZOOM_STEP_IN)
  *   Ctrl/Cmd + -          → zoom out (override browser page zoom, notch ZOOM_STEP_OUT)
  *   Ctrl/Cmd + 0          → reset view (override browser reset zoom trang)
+ *   (Ctrl/Cmd + Shift + < / > và Ctrl/Cmd + Shift + D là phím toàn app, ở useGlobalShortcuts.)
  *   Ctrl/Cmd + A          → select all object canvas board hiện tại (chỉ khi
  *                            activePanel === 'canvas', Unsort có Ctrl+A riêng)
  *   Ctrl/Cmd + C          → copy object đang chọn ra clipboard system (magic
@@ -159,7 +160,8 @@ export function useCanvasKeys({
       }
       // Ctrl/Cmd + D → duplicate object đang chọn tại offset +16/+16. Không
       // đụng clipboard system (không share với Ctrl+C/V flow).
-      if (mod && (e.key === 'd' || e.key === 'D')) {
+      // Bỏ qua khi có Shift: Ctrl+Shift+D là đảo theme (useGlobalShortcuts).
+      if (mod && !e.shiftKey && (e.key === 'd' || e.key === 'D')) {
         const ids = Array.from(useSelectionStore.getState().selectedIds);
         if (ids.length === 0) return;
         e.preventDefault();

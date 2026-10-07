@@ -10,6 +10,7 @@ import { clientToCanvas } from '../engine/coord';
 import { hitZone, isInvalidZone } from '../lib/hit-test';
 import { reorderInUnsort, moveFromUnsortToCanvas, moveObjectsToUnsort } from '../engine/actions';
 import { boardDataSchema } from '../types';
+import { getInterfaceScale } from '@/stores/interface-store';
 
 /**
  * Pointer drag cho Unsort items. Hai chế độ:
@@ -23,8 +24,11 @@ import { boardDataSchema } from '../types';
  * Threshold: 4px trước khi bắt đầu drag để không bị nhầm với click.
  */
 const DRAG_THRESHOLD = 4;
+// Số đo layout panel ở tỉ lệ 1 (px bên trong panel, chưa scale).
 // Item aspect-ratio version: h cap MAX_H=140, margin-bottom 8 → stride 148.
 const ITEM_HEIGHT = 148;
+// Khoảng từ mép trên panel tới hàng đầu (header + description).
+const LIST_OFFSET_TOP = 88;
 
 export function useUnsortDrag(getListItems: () => CanvasObject[]) {
   const startRef = useRef<{
@@ -95,10 +99,14 @@ export function useUnsortDrag(getListItems: () => CanvasObject[]) {
         // Compute targetIndex trong panel (dựa vào cursor Y relative to panel content).
         let targetIndex = s.sourceIndex;
         if (!outside && s.panelRect) {
-          // List bắt đầu sau header (~48px). Tính offsetY từ đó.
-          const listTop = s.panelRect.top + 88; // header + description
+          // Panel bị scale theo Kích thước giao diện → số đo layout (px panel) × tỉ lệ = px màn hình.
+          const scale = getInterfaceScale();
+          const listTop = s.panelRect.top + LIST_OFFSET_TOP * scale;
           const offsetY = ev.clientY - listTop;
-          targetIndex = Math.max(0, Math.min(getListItems().length - 1, Math.round(offsetY / ITEM_HEIGHT)));
+          targetIndex = Math.max(
+            0,
+            Math.min(getListItems().length - 1, Math.round(offsetY / (ITEM_HEIGHT * scale))),
+          );
         }
 
         useUnsortStore.getState().setDrag({

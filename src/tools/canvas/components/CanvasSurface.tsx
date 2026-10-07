@@ -5,6 +5,7 @@ import { useInteractionStore } from '../store/interaction-store';
 import { useSelectionStore } from '../store/selection-store';
 import { useUnsortStore } from '../store/unsort-store';
 import { SCROLL_SPEED_FACTOR, useCanvasSettingsStore } from '@/stores/canvas-settings-store';
+import { useInterfaceStore } from '@/stores/interface-store';
 import { getCameraEngine } from '../engine/camera-engine';
 import { screenToCanvas } from '../engine/coord';
 import { createObjectAt } from '../engine/actions';
@@ -104,6 +105,8 @@ export function CanvasSurface({ boardId }: { boardId: string }) {
   }, []);
 
   const mode = useInteractionStore((s) => s.mode);
+  // Đổi Kích thước giao diện → fit zoom đổi theo → tính lại zoom min. Engine tự đổi scale qua store.
+  const interfaceSize = useInterfaceStore((s) => s.size);
 
   // --- Recompute dynamic zoom min + pan bounds khi objects đổi ---
   //
@@ -122,7 +125,7 @@ export function CanvasSurface({ boardId }: { boardId: string }) {
       ? Array.from(objects.values()).filter((o) => !selected.has(o.id))
       : Array.from(objects.values());
     const bounds = computeContentBounds(iter);
-    engine.setDynamicZoomMin(computeDynamicZoomMin(bounds, viewport));
+    engine.setDynamicZoomMin(computeDynamicZoomMin(bounds, viewport, engine.getInterfaceScale()));
     engine.setPanBounds(computePanBounds(bounds));
   };
 
@@ -132,7 +135,7 @@ export function CanvasSurface({ boardId }: { boardId: string }) {
     // mode thay đổi khi vào/thoát drag → recompute sau drop để pan bounds
     // ôm lại vị trí mới của item vừa move.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [objectsMap, mode]);
+  }, [objectsMap, mode, interfaceSize]);
 
   // --- Wheel handler: pan mặc định, Ctrl+wheel zoom ---
   useEffect(() => {

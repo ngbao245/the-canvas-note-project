@@ -21,6 +21,7 @@ import { DataSection } from './sections/DataSection';
 import { NotificationsSection } from './sections/NotificationsSection';
 import { LocalizationSection } from './sections/LocalizationSection';
 import { useI18n, type MessageKey } from '@/lib/i18n';
+import { useInterfaceScale } from '@/stores/interface-store';
 
 /**
  * SettingsModal — modal Cài đặt phủ toàn màn hình (Milanote /account/settings mở
@@ -105,6 +106,7 @@ export function SettingsModal() {
   const close = useSettingsModalStore((s) => s.close);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const uiScale = useInterfaceScale();
   const { t } = useI18n();
 
   useEffect(() => {
@@ -138,7 +140,11 @@ export function SettingsModal() {
       aria-labelledby="settings-title"
       className="fixed inset-0 z-modal flex flex-col bg-background text-foreground"
     >
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-6">
+      {/* Kích thước giao diện: zoom đặt lên header + vùng cuộn, không lên khung fixed → nền vẫn phủ kín màn hình. */}
+      <header
+        style={{ zoom: uiScale }}
+        className="flex h-14 shrink-0 items-center justify-between border-b border-border px-6"
+      >
         <h1 id="settings-title" className="text-base font-semibold">
           {t('SETTINGS.TITLE')}
         </h1>
@@ -192,6 +198,7 @@ function trapTab(e: KeyboardEvent, root: HTMLElement | null): void {
 function SettingsBody() {
   const section = useSettingsModalStore((s) => s.section);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const uiScale = useInterfaceScale();
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
@@ -199,10 +206,13 @@ function SettingsBody() {
 
   return (
     <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-      <div className="mx-auto grid w-full max-w-4xl grid-cols-1 gap-7 px-6 py-8 md:grid-cols-[200px_minmax(0,1fr)]">
-        <SettingsNav />
-        <div className="min-w-0">
-          <SettingsContent />
+      {/* Zoom trên khối nội dung (không trên vùng cuộn) → vùng cuộn vẫn cao bằng phần còn lại của màn hình. */}
+      <div style={{ zoom: uiScale }}>
+        <div className="mx-auto grid w-full max-w-4xl grid-cols-1 gap-7 px-6 py-8 md:grid-cols-[200px_minmax(0,1fr)]">
+          <SettingsNav />
+          <div className="min-w-0">
+            <SettingsContent />
+          </div>
         </div>
       </div>
     </div>

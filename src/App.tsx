@@ -5,6 +5,7 @@ import { applyUiStyleAttr, useUiStyleStore } from '@/stores/ui-style-store';
 import { applyThemeAttr, useResolvedTheme } from '@/stores/theme-store';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 import { applyLangAttr, useLocaleStore } from '@/lib/i18n';
+import { useGlobalShortcuts } from '@/lib/useGlobalShortcuts';
 
 // Trang thử nghiệm drawably (phong cách vẽ tay) — lazy load, tách bundle.
 const LandingDraw = lazy(() => import('@/experiments/drawably/LandingDraw'));
@@ -32,6 +33,9 @@ export default function App() {
   useEffect(() => {
     applyLangAttr(locale);
   }, [locale]);
+
+  // Phím tắt toàn app: Ctrl+Shift+< / > (kích thước giao diện), Ctrl+Shift+D (đảo theme).
+  useGlobalShortcuts();
 
   // Chặn browser page zoom qua trackpad pinch (wheel với ctrlKey — convention
   // native trackpad). Global listener trên window, passive:false để preventDefault

@@ -2,7 +2,7 @@
 
 ## Màn hình
 1 modal (đã có): menu trái | nội dung phải. Các mục:
-- Giao diện: Theme (Tối / Sáng / Theo hệ thống), Phong cách, Font "Sắp có", nút Đặt lại mặc định.
+- Giao diện: Theme (Sáng / Tối / Theo hệ thống, mặc định Sáng — bạn chốt 2026-10-05), Phong cách, Font "Sắp có", nút Đặt lại mặc định.
 - Canvas: công tắc Lưới nền, chọn Tốc độ cuộn (Chậm / Vừa / Nhanh), nút Đặt lại mặc định.
 - Phím tắt: bảng chỉ xem, nhóm Chỉnh sửa / Chọn / Xem / Unsort / Sắp lớp.
 - Dữ liệu: Board, Object, Dung lượng (số thật), Sao lưu "Sắp có".
@@ -31,16 +31,24 @@
 - Toolbar 63 / 63 / 72px, Unsorted 303 / 341 / 379px. Header 44px cả 3 mức.
 - "Recommended" đổi theo máy (màn 1440px hiện ở Large). bibo không tự đoán, dùng 1 mặc định cố định.
 - bibo hiện tại khớp mức Lớn (Note 338px, chữ 14px).
+- **Đổi 2026-10-06 (bạn chốt)**: bibo lấy cỡ hiện tại làm mức **Vừa = 1.0, mặc định**. Thang Nhỏ 0.9 / Vừa 1 / Lớn 1.1
+  (cùng khoảng ~10% như Milanote quy về Vừa). Note mới ở zoom 100%: 304 / 338 / 372px. "Khuyên dùng" ở Vừa.
+  Dòng "Tỉ lệ Nhỏ 0.8, Vừa 0.9, Lớn 1.0. Mặc định Lớn" bên dưới đã bị thay.
 
 ### Đã chốt / Kiro tự chọn (bạn chưa trả lời 2 câu, Kiro lấy phương án nghiêng — sửa ở bước duyệt nếu khác ý)
 - Tỉ lệ Nhỏ 0.8, Vừa 0.9, Lớn 1.0. Mặc định Lớn, nhãn "Khuyên dùng" ở Lớn. (câu 1 → A)
-- To theo: canvas + toolbar trái + panel Unsort. Header, modal Cài đặt, menu tài khoản giữ nguyên. (câu 2 → A)
+- To theo: canvas + toolbar trái + panel Unsort. ~~Header, modal Cài đặt, menu tài khoản giữ nguyên. (câu 2 → A)~~
+  Đổi 2026-10-06 (bạn chọn B): header canvas, menu tài khoản, modal Cài đặt cũng to theo. Khác Milanote.
+  - Cách làm: CSS `zoom` = tỉ lệ trên `<header>` canvas (menu tài khoản nằm trong nên theo luôn) và trên phần header + khối
+    nội dung của modal. Không đặt lên khung `fixed inset-0` của modal (khung vẫn phủ kín màn hình, chỉ nội dung nhỏ lại).
+  - Dùng `zoom` (không phải `transform`) vì header phải thấp lại thật để canvas lấp chỗ. Trình duyệt cũ không hỗ trợ
+    `zoom` (Firefox trước 126) thì 3 phần này giữ cỡ gốc, không vỡ gì.
 - Bỏ công tắc font tiêu đề (bạn chốt 2026-10-05).
 - Dòng "Font chữ" trong Giao diện thay bằng khối "Kích thước giao diện". Chọn bộ font để sau.
 
 ### Màn hình
-- Giao diện: Theme, Phong cách, **Kích thước giao diện** (3 thẻ chọn, phần xem trước là chữ "Aa" ở 3 cỡ dùng token
-  theme, không dùng ảnh; thẻ chọn có tick; cạnh tiêu đề có gợi ý phím Ctrl Shift < hoặc >), nút Đặt lại mặc định.
+- Giao diện (thứ tự): Theme, **Kích thước giao diện**, Phong cách (bạn chốt 2026-10-05). Kích thước: 3 thẻ chọn, phần xem trước là chữ "Aa" ở 3 cỡ dùng token
+  theme, không dùng ảnh; thẻ chọn tô viền + nền như Theme, không tick; cạnh tiêu đề có gợi ý phím Ctrl Shift < hoặc >), nút Đặt lại mặc định.
 - Phím tắt: thêm 2 dòng vào nhóm Xem: nhỏ đi / to lên.
 
 ### Lưu trữ

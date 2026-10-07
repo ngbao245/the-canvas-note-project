@@ -44,12 +44,37 @@ export function Section({
 }
 
 /** Nhóm có nhãn ở trên, nội dung lớn bên dưới (VD lưới thẻ chọn theme). */
-export function Field({ label, children }: { label: string; children: ReactNode }) {
+export function Field({
+  label,
+  children,
+  aside,
+  headerClassName = '',
+}: {
+  label: string;
+  children: ReactNode;
+  /** Phần phụ bên phải nhãn (VD gợi ý phím tắt). */
+  aside?: ReactNode;
+  /** Giới hạn bề rộng hàng nhãn cho khớp nội dung bên dưới (VD 'sm:max-w-lg' như lưới thẻ),
+   *  để `aside` thẳng mép phải nội dung thay vì lòi ra mép cột. */
+  headerClassName?: string;
+}) {
   return (
     <div className="border-b border-border py-5 first:pt-0">
-      <h3 className="mb-3 text-sm font-medium">{label}</h3>
+      <div className={`mb-3 flex items-center justify-between gap-4 ${headerClassName}`}>
+        <h3 className="text-sm font-medium">{label}</h3>
+        {aside}
+      </div>
       {children}
     </div>
+  );
+}
+
+/** 1 phím trong tổ hợp phím tắt. Tên phím (Ctrl, Shift) giữ nguyên mọi ngôn ngữ. */
+export function Kbd({ children }: { children: ReactNode }) {
+  return (
+    <kbd className="min-w-[1.5rem] rounded border border-border bg-muted px-1.5 py-0.5 text-center font-sans text-[11px] text-foreground">
+      {children}
+    </kbd>
   );
 }
 
@@ -128,10 +153,14 @@ export function Switch({
   checked,
   onChange,
   labelledBy,
+  disabled = false,
 }: {
   checked: boolean;
   onChange: (next: boolean) => void;
   labelledBy: string;
+  /** Chưa có tính năng: hiện đúng trạng thái nhưng bấm không đổi. aria-disabled
+   *  (không phải `disabled`) để vẫn nhận hover → tooltip "Sắp có" của hàng cha. */
+  disabled?: boolean;
 }) {
   return (
     <button
@@ -139,10 +168,11 @@ export function Switch({
       role="switch"
       aria-checked={checked}
       aria-labelledby={labelledBy}
-      onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${FOCUS_RING} ${
-        checked ? 'bg-primary' : 'bg-muted ring-1 ring-inset ring-border'
-      }`}
+      aria-disabled={disabled || undefined}
+      onClick={disabled ? undefined : () => onChange(!checked)}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${FOCUS_RING} ${
+        disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+      } ${checked ? 'bg-primary' : 'bg-muted ring-1 ring-inset ring-border'}`}
     >
       <span
         aria-hidden="true"

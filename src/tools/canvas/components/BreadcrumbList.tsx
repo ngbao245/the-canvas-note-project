@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, MoreHorizontal } from 'lucide-react';
 import { useBoardsStore } from '../store/boards-store';
 import { useBreadcrumbFit } from '../hooks/useBreadcrumbFit';
+import { usePopup } from '../hooks/usePopup';
 import type { Board } from '../types';
 
 /**
@@ -151,34 +151,15 @@ function EllipsisButtonShape() {
 
 /** Nút "..." + menu các cấp bị ẩn. Đóng khi bấm ngoài, Esc, hoặc chọn 1 cấp. */
 function EllipsisMenu({ boards }: { boards: Board[] }) {
-  const [open, setOpen] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (!wrapperRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    // Capture + stopPropagation: Esc chỉ đóng menu, không lọt xuống canvas (bỏ chọn).
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.stopPropagation();
-      setOpen(false);
-    };
-    document.addEventListener('mousedown', onDown);
-    window.addEventListener('keydown', onKey, true);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      window.removeEventListener('keydown', onKey, true);
-    };
-  }, [open]);
+  // Bấm ngoài / Esc đóng (Esc không lọt xuống canvas) — xem usePopup.
+  const { open, ref, close, toggle } = usePopup();
 
   return (
-    <div ref={wrapperRef} className="relative flex shrink-0 items-center">
+    <div ref={ref} className="relative flex shrink-0 items-center">
       <Separator />
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         className={ELLIPSIS_BTN_CLS}
         aria-label={`Hiện ${boards.length} cấp bị ẩn`}
         aria-haspopup="menu"
@@ -197,7 +178,7 @@ function EllipsisMenu({ boards }: { boards: Board[] }) {
               to={linkTo(b)}
               role="menuitem"
               title={b.name}
-              onClick={() => setOpen(false)}
+              onClick={close}
               className="flex min-w-0 items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-foreground hover:bg-muted"
             >
               <BoardIcon board={b} />
