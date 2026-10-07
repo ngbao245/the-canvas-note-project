@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Square } from 'lucide-react';
+import { useEscapeLayer } from '@/lib/shortcuts';
 
 /**
  * Context menu tuỳ biến (custom, không cần Radix DropdownMenu vì chỉ 1 item ở Phase A).
@@ -28,20 +29,18 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
       if (!ref.current) return;
       if (!ref.current.contains(e.target as Node)) onClose();
     };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
     // Delay tránh menu tự đóng ngay ở event mở.
     const t = setTimeout(() => {
       document.addEventListener('mousedown', onDocDown);
-      document.addEventListener('keydown', onKey);
     }, 0);
     return () => {
       clearTimeout(t);
       document.removeEventListener('mousedown', onDocDown);
-      document.removeEventListener('keydown', onKey);
     };
   }, [onClose]);
+
+  // Lớp overlay: Esc chỉ đóng menu, không lọt xuống canvas bỏ chọn.
+  useEscapeLayer(onClose);
 
   return (
     <div

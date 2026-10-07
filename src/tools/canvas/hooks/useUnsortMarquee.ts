@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { useSelectionStore } from '../store/selection-store';
 import { useUnsortStore } from '../store/unsort-store';
+import { isMacSecondaryClick, isPrimaryModifier } from '@/lib/shortcuts';
 
 /**
  * Marquee drag select trong Unsort panel. User kéo chuột từ vùng trống (không
@@ -36,13 +37,15 @@ export function useUnsortMarquee(containerRef: React.RefObject<HTMLDivElement>) 
 
   const onPointerDown = useCallback((e: ReactPointerEvent<HTMLElement>) => {
     if (e.button !== 0) return;
+    // macOS Ctrl+click = chuột phải, không bắt đầu marquee.
+    if (isMacSecondaryClick(e)) return;
     const target = e.target;
     if (!(target instanceof Element)) return;
     // Bỏ qua nếu click vào item, button, hoặc phần tử tương tác khác.
     if (target.closest('[data-unsort-item-id]')) return;
     if (target.closest('button, a, input, textarea, [role="button"]')) return;
 
-    const additive = e.ctrlKey || e.metaKey || e.shiftKey;
+    const additive = isPrimaryModifier(e) || e.shiftKey;
     const baseSelection = additive
       ? new Set(useSelectionStore.getState().selectedIds)
       : new Set<string>();

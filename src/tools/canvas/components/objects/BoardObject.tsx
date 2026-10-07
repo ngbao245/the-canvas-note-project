@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  registerObjectType,
-  type ObjectRendererProps,
-} from '../../hooks/useObjectRegistry';
+import { registerObjectType, type ObjectRendererProps } from '../../hooks/useObjectRegistry';
 import { boardDataSchema, type BoardData } from '../../types';
 import { useBoardsStore } from '../../store/boards-store';
 import { useObjectsStore } from '../../store/objects-store';
@@ -11,6 +8,8 @@ import { useInteractionStore } from '../../store/interaction-store';
 import { renameBoard } from '../../engine/actions';
 import { ObjectShell } from './ObjectShell';
 import { SelectionBox } from '../SelectionBox';
+import { useI18n } from '@/lib/i18n';
+import { editKeyHandler } from '@/lib/dom';
 
 /**
  * BoardObject — tile đại diện board con trên canvas cha (Milanote parity):
@@ -103,6 +102,7 @@ function BoardTitleEditor({
   const [value, setValue] = useState(initial);
   const ref = useRef<HTMLInputElement>(null);
   const ready = useRef(false);
+  const { t } = useI18n();
 
   useEffect(() => {
     ref.current?.focus();
@@ -124,15 +124,7 @@ function BoardTitleEditor({
         ref={ref}
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            commit();
-          } else if (e.key === 'Escape') {
-            e.preventDefault();
-            onEditEnd();
-          }
-        }}
+        onKeyDown={editKeyHandler({ onCommit: commit, onCancel: onEditEnd })}
         onBlur={() => {
           if (!ready.current) {
             ref.current?.focus();
@@ -141,7 +133,8 @@ function BoardTitleEditor({
           commit();
         }}
         className="w-full bg-transparent text-center text-xs font-medium leading-tight text-foreground outline-none"
-        placeholder="Tên board"
+        placeholder={t('CANVAS.HEADER.BOARD_NAME')}
+        aria-label={t('CANVAS.HEADER.BOARD_NAME')}
       />
     </div>
   );

@@ -11,7 +11,9 @@ import {
   useInterfaceStore,
   type InterfaceSize,
 } from '@/stores/interface-store';
-import { Field, Kbd, OptionCard, Section } from '../SettingsBlocks';
+import { Field, OptionCard, Section } from '../SettingsBlocks';
+import { OrSeparator, ShortcutWays } from '@/components/shortcuts/ShortcutKeys';
+import { GLOBAL_SHORTCUT_DEFS } from '@/lib/shortcuts';
 import { useI18n, type MessageKey } from '@/lib/i18n';
 
 /**
@@ -67,13 +69,7 @@ export function AppearanceSection({ title, description }: { title: string; descr
         label={t('SETTINGS.APPEARANCE.THEME')}
         // Cùng bề rộng với lưới thẻ bên dưới → gợi ý phím thẳng mép phải thẻ cuối.
         headerClassName="sm:max-w-lg"
-        aside={
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Kbd>Ctrl</Kbd>
-            <Kbd>Shift</Kbd>
-            <Kbd>D</Kbd>
-          </span>
-        }
+        aside={<ShortcutWays def={GLOBAL_SHORTCUT_DEFS['app.toggle-theme']} />}
       >
         <div
           role="radiogroup"
@@ -98,12 +94,10 @@ export function AppearanceSection({ title, description }: { title: string; descr
         // Cùng bề rộng với lưới thẻ bên dưới → gợi ý phím thẳng mép phải thẻ Lớn.
         headerClassName="sm:max-w-lg"
         aside={
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Kbd>Ctrl</Kbd>
-            <Kbd>Shift</Kbd>
-            <Kbd>&lt;</Kbd>
-            <span className="px-0.5">{t('COMMON.OR')}</span>
-            <Kbd>&gt;</Kbd>
+          <span className="flex items-center gap-2 text-xs text-muted-foreground">
+            <ShortcutWays def={GLOBAL_SHORTCUT_DEFS['app.size-down']} />
+            <OrSeparator />
+            <ShortcutWays def={GLOBAL_SHORTCUT_DEFS['app.size-up']} />
           </span>
         }
       >

@@ -12,7 +12,9 @@ import { DOMParser as PMDOMParser, DOMSerializer } from '@tiptap/pm/model';
  * thêm ở đây, cả 2 phía tự theo.
  */
 export const NOTE_SCHEMA_EXTENSIONS: Extensions = [
-  StarterKit,
+  // StarterKit v3 đã gồm Link → tắt bản trong kit, dùng bản cấu hình riêng bên dưới
+  // (trước đây Link bị đăng ký 2 lần: cảnh báo "Duplicate extension names").
+  StarterKit.configure({ link: false }),
   Link.configure({
     // Edit mode: click link không mở tab mới — user cần click để đặt caret sửa.
     openOnClick: false,

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+﻿import { bindShortcuts, useShortcutLayer } from '@/lib/shortcuts';
 import { useHistoryStore } from '../store/history-store';
 import { useSelectionStore } from '../store/selection-store';
 import { useObjectsStore } from '../store/objects-store';
@@ -16,7 +16,7 @@ import {
 } from '../engine/actions';
 import { getCameraEngine } from '../engine/camera-engine';
 import { readCanvasClipboard, writeCanvasClipboard } from '../lib/clipboard';
-import { isEditableTarget } from '../lib/dom';
+import { CANVAS_SHORTCUT_DEFS } from '../shortcuts';
 import type { CanvasObject } from '../types';
 
 /** Offset canvas-space giữa các bản paste liên tiếp (Ctrl+V lặp). 16px khớp
@@ -35,143 +35,62 @@ function selectedCanvasObjects(): CanvasObject[] {
   return result;
 }
 
-/**
- * Keyboard shortcut chung của canvas:
- *   Ctrl/Cmd + Z          → undo
- *   Ctrl/Cmd + Shift + Z  → redo
- *   Ctrl/Cmd + Y          → redo (alternative Windows)
- *   Ctrl/Cmd + ]          → bring forward (nâng 1 nấc)
- *   Ctrl/Cmd + [          → send backward (hạ 1 nấc)
- *   Ctrl/Cmd + Shift + ]  → bring to front
- *   Ctrl/Cmd + Shift + [  → send to back
- *   Ctrl/Cmd + = / +      → zoom in (override browser page zoom, notch ZOOM_STEP_IN)
- *   Ctrl/Cmd + -          → zoom out (override browser page zoom, notch ZOOM_STEP_OUT)
- *   Ctrl/Cmd + 0          → reset view (override browser reset zoom trang)
- *   (Ctrl/Cmd + Shift + < / > và Ctrl/Cmd + Shift + D là phím toàn app, ở useGlobalShortcuts.)
- *   Ctrl/Cmd + A          → select all object canvas board hiện tại (chỉ khi
- *                            activePanel === 'canvas', Unsort có Ctrl+A riêng)
- *   Ctrl/Cmd + C          → copy object đang chọn ra clipboard system (magic
- *                            prefix canvas-clip:v1:)
- *   Ctrl/Cmd + V          → paste lệch dần: lần N đặt tại gốc + N×16 (pasteCounter,
- *                            reset mỗi lần Ctrl+C/X)
- *   Ctrl/Cmd + X          → cut = copy + delete
- *   Ctrl/Cmd + D          → duplicate object đang chọn tại offset +16/+16
- *   F                     → fit content (callback nhận từ ngoài)
- *   0                     → reset view (bare)
- *   Escape                → tier 2 dismiss (khi editingId null): clear selection.
- *                            Tier 1 (thoát edit) do NoteEditor keydown xử riêng.
- *   Enter                 → single selection + không editing → vào edit mode
- *                            object đang chọn (như double-click, không có
- *                            editingClickPoint → renderer fallback focus end).
- *
- * Ctrl+wheel zoom canvas được handle trong CanvasSurface (native wheel listener
- * passive:false → preventDefault chặn browser page zoom). RULE cứng: mọi
- * Ctrl-zoom (wheel + keyboard) đều nhắm canvas, không được để browser zoom trang.
- *
- * Bỏ qua khi focus ở input/textarea/contentEditable. Editor Escape tier 1 và
- * paragraph Enter trong Tiptap do NoteEditor xử riêng — isEditableTarget guard
- * ở đầu handler này skip đúng case đó.
- */
-export function useCanvasKeys({
-  onFit,
-  onReset,
-}: {
-  onFit: () => void;
-  onReset: () => void;
-}) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (isEditableTarget(e.target)) return;
-      const mod = e.ctrlKey || e.metaKey;
+function selectedIds(): string[] {
+  return Array.from(useSelectionStore.getState().selectedIds);
+}
 
-      if (mod && (e.key === 'z' || e.key === 'Z')) {
-        e.preventDefault();
-        if (e.shiftKey) useHistoryStore.getState().redo();
-        else useHistoryStore.getState().undo();
-        return;
-      }
-      if (mod && (e.key === 'y' || e.key === 'Y')) {
-        e.preventDefault();
+/** Zoom bằng phím: anchor tâm viewport (bàn phím không có vị trí chuột). deltaY < 0 → zoom in. */
+function zoomFromKeyboard(direction: -1 | 1): void {
+  const engine = getCameraEngine();
+  const vp = engine.getViewport();
+  engine.zoomImpulse({ x: vp.width / 2, y: vp.height / 2 }, direction);
+}
+
+/** Ctrl+C / Ctrl+X. Reset pasteCounter để Ctrl+V kế tiếp bắt đầu lại từ cạnh object gốc. */
+function copySelection(cut: boolean): boolean {
+  const objs = selectedCanvasObjects();
+  if (objs.length === 0) return false; // để trình duyệt copy chữ đang bôi đen
+  void writeCanvasClipboard(objs);
+  useInteractionStore.getState().setPasteCounter(0);
+  if (cut) deleteObjects(objs.map((o) => o.id));
+  return true;
+}
+
+/**
+ * Đổi thứ tự lớp (geometry.zIndex) cho mọi object đang chọn. Không chọn gì vẫn nuốt phím (không trả false): Ctrl/Cmd+[ / ]
+ * là Back/Forward của trình duyệt Mac, rơi xuống là bị đẩy ra khỏi canvas (spec shortcuts US-8).
+ */
+function stack(action: (id: string) => void): void {
+  for (const id of selectedIds()) action(id);
+}
+
+/**
+ * Phím canvas chung (lớp tool). Tổ hợp + nhãn khai báo ở `../shortcuts.ts`.
+ *
+ * Mọi Ctrl-zoom (wheel + phím) nhắm canvas, không để trình duyệt zoom trang: Ctrl+= / - / 0
+ * được consume (preventDefault). Ctrl+wheel xử ở CanvasSurface.
+ *
+ * Lớp tool không chạy khi đang gõ chữ → Esc / Enter / Ctrl+Z trong note do Tiptap tự xử.
+ * `run` trả false = không có gì để làm → phím rơi xuống trình duyệt (VD Ctrl+C chữ thường).
+ */
+export function useCanvasKeys({ onFit, onReset }: { onFit: () => void; onReset: () => void }) {
+  const shortcuts = bindShortcuts(CANVAS_SHORTCUT_DEFS, {
+    'canvas.undo': {
+      run: () => {
+        useHistoryStore.getState().undo();
+      },
+    },
+    'canvas.redo': {
+      run: () => {
         useHistoryStore.getState().redo();
-        return;
-      }
-      // Stacking (Layer 1 — canvas object zIndex). Áp cho mọi object đang chọn.
-      // Ctrl+] forward, Ctrl+[ backward, thêm Shift → front/back tuyệt đối.
-      if (mod && (e.key === ']' || e.key === '[')) {
-        const ids = Array.from(useSelectionStore.getState().selectedIds);
-        if (ids.length === 0) return;
-        e.preventDefault();
-        const toFront = e.key === ']';
-        const action = e.shiftKey
-          ? toFront ? bringToFront : sendToBack
-          : toFront ? bringForward : sendBackward;
-        for (const id of ids) action(id);
-        return;
-      }
-      // Ctrl/Cmd + = / + → zoom in canvas (đè browser page zoom).
-      // Key '=' khi press bare '=', '+' khi có Shift. Cover cả 2.
-      if (mod && (e.key === '=' || e.key === '+')) {
-        e.preventDefault();
-        const engine = getCameraEngine();
-        const vp = engine.getViewport();
-        // Anchor tâm viewport (keyboard không có cursor). deltaY < 0 → zoom in.
-        engine.zoomImpulse({ x: vp.width / 2, y: vp.height / 2 }, -1);
-        return;
-      }
-      // Ctrl/Cmd + - → zoom out canvas.
-      if (mod && e.key === '-') {
-        e.preventDefault();
-        const engine = getCameraEngine();
-        const vp = engine.getViewport();
-        engine.zoomImpulse({ x: vp.width / 2, y: vp.height / 2 }, 1);
-        return;
-      }
-      // Ctrl/Cmd + 0 → reset view (đè browser reset zoom trang mặc định).
-      if (mod && e.key === '0') {
-        e.preventDefault();
-        onReset();
-        return;
-      }
-      // Ctrl/Cmd + A → select all object canvas board hiện tại. Chỉ khi
-      // activePanel === 'canvas'; nếu 'unsort' → Ctrl+A cho Unsort do
-      // UnsortPanel handler riêng xử (isEditableTarget skip ở đầu func + handler
-      // Unsort trong UnsortPanel.tsx tự attach global keydown).
-      if (mod && (e.key === 'a' || e.key === 'A')) {
-        if (useUnsortStore.getState().activePanel !== 'canvas') return;
-        e.preventDefault();
-        const boardId = useCurrentBoardStore.getState().currentBoardId;
-        const ids: string[] = [];
-        for (const o of useObjectsStore.getState().objects.values()) {
-          if (o.boardId === boardId && o.unsortIndex === null) ids.push(o.id);
-        }
-        if (ids.length > 0) useSelectionStore.getState().replace(ids);
-        return;
-      }
-      // Ctrl/Cmd + C / X → copy (cut thì xoá thêm). Reset pasteCounter để
-      // Ctrl+V kế tiếp bắt đầu lại từ cạnh object gốc.
-      if (mod && (e.key === 'c' || e.key === 'C' || e.key === 'x' || e.key === 'X')) {
-        const objs = selectedCanvasObjects();
-        if (objs.length === 0) return;
-        e.preventDefault();
-        void writeCanvasClipboard(objs);
-        useInteractionStore.getState().setPasteCounter(0);
-        if (e.key === 'x' || e.key === 'X') deleteObjects(objs.map((o) => o.id));
-        return;
-      }
-      // Ctrl/Cmd + D → duplicate object đang chọn tại offset +16/+16. Không
-      // đụng clipboard system (không share với Ctrl+C/V flow).
-      // Bỏ qua khi có Shift: Ctrl+Shift+D là đảo theme (useGlobalShortcuts).
-      if (mod && !e.shiftKey && (e.key === 'd' || e.key === 'D')) {
-        const ids = Array.from(useSelectionStore.getState().selectedIds);
-        if (ids.length === 0) return;
-        e.preventDefault();
-        duplicateObjects(ids);
-        return;
-      }
-      // Ctrl/Cmd + V → paste lệch dần (Milanote parity): lần 1 cạnh gốc +16,
-      // lần 2 +32... chuỗi chéo, không đè nhau. Không dùng vị trí chuột.
-      if (mod && (e.key === 'v' || e.key === 'V')) {
-        e.preventDefault();
+      },
+    },
+    'canvas.copy': { run: () => copySelection(false) },
+    'canvas.cut': { run: () => copySelection(true) },
+    // Paste lệch dần (Milanote parity): lần N đặt tại gốc + N×16. Không dùng vị trí chuột.
+    // Đọc clipboard async: consume ngay, xử lý chạy nền.
+    'canvas.paste': {
+      run: () => {
         void (async () => {
           const payload = await readCanvasClipboard();
           if (!payload) return; // clipboard rỗng hoặc không phải canvas-clip
@@ -182,41 +101,70 @@ export function useCanvasKeys({
           if (!boardId) return; // bootstrap chưa xong
           pasteObjects(payload.objects, { dx: step, dy: step }, boardId);
         })();
-        return;
-      }
-      if (!mod && (e.key === 'f' || e.key === 'F')) {
-        e.preventDefault();
-        onFit();
-        return;
-      }
-      if (!mod && e.key === '0') {
-        e.preventDefault();
-        onReset();
-        return;
-      }
-      // Escape tier 2 → clear selection. Tier 1 (thoát edit khi editingId set)
-      // do NoteEditor keydown handler xử riêng — isEditableTarget guard ở đầu
-      // function skip case đó. Path này chỉ cho selection không edit.
-      if (!mod && e.key === 'Escape') {
-        if (useSelectionStore.getState().selectedIds.size === 0) return;
-        e.preventDefault();
-        useSelectionStore.getState().clear();
-        return;
-      }
-      // Enter → vào edit mode single-selected object (như double-click). Multi
-      // select → skip (deterministic). Không editingClickPoint → NoteEditor
-      // fallback focus end.
-      if (!mod && e.key === 'Enter') {
+      },
+    },
+    // Không đụng clipboard system. Không có gì chọn → để trình duyệt xử (bookmark).
+    'canvas.duplicate': {
+      run: () => {
+        const ids = selectedIds();
+        if (ids.length === 0) return false;
+        duplicateObjects(ids);
+      },
+    },
+    // Vào edit object đang chọn (như double-click). Không có editingClickPoint → caret cuối.
+    'canvas.edit-selected': {
+      run: () => {
         const sel = useSelectionStore.getState().selectedIds;
-        if (sel.size !== 1) return;
-        if (useInteractionStore.getState().editingId !== null) return;
-        e.preventDefault();
+        if (sel.size !== 1) return false;
+        if (useInteractionStore.getState().editingId !== null) return false;
         const [id] = sel;
         useInteractionStore.getState().setEditingId(id, null);
-        return;
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onFit, onReset]);
+      },
+    },
+    // Ctrl+A Unsort ở lớp panel (UnsortPanel.tsx).
+    'canvas.select-all': {
+      when: () => useUnsortStore.getState().activePanel === 'canvas',
+      run: () => {
+        const boardId = useCurrentBoardStore.getState().currentBoardId;
+        const ids: string[] = [];
+        for (const o of useObjectsStore.getState().objects.values()) {
+          if (o.boardId === boardId && o.unsortIndex === null) ids.push(o.id);
+        }
+        if (ids.length > 0) useSelectionStore.getState().replace(ids);
+      },
+    },
+    // Esc tầng 2: bỏ chọn. Tầng 1 (thoát edit) do NoteEditor xử.
+    'canvas.deselect': {
+      run: () => {
+        if (useSelectionStore.getState().selectedIds.size === 0) return false;
+        useSelectionStore.getState().clear();
+      },
+    },
+    'canvas.fit': {
+      run: () => {
+        onFit();
+      },
+    },
+    'canvas.reset-view': {
+      run: () => {
+        onReset();
+      },
+    },
+    'canvas.zoom-in': {
+      run: () => {
+        zoomFromKeyboard(-1);
+      },
+    },
+    'canvas.zoom-out': {
+      run: () => {
+        zoomFromKeyboard(1);
+      },
+    },
+    'canvas.layer-up': { run: () => stack(bringForward) },
+    'canvas.layer-down': { run: () => stack(sendBackward) },
+    'canvas.layer-top': { run: () => stack(bringToFront) },
+    'canvas.layer-bottom': { run: () => stack(sendToBack) },
+  });
+
+  useShortcutLayer('tool', shortcuts);
 }

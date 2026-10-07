@@ -9,8 +9,9 @@
     "RESET_DEFAULT": "Reset to default",
     "ERROR_TITLE": "Something went wrong",
     "RETRY": "Retry",
-    "LOADING": "Loading...",
-    "OR": "or"
+    "LOADING": "Loading…",
+    "OR": "or",
+    "WITH_SHORTCUT": "{label} ({keys})"
   },
   "LOCALE": {
     "VI": "Tiếng Việt",
@@ -19,39 +20,38 @@
   "SETTINGS": {
     "TITLE": "Settings",
     "CLOSE": "Close settings",
-    "CLOSE_TITLE": "Close (Esc)",
     "NAV": "Settings sections",
-    "COMING_SOON_DESCRIPTION": "This section is being designed.",
+    "COMING_SOON_DESCRIPTION": "This section is coming soon.",
     "ACCOUNT": {
       "TITLE": "Account",
-      "DESCRIPTION": "Sign-in and sync will be available once bibo has a backend.",
+      "DESCRIPTION": "Sign-in and sync are coming soon.",
       "STATUS": {
         "TITLE": "Status",
-        "DESCRIPTION": "You are in guest mode. All boards are saved in this browser.",
+        "DESCRIPTION": "You're in guest mode. bibo saves all boards in this browser.",
         "GUEST": "Guest"
       },
       "MENU": {
         "NOT_SIGNED_IN": "Not signed in",
         "SIGN_IN": "Sign in",
-        "SIGN_IN_SOON": "Coming soon, waiting on the backend",
+        "SIGN_IN_SOON": "Coming soon",
         "LOCAL_TITLE": "Saved in this browser",
         "LOCAL_DESCRIPTION": "Not synced to the cloud. Clearing browser data will delete your boards."
       }
     },
     "NOTIFICATIONS": {
       "TITLE": "Email and notifications",
-      "DESCRIPTION": "Choose when bibo notifies you. Available once bibo has a backend and accounts.",
+      "DESCRIPTION": "Choose when bibo notifies you. Coming soon.",
       "DIGEST": {
         "TITLE": "Activity digest email",
-        "DESCRIPTION": "Email a summary of changes on boards you take part in."
+        "DESCRIPTION": "Get an email summary of changes on boards you're part of."
       },
       "MENTION": {
         "TITLE": "When someone mentions you",
-        "DESCRIPTION": "Notify you when someone mentions you in a note or comment."
+        "DESCRIPTION": "Get notified when someone mentions you in a note or comment."
       },
       "INVITE": {
         "TITLE": "When invited to a board",
-        "DESCRIPTION": "Notify you when someone shares a board with you."
+        "DESCRIPTION": "Get notified when someone shares a board with you."
       },
       "NEWS": {
         "TITLE": "Product news",
@@ -63,16 +63,16 @@
       "DESCRIPTION": "Customize how bibo looks. Saved in this browser.",
       "THEME": "Theme",
       "MODE": {
-        "DARK": "Dark mode",
-        "LIGHT": "Light mode",
+        "DARK": "Dark",
+        "LIGHT": "Light",
         "SYSTEM": "System default"
       },
       "STYLE": {
         "TITLE": "Style",
         "HAND": "Hand-drawn",
-        "HAND_HINT": "Sketchy outlines with a drafted feel.",
+        "HAND_HINT": "Sketchy outlines with a hand-drawn feel.",
         "FLAT": "Flat",
-        "FLAT_HINT": "Clean straight outlines that follow the theme tokens."
+        "FLAT_HINT": "Clean, straight outlines."
       },
       "SIZE": {
         "TITLE": "Interface size",
@@ -97,48 +97,10 @@
       },
       "SCROLL_SPEED": {
         "TITLE": "Scroll speed",
-        "DESCRIPTION": "Distance moved per mouse wheel step. Ctrl + wheel still zooms.",
+        "DESCRIPTION": "How far the canvas moves per wheel step. {keys} + scroll zooms instead.",
         "SLOW": "Slow",
         "NORMAL": "Normal",
         "FAST": "Fast"
-      }
-    },
-    "SHORTCUTS": {
-      "TITLE": "Shortcuts",
-      "DESCRIPTION": "List of available keyboard shortcuts. On Mac, use Cmd instead of Ctrl.",
-      "DRAG": "drag",
-      "GROUP": {
-        "EDIT": "Editing",
-        "SELECT": "Selection",
-        "VIEW": "View",
-        "LAYER": "Layers",
-        "UNSORT": "Unsort"
-      },
-      "ACTION": {
-        "UNDO": "Undo",
-        "REDO": "Redo",
-        "COPY": "Copy",
-        "CUT": "Cut",
-        "PASTE": "Paste",
-        "DUPLICATE": "Duplicate",
-        "DELETE": "Delete",
-        "EDIT_SELECTED": "Edit selected object",
-        "SELECT_ALL": "Select everything on the canvas",
-        "DESELECT": "Deselect",
-        "FIT": "Fit content",
-        "RESET_VIEW": "Reset view",
-        "ZOOM_IN": "Zoom in",
-        "ZOOM_OUT": "Zoom out",
-        "PAN": "Drag to move the canvas",
-        "SIZE_DOWN": "Make interface smaller",
-        "SIZE_UP": "Make interface larger",
-        "TOGGLE_THEME": "Switch light / dark mode",
-        "LAYER_UP": "Bring forward",
-        "LAYER_DOWN": "Send backward",
-        "LAYER_TOP": "Bring to front",
-        "LAYER_BOTTOM": "Send to back",
-        "TO_UNSORT": "Move selected objects to Unsort",
-        "CLOSE_UNSORT": "Close Unsort"
       }
     },
     "LOCALIZATION": {
@@ -157,6 +119,13 @@
         "DESCRIPTION": "Used for calendars and date pickers.",
         "MONDAY": "Monday"
       },
+      "KEYBOARD": {
+        "TITLE": "Keyboard type",
+        "DESCRIPTION": "How shortcut keys are shown (⌘ or Ctrl) and which key to hold when clicking to add to a selection. Detected automatically; change it only if the app gets it wrong.",
+        "AUTO": "Automatic ({detected})",
+        "MACOS": "macOS",
+        "WINDOWS_LINUX": "Windows / Linux"
+      },
       "NOT_AVAILABLE": "Not available yet"
     },
     "DATA": {
@@ -168,7 +137,7 @@
       },
       "OBJECTS": {
         "TITLE": "Objects",
-        "DESCRIPTION": "Total notes, board tiles and other objects, including Unsort."
+        "DESCRIPTION": "Total notes, boards and other objects, including Unsort."
       },
       "USAGE": {
         "TITLE": "Storage",
@@ -176,9 +145,96 @@
       },
       "BACKUP": {
         "TITLE": "Backup",
-        "DESCRIPTION": "Download all boards to your device. Available once bibo has a backend and sync."
+        "DESCRIPTION": "Download all your boards. Coming soon."
       },
       "READ_ERROR": "Could not read data"
+    }
+  },
+  "SHORTCUTS": {
+    "TITLE": "Shortcuts",
+    "CLOSE": "Close shortcuts",
+    "NAV": "Shortcut groups",
+    "SEARCH": "Search shortcuts",
+    "SEARCH_PLACEHOLDER": "Search actions or keys",
+    "NO_RESULTS": "No shortcuts match \"{query}\"",
+    "TIP_PREFIX": "Press",
+    "TIP_SUFFIX": "to show shortcuts",
+    "WORD": {
+      "HOLD": "hold",
+      "THEN": "then",
+      "TYPE": "Type",
+      "WHILE_DRAGGING": "while dragging"
+    },
+    "POINTER": {
+      "WHEEL": "scroll",
+      "CLICK": "click",
+      "DOUBLE_CLICK": "double-click",
+      "DRAG": "drag",
+      "MIDDLE_DRAG": "middle-button drag"
+    },
+    "GROUP": {
+      "ESSENTIAL": "Most used",
+      "BASICS": "General",
+      "TEXT": "Text formatting",
+      "MARKDOWN": "Markdown",
+      "NAVIGATION": "Navigation",
+      "APPEARANCE": "Appearance",
+      "ZOOM": "Zoom"
+    },
+    "GROUP_HINT": {
+      "TEXT": "While editing a note."
+    },
+    "SUBGROUP": {
+      "LINE_START": "At the start of a new line"
+    },
+    "ACTION": {
+      "UNDO": "Undo",
+      "REDO": "Redo",
+      "COPY": "Copy",
+      "CUT": "Cut",
+      "PASTE": "Paste",
+      "DUPLICATE": "Duplicate",
+      "DELETE": "Delete",
+      "EDIT_SELECTED": "Edit selected object",
+      "SELECT_ALL": "Select everything on the canvas",
+      "DESELECT": "Deselect",
+      "FIT": "Fit to content",
+      "RESET_VIEW": "Reset view",
+      "ZOOM_IN": "Zoom in",
+      "ZOOM_OUT": "Zoom out",
+      "ZOOM_WHEEL": "Zoom with the mouse wheel",
+      "PAN": "Drag to move the canvas",
+      "SIZE_DOWN": "Make interface smaller",
+      "SIZE_UP": "Make interface larger",
+      "TOGGLE_THEME": "Switch light / dark mode",
+      "LAYER_UP": "Bring forward",
+      "LAYER_DOWN": "Send backward",
+      "LAYER_TOP": "Bring to front",
+      "LAYER_BOTTOM": "Send to back",
+      "TO_UNSORT": "Move selected objects to Unsort",
+      "CLOSE_UNSORT": "Close Unsort",
+      "OPEN_BOARD": "Open a board (double-click its color block)",
+      "TOGGLE_SELECT": "Add or remove an object from the selection",
+      "MARQUEE": "Select an area (drag on empty space)",
+      "MARQUEE_ADD": "Add an area to the selection",
+      "SCROLL_SIDEWAYS": "Scroll sideways",
+      "CLIP_CUT": "Move a paragraph into a new note (drag the card icon next to it)",
+      "CLIP_COPY": "Copy a paragraph into a new note, keep the original",
+      "UNSORT_RANGE": "Select a range in Unsort",
+      "OPEN_SHORTCUTS": "Show shortcuts",
+      "BOLD": "Bold",
+      "ITALIC": "Italic",
+      "UNDERLINE": "Underline",
+      "STRIKE": "Strikethrough",
+      "CODE": "Inline code",
+      "H1": "Heading 1",
+      "H2": "Heading 2",
+      "H3": "Heading 3",
+      "BULLET": "Bulleted list",
+      "NUMBERED": "Numbered list",
+      "QUOTE": "Quote",
+      "CODE_BLOCK": "Code block",
+      "HR": "Divider"
     }
   },
   "CANVAS": {
@@ -192,6 +248,15 @@
         "other": "{count} sub-boards"
       }
     },
+    "UNSORT": {
+      "TITLE": "Unsort",
+      "TOGGLE": {
+        "one": "Open Unsort ({count} object)",
+        "other": "Open Unsort ({count} objects)"
+      },
+      "EMPTY": "Nothing here yet",
+      "HINT": "Drag an item onto the canvas to place it."
+    },
     "NOTE_COLOR": {
       "PICK": "Pick color",
       "DEFAULT": "Default",
@@ -204,57 +269,67 @@
     },
     "HEADER": {
       "UNDO": "Undo",
-      "UNDO_TITLE": "Undo (Ctrl+Z)",
       "REDO": "Redo",
-      "REDO_TITLE": "Redo (Ctrl+Shift+Z)",
-      "FIT_CONTENT": "Fit content",
+      "FIT_CONTENT": "Fit to content",
       "RESET_VIEW": "Reset view",
       "SAVING": "Saving…",
       "SAVED": "Saved",
-      "SAVE_ERROR": "Save failed",
+      "SAVE_ERROR": "Couldn't save",
       "RENAME_HINT": "Double-click to rename",
       "BOARD_NAME": "Board name",
       "SHARE": "Share",
-      "EXPORT": "Export"
+      "EXPORT": "Export",
+      "HELP": "Help",
+      "SEARCH": "Search",
+      "NOTIFICATIONS": "Notifications"
+    },
+    "HELP_MENU": {
+      "SHORTCUTS_TITLE": "Shortcuts",
+      "SHORTCUTS_DESCRIPTION": "Do common tasks faster",
+      "TUTORIAL_TITLE": "Tutorial",
+      "TUTORIAL_DESCRIPTION": "Get to know bibo step by step"
     },
     "VIEW_POPUP": {
       "ZOOM": "Zoom",
-      "ZOOM_TIP": "Tip: hold Ctrl and use the mouse wheel to zoom",
+      "ZOOM_TIP": "Tip: hold {keys} and use the mouse wheel to zoom",
       "ZOOM_IN": "Zoom in",
       "ZOOM_OUT": "Zoom out",
       "RESET_100": "Reset to 100%",
-      "SCALE_TO_FIT": "Scale to fit",
+      "SCALE_TO_FIT": "Fit to content",
       "PRESENTATION": "Presentation mode",
-      "PRESENTATION_TIP": "Go full-screen & hide toolbar, dot grid etc.",
+      "PRESENTATION_TIP": "Go full screen and hide the toolbar, dot grid, and more.",
       "PRESENT": "Present",
-      "FOCUS_SELECTED": "Focus on selected cards",
+      "FOCUS_SELECTED": "Focus on selected objects",
       "HIDE_COMMENTS": "Hide comments",
       "PREVENT_EDITING": "Prevent editing"
     },
     "EXPORT_POPUP": {
       "LAYOUT_TITLE": "Export the current board layout",
-      "PDF_STANDARD": "PDF standard (small file size)",
-      "PDF_HIGH": "PDF high quality (large file size)",
+      "PDF_STANDARD": "Standard PDF (smaller file)",
+      "PDF_HIGH": "High-quality PDF (larger file)",
       "PNG": "PNG image",
-      "LINEAR_TITLE": "Convert to a linear document",
+      "LINEAR_TITLE": "Export as a document",
       "INCLUDE_SUB_BOARDS": "Include sub-boards",
       "WORD": "Word document",
       "MARKDOWN": "Markdown",
       "PLAIN_TEXT": "Plain text",
       "FILES_TITLE": "Download all images and files",
       "NO_FILES": "No files found on this board",
-      "DOWNLOAD_FILES": "Download {count} files"
+      "DOWNLOAD_FILES": {
+        "one": "Download {count} file",
+        "other": "Download {count} files"
+      }
     },
     "CONFIRM": {
       "DELETE_MANY": {
         "TITLE": "Delete multiple objects?",
-        "DESCRIPTION": "This deletes {items}. You can undo this (Ctrl+Z)."
+        "DESCRIPTION": "This will delete {items}. You can undo with {undo}."
       },
       "DELETE_BOARD": {
         "TITLE": "Delete board \"{name}\"?",
-        "COUNTING": "Counting content inside...",
-        "EMPTY": "This board is empty. You can undo this (Ctrl+Z).",
-        "DESCRIPTION": "This removes {items}. You can undo this (Ctrl+Z).",
+        "COUNTING": "Counting content inside…",
+        "EMPTY": "This board is empty. You can undo with {undo}.",
+        "DESCRIPTION": "This will delete {items}. You can undo with {undo}.",
         "CONFIRM": "Delete board"
       }
     }

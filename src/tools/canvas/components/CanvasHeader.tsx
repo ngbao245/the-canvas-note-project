@@ -1,4 +1,7 @@
-import { Undo2, Redo2, type LucideIcon } from 'lucide-react';
+import { Bell, Redo2, Search, Undo2, type LucideIcon } from 'lucide-react';
+import { HelpMenu } from './HelpMenu';
+import { shortcutKeys, useKeyboardPlatform } from '@/lib/shortcuts';
+import { CANVAS_SHORTCUT_DEFS } from '../shortcuts';
 import { Badge } from '@/components/style';
 import { AccountMenu } from '@/components/settings/AccountMenu';
 import { useI18n } from '@/lib/i18n';
@@ -12,7 +15,7 @@ import { useInterfaceScale } from '@/stores/interface-store';
 /**
  * CanvasHeader — 2 hàng:
  *   - Hàng 1: breadcrumb (trái, tự rút theo bề rộng) + số object + Undo/Redo +
- *     avatar (phải).
+ *     Trợ giúp + Tìm kiếm + Thông báo + avatar (phải).
  *   - Hàng 2 (BoardTitleRow): trạng thái lưu / tên board / Chia sẻ + Xuất + % zoom.
  *
  * Co dãn: breadcrumb `flex-1 min-w-0` co tới 0 và tự ẩn bớt cấp; cụm bên phải
@@ -58,7 +61,7 @@ export function CanvasHeader({
 // ============================================================
 
 const ICON_BTN_CLS =
-  'grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground';
+  'grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground';
 const ICON_BTN_DISABLED_CLS =
   'disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent';
 
@@ -84,7 +87,7 @@ function IconButton({
       aria-label={ariaLabel}
       className={disabled ? `${ICON_BTN_CLS} ${ICON_BTN_DISABLED_CLS}` : ICON_BTN_CLS}
     >
-      <Icon className="h-4 w-4" />
+      <Icon className="h-6 w-6" strokeWidth={1.5} />
     </button>
   );
 }
@@ -94,13 +97,37 @@ function IconButton({
 // ============================================================
 
 // Theme + phong cách đã chuyển vào modal Cài đặt (avatar → Cài đặt → Giao diện).
+// Trợ giúp mở popup (HelpMenu). Tìm kiếm / Thông báo: chỉ là nút, chưa có tính năng.
 function ToolsCluster() {
+  const { t } = useI18n();
   return (
     <div className="flex shrink-0 items-center gap-1">
       <UndoRedoCluster />
       <div className="mx-1 h-4 w-px bg-border" />
+      <HelpMenu />
+      <SoonIconButton icon={Search} label={t('CANVAS.HEADER.SEARCH')} />
+      <SoonIconButton icon={Bell} label={t('CANVAS.HEADER.NOTIFICATIONS')} />
       <AccountMenu />
     </div>
+  );
+}
+
+/**
+ * Nút icon chưa có tính năng. aria-disabled thay vì `disabled` để vẫn nhận hover
+ * → hiện tooltip "Sắp có" (cùng cách nút Chia sẻ).
+ */
+function SoonIconButton({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+  const { t } = useI18n();
+  return (
+    <button
+      type="button"
+      aria-disabled="true"
+      aria-label={label}
+      title={`${label} (${t('COMMON.COMING_SOON')})`}
+      className="grid h-8 w-8 cursor-not-allowed place-items-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted"
+    >
+      <Icon className="h-6 w-6" strokeWidth={1.5} />
+    </button>
   );
 }
 
@@ -110,23 +137,33 @@ function UndoRedoCluster() {
   const undo = useHistoryStore((s) => s.undo);
   const redo = useHistoryStore((s) => s.redo);
   const { t } = useI18n();
+  const platform = useKeyboardPlatform();
 
   // title (tooltip) và aria-label (trình đọc màn hình) cũng là chữ UI → qua bộ dịch.
+  // Tổ hợp phím lấy từ bảng phím, không ghi cứng trong file dịch.
+  const undoLabel = t('CANVAS.HEADER.UNDO');
+  const redoLabel = t('CANVAS.HEADER.REDO');
   return (
     <>
       <IconButton
         icon={Undo2}
         onClick={undo}
         disabled={undoCount === 0}
-        title={t('CANVAS.HEADER.UNDO_TITLE')}
-        ariaLabel={t('CANVAS.HEADER.UNDO')}
+        title={t('COMMON.WITH_SHORTCUT', {
+          label: undoLabel,
+          keys: shortcutKeys(CANVAS_SHORTCUT_DEFS['canvas.undo'], platform),
+        })}
+        ariaLabel={undoLabel}
       />
       <IconButton
         icon={Redo2}
         onClick={redo}
         disabled={redoCount === 0}
-        title={t('CANVAS.HEADER.REDO_TITLE')}
-        ariaLabel={t('CANVAS.HEADER.REDO')}
+        title={t('COMMON.WITH_SHORTCUT', {
+          label: redoLabel,
+          keys: shortcutKeys(CANVAS_SHORTCUT_DEFS['canvas.redo'], platform),
+        })}
+        ariaLabel={redoLabel}
       />
     </>
   );

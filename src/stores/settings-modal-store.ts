@@ -12,7 +12,6 @@ export type SettingsSection =
   | 'localization'
   | 'canvas'
   | 'toolbar'
-  | 'shortcuts'
   | 'data';
 
 interface SettingsModalState {

@@ -10,7 +10,7 @@ import { persist } from 'zustand/middleware';
  * Nhỏ / Lớn cách Vừa ~10%, cùng khoảng cách Milanote (0.8 / 0.9 / 1.0 quy về Vừa ≈ 0.89 / 1 / 1.11).
  *
  * Lưu localStorage key 'bibo-interface'.
- * Phím tắt Ctrl+Shift+< / > đổi 1 mức (useGlobalShortcuts, chạy toàn app).
+ * Phím tắt Ctrl+Shift+< / > đổi 1 mức (lib/shortcuts/global-shortcuts.ts, chạy toàn app).
  */
 
 export type InterfaceSize = 'small' | 'medium' | 'large';

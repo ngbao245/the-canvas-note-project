@@ -163,6 +163,21 @@ import { LoadingState, EmptyState, ErrorState } from '@/components/shared';
 
 Không tự viết inline copy-paste. Xem trực tiếp `src/components/shared/{LoadingState,EmptyState,ErrorState}.tsx` để biết props có sẵn.
 
+## Phím tắt
+
+Mọi phím đi qua bộ điều phối `@/lib/shortcuts` (spec `.kiro/specs/shortcuts/`). Cấm tự gắn `addEventListener('keydown')` trên `window` / `document`. Ngoại lệ duy nhất: listener trên chính phần tử đang gõ (Tiptap editor, `onKeyDown` của ô nhập). Ô sửa 1 dòng dùng `editKeyHandler({ onCommit, onCancel })` từ `@/lib/dom` (đã bỏ qua lúc bộ gõ ghép chữ); listener tự viết phải kiểm `isImeComposing(e)` trước.
+
+- Phím của tool: khai báo dữ liệu ở `src/tools/{tên}/shortcuts.ts` (chỉ dữ liệu, không import store), gắn hành động bằng `bindShortcuts(defs, handlers)` + `useShortcutLayer('tool' | 'panel', ...)`. Có `display` → tự hiện trong modal phím tắt (`src/components/shortcuts/ShortcutsModal.tsx`; tool mới thì thêm bảng defs vào `ALL_DEFS` ở đó). Thao tác chuột / phím do Tiptap xử: khai báo `combos: []` + `display.ways` (chỉ hiển thị, không handler) và chỉ ghi khi đã thử thấy chạy.
+- Gợi ý phím trong UI (Cài đặt, tooltip) dùng `<ShortcutWays def={...} />` hoặc `shortcutKeys(def)`, không tự viết `<Kbd>Ctrl</Kbd>` — để Mac tự hiện ⌘. Phím 2 OS đều có (Shift, Alt, Enter, Backspace) hiện cùng tên chữ, chỉ Ctrl đổi thành ⌘.
+- Trong component, gọi `shortcutKeys` / `formatCombo` thì truyền `useKeyboardPlatform()` làm tham số thứ 2, để đổi Kiểu bàn phím trong Cài đặt là nhãn đổi ngay. Không tính nhãn phím ở cấp module.
+- Thao tác chuột có phím giữ (chọn thêm, kéo màn hình): dùng `isPrimaryModifier(e)` (Cmd trên Mac, Ctrl nơi khác), không viết `e.ctrlKey || e.metaKey`. Handler chọn / kéo bằng nút trái phải bỏ qua `isMacSecondaryClick(e)` (Ctrl + click trên Mac là chuột phải). Ngoại lệ: zoom bằng lăn chuột giữ `ctrlKey || metaKey` vì pinch trackpad gửi `ctrlKey`.
+- Popup / menu chỉ cần Esc: `useEscapeLayer(onClose, { enabled: open })`. Dialog / modal chặn phím bên dưới: `useShortcutLayer('overlay', [...], { enabled: open, blocking: true })`.
+- Thứ tự lớp: global → overlay (mở sau trước) → panel → tool. Lớp tool / panel không chạy khi đang gõ chữ.
+- `run` trả `false` = không xử lý, phím rơi xuống lớp dưới / trình duyệt. Hành động đọc state bằng `getState()`.
+- Chữ cái dùng `key` (không phân biệt hoa/thường). Phím đổi ký tự khi giữ Shift (`[` `]`) dùng `code`.
+- Thao tác tắt bằng chuột (Ctrl + lăn chuột...) cũng khai báo trong bảng với `pointer: 'wheel'`, không cần handler. Bộ điều phối bỏ qua loại này, hành động nằm ở listener chuột; bảng chỉ để hiện trong Cài đặt / tooltip.
+- Không ghi cứng tổ hợp phím trong file dịch. Tooltip: `t('COMMON.WITH_SHORTCUT', { label, keys: shortcutKeys(DEFS['id']) })`. Trong câu: thêm biến `{undo}`... rồi truyền `shortcutKeys(...)` / `formatCombo(...)`.
+
 ## Chữ UI và đa ngôn ngữ (i18n)
 
 Mọi chữ người dùng nhìn thấy hoặc nghe thấy phải qua bộ dịch, không viết chữ cứng trong JSX. Spec: `.kiro/specs/i18n/`.
@@ -171,7 +186,7 @@ Mọi chữ người dùng nhìn thấy hoặc nghe thấy phải qua bộ dịc
 
 1. Thêm key vào `src/lib/i18n/locales/vi.json` (nguồn chuẩn), rồi thêm đúng key đó vào `en.json`.
    Thiếu bên en → `tsc` báo lỗi tại `src/lib/i18n/messages.ts`.
-2. Key IN HOA, lồng theo vùng: `{VÙNG}.{KHỐI}.{TÊN}`. Vùng: `COMMON`, `SETTINGS`, `CANVAS`, `ACCOUNT`, `LANDING`.
+2. Key IN HOA, lồng theo vùng: `{VÙNG}.{KHỐI}.{TÊN}`. Vùng: `COMMON`, `SETTINGS`, `SHORTCUTS`, `CANVAS`, `ACCOUNT`, `LANDING`.
    Tên nhiều từ nối bằng `_`: `UNDO_TITLE`, `FIT_CONTENT`. Hai thứ giữ chữ thường: `one` / `other` của số nhiều
    (tên do trình duyệt trả về) và biến trong câu `{name}`, `{count}` (tên tham số).
    Câu dùng nhiều nơi (Huỷ, Xoá, OK) để ở `COMMON`, không chép lại.
@@ -211,7 +226,8 @@ const LABEL = t('CANVAS.HEADER.UNDO');                   // gọi t() ở ngoài
 ### Không dịch
 
 - Dữ liệu người dùng: tên board, nội dung note.
-- Tên riêng: bibo, Canvas, Unsort, Note, Board (khi là tên loại object). Tên phím: Ctrl, Shift, Delete.
+- Tên riêng: bibo, Canvas, Note, Board (khi là tên loại object). Tên phím: Ctrl, Shift, Delete.
+  Unsort thì có dịch: vi "Khay chờ" (key `CANVAS.UNSORT.TITLE`), en giữ "Unsort". Câu nào nhắc tới Unsort phải dùng đúng từ này.
 - Tên mặc định board lưu vào dữ liệu: "Home", "New Board" (luôn tiếng Anh).
 - Comment trong code (vẫn tiếng Việt), `console.warn`, label undo trong `engine/actions.ts` (chưa hiện trên UI).
 - Tên ngôn ngữ trong `LOCALE.*`: luôn viết bằng chính tiếng đó ("English" ở cả 2 bộ).

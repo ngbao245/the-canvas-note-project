@@ -24,6 +24,7 @@ import {
 import { hitZone, isInvalidZone } from '../lib/hit-test';
 import { boardDataSchema, type CanvasObject } from '../types';
 import { createEdgePanLoop } from './useEdgePan';
+import { isMacSecondaryClick, isPrimaryModifier } from '@/lib/shortcuts';
 
 /**
  * Drag object trên canvas — Milanote pattern, unified visualize với toolbar/unsort:
@@ -396,12 +397,14 @@ export function useObjectDrag(objectId: string) {
       // Middle mouse: bỏ qua, để surface xử pan.
       if (e.button === 1) return;
       if (e.button !== 0) return;
+      // macOS Ctrl+click = chuột phải: không chọn, không kéo, để context menu mở.
+      if (isMacSecondaryClick(e)) return;
 
-      // Ctrl/Cmd+click: multi-select toggle nếu bare click (không drag). Cho
+      // Ctrl+click (Cmd trên macOS): multi-select toggle nếu bare click (không drag). Cho
       // event bubble lên surface để Ctrl+drag pan vẫn work — distinguish bằng
       // local pointermove threshold. Xử tách khỏi flow drag object thường vì
       // logic đơn giản hơn (không cần preview, edge-pan, cross-board detect).
-      if (e.ctrlKey || e.metaKey) {
+      if (isPrimaryModifier(e)) {
         const startX = e.clientX;
         const startY = e.clientY;
         let moved = false;

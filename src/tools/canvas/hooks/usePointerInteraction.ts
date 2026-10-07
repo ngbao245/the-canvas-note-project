@@ -4,7 +4,13 @@ import { useObjectsStore } from '../store/objects-store';
 import { useInteractionStore } from '../store/interaction-store';
 import { getCameraEngine } from '../engine/camera-engine';
 import { screenToCanvas, aabbIntersect } from '../engine/coord';
-import { isEditableTarget } from '../lib/dom';
+import {
+  bindShortcuts,
+  isMacSecondaryClick,
+  isPrimaryModifier,
+  registerLayer,
+} from '@/lib/shortcuts';
+import { CANVAS_SHORTCUT_DEFS } from '../shortcuts';
 
 /**
  * Pointer interaction trên canvas surface. Object tự xử pointerdown trong
@@ -22,18 +28,20 @@ export function usePointerInteraction(ref: RefObject<HTMLElement | null>) {
     let panStart: { x: number; y: number } | null = null;
     let marqueeStart: { x: number; y: number; shift: boolean } | null = null;
 
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !isEditableTarget(e.target)) {
-        spacePressed = true;
-        el.style.cursor = 'grab';
-      }
-    };
-    const onKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        spacePressed = false;
-        el.style.cursor = '';
-      }
-    };
+    // Space giữ để kéo màn hình. Thả phím, mất focus cửa sổ hoặc unmount → release.
+    const panShortcuts = bindShortcuts(CANVAS_SHORTCUT_DEFS, {
+      'canvas.pan': {
+        run: () => {
+          spacePressed = true;
+          el.style.cursor = 'grab';
+        },
+        release: () => {
+          spacePressed = false;
+          el.style.cursor = '';
+        },
+      },
+    });
+    const unregisterPan = registerLayer('tool', () => panShortcuts);
 
     const onPointerDown = (e: PointerEvent) => {
       // Bỏ qua nếu pointerdown xuất phát từ object hoặc overlay screen-space
@@ -56,8 +64,11 @@ export function usePointerInteraction(ref: RefObject<HTMLElement | null>) {
         return;
       }
 
+      // macOS Ctrl+click = chuột phải: không pan, không marquee, để context menu mở.
+      if (isMacSecondaryClick(e)) return;
       const isMiddle = e.button === 1;
-      const isCtrl = e.ctrlKey || e.metaKey;
+      // Ctrl+kéo (Cmd trên macOS) = kéo màn hình.
+      const isCtrl = isPrimaryModifier(e);
       const shouldPan = spacePressed || isMiddle || (isCtrl && e.button === 0);
 
       if (shouldPan) {
@@ -153,16 +164,13 @@ export function usePointerInteraction(ref: RefObject<HTMLElement | null>) {
       }
     };
 
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
     el.addEventListener('pointerdown', onPointerDown);
     el.addEventListener('pointermove', onPointerMove);
     el.addEventListener('pointerup', onPointerUp);
     el.addEventListener('pointercancel', onPointerUp);
 
     return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
+      unregisterPan();
       el.removeEventListener('pointerdown', onPointerDown);
       el.removeEventListener('pointermove', onPointerMove);
       el.removeEventListener('pointerup', onPointerUp);

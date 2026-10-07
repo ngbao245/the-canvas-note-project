@@ -22,6 +22,7 @@ import { noteDataSchema, type CanvasObject } from '../../types';
 import { NOTE_COLOR_PALETTE } from '../../lib/note-colors';
 import { useNoteEditorStore } from '../../store/note-editor-store';
 import { useI18n } from '@/lib/i18n';
+import { editKeyHandler } from '@/lib/dom';
 
 /**
  * Note-specific toolbar actions cho element + editing mode.
@@ -294,12 +295,7 @@ function LinkPopup({ editor, onClose }: { editor: Editor; onClose: () => void })
         type="url"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            save();
-          }
-        }}
+        onKeyDown={editKeyHandler({ onCommit: save })}
         placeholder="https://..."
         autoFocus
         className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"

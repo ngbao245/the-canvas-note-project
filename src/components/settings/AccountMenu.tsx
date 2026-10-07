@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { HardDrive, Settings, User } from 'lucide-react';
 import { useSettingsModalStore } from '@/stores/settings-modal-store';
 import { useI18n } from '@/lib/i18n';
+import { useEscapeLayer } from '@/lib/shortcuts';
 
 /**
  * AccountMenu — nút avatar trên header + popup tài khoản (Milanote AccountPopup).
@@ -24,19 +25,12 @@ export function AccountMenu() {
     const onDown = (e: MouseEvent) => {
       if (!wrapperRef.current?.contains(e.target as Node)) setOpen(false);
     };
-    // Capture + stopPropagation: Esc chỉ đóng popup, không lọt xuống canvas.
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.stopPropagation();
-      setOpen(false);
-    };
     document.addEventListener('mousedown', onDown);
-    window.addEventListener('keydown', onKey, true);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      window.removeEventListener('keydown', onKey, true);
-    };
+    return () => document.removeEventListener('mousedown', onDown);
   }, [open]);
+
+  // Lớp overlay: Esc chỉ đóng popup, không lọt xuống canvas.
+  useEscapeLayer(() => setOpen(false), { enabled: open });
 
   return (
     <div ref={wrapperRef} className="relative">
@@ -47,9 +41,9 @@ export function AccountMenu() {
         aria-label={accountLabel}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="grid h-7 w-7 cursor-pointer place-items-center rounded-full bg-muted text-muted-foreground ring-1 ring-border transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="grid h-8 w-8 cursor-pointer place-items-center rounded-full bg-muted text-muted-foreground ring-1 ring-border transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <User className="h-4 w-4" />
+        <User className="h-6 w-6" strokeWidth={1.5} />
       </button>
 
       {open ? (
@@ -58,10 +52,10 @@ export function AccountMenu() {
           aria-label={accountLabel}
           className="absolute right-0 top-full z-tooltip mt-2 w-72 rounded-lg border border-border bg-popover text-popover-foreground shadow-elevation-2"
         >
-          {/* Mũi tên chỉ lên avatar: tâm nút 28px nằm cách mép phải 14px. */}
+          {/* Mũi tên chỉ lên avatar: tâm nút 32px nằm cách mép phải 16px. */}
           <span
             aria-hidden="true"
-            className="absolute -top-[6px] right-[8px] h-3 w-3 rotate-45 border-l border-t border-border bg-popover"
+            className="absolute -top-[6px] right-[10px] h-3 w-3 rotate-45 border-l border-t border-border bg-popover"
           />
 
           <section className="flex gap-3 p-4">

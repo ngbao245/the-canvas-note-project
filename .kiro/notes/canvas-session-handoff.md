@@ -921,3 +921,60 @@ Còn mở:
 - Task 11: tuỳ chọn ẩn/hiện hàng tiêu đề trong Cài đặt.
 - Font app chưa chốt: khai báo `'Plus Jakarta Sans', Inter` nhưng chỉ tải Fraunces → đang hiện Segoe UI. Đang so trong
   `mockups/typography-playground.html` (12 concept A–L + Tự phối, hover hiện tên font).
+
+## Session 2026-10-07 — Phím tắt tập trung (spec `.kiro/specs/shortcuts/`, 6/6 task)
+
+Thay mọi mục phím cũ trong file (useCanvasKeys Phase 1, useDeleteKey, Esc của popup). Nguồn chuẩn giờ là bảng khai báo.
+
+- `src/lib/shortcuts/`: `dispatcher.ts` (1 listener keydown + keyup ở window capture, ngăn xếp lớp, phím giữ, cảnh báo trùng ở dev), `combo.ts` (`matchCombo`, `bindShortcuts`), `format.ts` (`displayCombos` cho Cài đặt), `useShortcutLayer.ts` (`useShortcutLayer`, `useEscapeLayer`, `ESCAPE_COMBO`), `global-shortcuts.ts`.
+- `tools/canvas/shortcuts.ts`: `CANVAS_SHORTCUT_DEFS` chỉ dữ liệu, thứ tự = thứ tự trong Cài đặt. Hành động gắn ở: `useCanvasKeys` (phần lớn), `CanvasApp` (Delete, Ctrl+Shift+U, Esc đóng Unsort ở lớp panel), `usePointerInteraction` (Space qua `registerLayer` trong effect), `UnsortPanel` (Ctrl+A lớp panel).
+- Overlay: `usePopup`, `useToolbarPopupClose`, `AccountMenu`, `ContextMenu` dùng `useEscapeLayer`. `ConfirmDialog` + `SettingsModal` là lớp chặn (`blocking`).
+- `ShortcutsSection` sinh từ `CANVAS_SHORTCUT_DEFS` + `GLOBAL_SHORTCUT_DEFS`, không còn danh sách chép tay.
+- Đã xoá: `src/lib/useGlobalShortcuts.ts`, `hooks/useDeleteKey.ts`, `tools/canvas/lib/dom.ts` (dùng `@/lib/dom`).
+
+Hành vi đổi có chủ đích:
+- Esc khi popup / context menu / dialog xoá mở: chỉ đóng lớp đó, vùng chọn giữ.
+- Dialog xoá mở: Delete, Ctrl+Z, F... không đụng canvas. Enter khi focus ở nút "Huỷ" thì huỷ (trước đây xác nhận).
+- Unsort mở + đang chọn: Esc lần 1 đóng panel, lần 2 bỏ chọn. Esc đang sửa note không đóng Unsort nữa.
+- Caps Lock không ảnh hưởng phím chữ (Ctrl+A Unsort trước đây hỏng khi bật Caps Lock).
+- Ctrl+Shift+[ / ] so bằng phím vật lý (trước so ký tự `[` `]`, giữ Shift ra `{` `}` nên có thể không chạy).
+- Ctrl+Delete / Ctrl+Backspace không còn xoá object. Phím toàn app không chạy khi đang giữ Alt.
+- Modal Cài đặt không còn chặn React `onKeyDown` bên trong modal (trước stopPropagation mọi phím ở window).
+
+Gotcha:
+- Thêm phím = khai báo trong bảng. Cấm `addEventListener('keydown')` trên window/document (rule trong coding-style.md).
+- Lớp tool / panel bỏ qua khi đang gõ; lớp overlay chạy cả khi gõ (Esc trong ô URL Link đóng popup).
+- `canvas.pan` (Space) `consume: false` để Space vẫn bấm được nút đang focus.
+
+Đã kiểm trên Chrome DevTools (sự kiện phím giả lập): Ctrl+Shift+D, Caps Lock F / Ctrl+A, popup Esc giữ chọn, Unsort Esc 2 tầng, dialog xoá chặn Delete / F, modal chặn Ctrl+Z, bảng Cài đặt 24 dòng đúng thứ tự, cảnh báo trùng. Chưa kiểm bằng bàn phím thật.
+
+### 2026-10-07 — Modal phím tắt (spec `.kiro/specs/shortcuts-modal/`, 3/3 task)
+
+Thay mục "Cài đặt → Phím tắt" ở các mục trên: danh sách phím giờ là modal riêng, không còn trong Cài đặt.
+
+- `src/components/shortcuts/ShortcutsModal.tsx`: modal 2 cột (nhóm trái, danh sách cuộn phải, nhóm đang xem tự tô). Mở bằng Trợ giúp → Phím tắt hoặc phím `/` (lớp global, bấm lại `/` thì đóng, không mở khi Cài đặt đang mở). Lớp overlay chặn. Store `src/stores/shortcuts-modal-store.ts`.
+- `ShortcutKeys.tsx`: `Kbd`, `ShortcutWays({ def })`, `WayList`. Dùng cả ở Cài đặt → Giao diện (gợi ý phím). `Kbd` đã chuyển khỏi `SettingsBlocks`.
+- `lib/shortcuts`: thêm `display.ways` (mảnh `combo` / `text` / `pointer`), `PointerKind` (wheel, click, double-click, drag, middle-drag), `displayWays`, `comboKeyLabels`, `platform.ts` (`isApplePlatform`). Apple hiện ⌥ ⇧ ⌘ ↩ ⌫, Windows giữ Ctrl Shift Alt. Tooltip / câu mẹo tự theo.
+- `tools/canvas/shortcuts.ts`: thêm dòng chỉ hiển thị cho thao tác chuột (chọn thêm, chọn vùng, cuộn ngang, vào board, tách đoạn, Shift+click trong Unsort) và `NOTE_TEXT_SHORTCUT_DEFS` (phím Tiptap + Markdown). Kéo màn hình gộp 3 cách: Ctrl + kéo, giữ Space và kéo, kéo chuột giữa.
+- i18n: `SETTINGS.SHORTCUTS.*` → vùng mới `SHORTCUTS.*`. `trapTab` chuyển sang `@/lib/dom` (Cài đặt + modal phím tắt dùng chung).
+
+Đã thử trên Chrome bằng phím thật (CDP): 12 phím định dạng Tiptap, 11 mẫu Markdown, modal (`/`, bấm nhóm, cuộn, Esc, phím canvas bị chặn), giả lập user agent Mac. Không có double-click vùng trống để tạo note → không ghi dòng đó.
+
+Đã sửa cùng ngày:
+- Ctrl+Enter thoát sửa note từng lưu kèm 1 `<br>` thừa (Tiptap HardBreak `Mod-Enter` chạy trước). Listener Esc / Ctrl+Enter của NoteEditor giờ gắn ở capture phase trên DOM editor + preventDefault → ProseMirror bỏ qua phím. Shift+Enter vẫn xuống dòng mềm.
+- `note-schema.ts`: `StarterKit.configure({ link: false })` + Link cấu hình riêng → hết cảnh báo "Duplicate extension names: link".
+
+### 2026-10-07 (cuối session) — chỉnh modal phím tắt theo Milanote
+
+- Nhóm trong modal theo Milanote: Thường dùng, Cơ bản, Định dạng chữ, Markdown, Di chuyển, Giao diện, Thu phóng (key `SHORTCUTS.GROUP.*`: ESSENTIAL, BASICS, TEXT, MARKDOWN, NAVIGATION, APPEARANCE, ZOOM). Bỏ nhóm cũ EDIT/SELECT/VIEW/LAYER/UNSORT; trong `tools/canvas/shortcuts.ts` các hằng EDIT/SELECT/LAYER/UNSORT giờ đều trỏ BASICS. Chưa có nhóm Drawing (bibo chưa có vẽ tay).
+- Cột trái modal `w-max` (ôm vừa nội dung, trước là `w-64` bị thừa ~20px bên phải), câu "Bấm [/] để mở danh sách phím tắt" 1 dòng (`whitespace-nowrap`). Modal rộng tối đa 880px.
+- Dấu ngăn giữa các cách bấm là `|` (`OrSeparator` trong `ShortcutKeys.tsx`), trình đọc màn hình đọc "hoặc". Không dùng `/` để khỏi nhầm phím mở modal.
+- `ShortcutDisplay.subgroupKey`: tiêu đề con trong nhóm. Markdown chỉ còn 1 tiêu đề con `SHORTCUTS.SUBGROUP.LINE_START` ("Gõ ở đầu dòng mới"). Đã bỏ 4 dòng gõ bao quanh chữ (`**…**`, `*…*`, `~~…~~`, `` `…` ``) cùng key `AROUND_TEXT`: đó là định dạng khi gõ, không phải phím tắt, Milanote cũng không ghi. Tiptap vẫn chạy các mẫu này, chỉ là modal không liệt kê.
+- Danh sách số hiện `[1][.]` (2 phím), danh sách chấm chỉ hiện `*`.
+
+- Cột trái modal cố định `w-60` (240px, vừa câu mẹo tiếng Việt) để đổi vi/en không làm 2 cột nhảy.
+- Ô tìm trên header modal: mở modal là focus ô tìm (trước là nút X). Lọc theo tên thao tác + tên nhóm + tên phím, mọi từ phải khớp, bỏ dấu ("xoa" khớp "Xoá"). Đang tìm thì ẩn "Thường dùng" (dòng lặp), nhóm không còn kết quả mờ ở cột trái. Esc: có chữ thì xoá chữ, ô trống mới đóng. Vì focus luôn ở ô tìm nên `/` trong modal gõ ra ký tự, không còn đóng modal. Key `SHORTCUTS.SEARCH`, `SEARCH_PLACEHOLDER`, `NO_RESULTS`.
+
+Đang chờ bạn test bằng tay: 27 case spec shortcuts, 5 case ô sửa tên board / URL / bộ gõ, modal phím tắt (`/`, bấm nhóm, cuộn, Esc, giả lập Mac).
+Để sau: nút Tìm kiếm và Thông báo trên header vẫn là "Sắp có".
+Build pass, tsc + eslint sạch tại thời điểm ghi. Chưa commit.

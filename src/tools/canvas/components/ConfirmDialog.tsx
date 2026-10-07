@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
 import { Button } from '@/components/style';
+import { ESCAPE_COMBO, useShortcutLayer } from '@/lib/shortcuts';
 import { useI18n } from '@/lib/i18n';
 
 /**
@@ -30,15 +30,24 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   // Nhãn mặc định lấy từ bộ dịch lúc render, không đặt chuỗi cứng ở default param.
   const { t } = useI18n();
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
-      if (e.key === 'Enter') onConfirm();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open, onCancel, onConfirm]);
+  // Lớp overlay chặn: dialog mở thì canvas không nhận phím nào (Delete, Ctrl+Z, F...).
+  // Esc chỉ huỷ dialog, vùng chọn giữ nguyên.
+  useShortcutLayer(
+    'overlay',
+    [
+      { id: 'confirm.cancel', combos: [ESCAPE_COMBO], run: () => { onCancel(); } },
+      {
+        id: 'confirm.ok',
+        combos: [{ shift: 'any', key: 'Enter' }],
+        // Focus đang ở 1 nút (Tab tới "Huỷ") → để nút tự xử Enter, không xác nhận thay.
+        run: (e) => {
+          if (e.target instanceof HTMLButtonElement) return false;
+          onConfirm();
+        },
+      },
+    ],
+    { enabled: open, blocking: true },
+  );
 
   if (!open) return null;
 

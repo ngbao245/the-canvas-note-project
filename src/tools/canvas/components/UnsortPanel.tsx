@@ -12,6 +12,9 @@ import { useUnsortMarquee } from '../hooks/useUnsortMarquee';
 import { useCameraStore } from '../store/camera-store';
 import { isSecondaryZone } from '../lib/hit-test';
 import { FloatingObjectPreview } from './FloatingObjectPreview';
+import { CANVAS_SHORTCUT_DEFS } from '../shortcuts';
+import { bindShortcuts, useShortcutLayer } from '@/lib/shortcuts';
+import { useI18n } from '@/lib/i18n';
 
 function useHoveredUnsortDropTarget(): boolean {
   return useInteractionStore((s) => s.hoveredUnsortDropTarget);
@@ -91,6 +94,7 @@ function UnsortDragPreview({ items }: { items: CanvasObject[] }) {
  * rời khỏi panel bounds).
  */
 export function UnsortPanel({ boardId }: { boardId: string }) {
+  const { t } = useI18n();
   const setOpen = useUnsortStore((s) => s.setOpen);
   const objectsMap = useObjectsStore((s) => s.objects);
   const hoveredDropTarget = useHoveredUnsortDropTarget();
@@ -126,25 +130,20 @@ export function UnsortPanel({ boardId }: { boardId: string }) {
     return () => window.removeEventListener('pointerdown', onDocPointerDown, true);
   }, []);
 
-  // Ctrl/Meta+A khi panel là active target + không đang focus input.
-  useEffect(() => {
-    const onKeyDown = (ev: KeyboardEvent) => {
-      if (!(ev.ctrlKey || ev.metaKey) || ev.key !== 'a') return;
-      if (useUnsortStore.getState().activePanel !== 'unsort') return;
-      // Bỏ qua nếu focus đang ở input/textarea/contenteditable.
-      const active = document.activeElement;
-      if (active instanceof HTMLElement) {
-        const tag = active.tagName;
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || active.isContentEditable) return;
-      }
-      const list = getListItems();
-      if (list.length === 0) return;
-      ev.preventDefault();
-      useSelectionStore.getState().replace(list.map((o) => o.id));
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [getListItems]);
+  // Ctrl+A chọn hết item Unsort khi panel là vùng đang làm việc (lớp panel, trên canvas).
+  useShortcutLayer(
+    'panel',
+    bindShortcuts(CANVAS_SHORTCUT_DEFS, {
+      'unsort.select-all': {
+        when: () => useUnsortStore.getState().activePanel === 'unsort',
+        run: () => {
+          const list = getListItems();
+          if (list.length === 0) return false;
+          useSelectionStore.getState().replace(list.map((o) => o.id));
+        },
+      },
+    }),
+  );
 
   const handlePanelPointerDown = useCallback(
     (e: React.PointerEvent<HTMLElement>) => {
@@ -170,7 +169,7 @@ export function UnsortPanel({ boardId }: { boardId: string }) {
       {/* Header */}
       <div className="flex h-12 flex-shrink-0 items-center gap-2 border-b border-border px-3">
         <Inbox className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-semibold text-foreground">Unsort</span>
+        <span className="text-sm font-semibold text-foreground">{t('CANVAS.UNSORT.TITLE')}</span>
         <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-bold text-warning">
           {items.length}
         </span>
@@ -179,7 +178,8 @@ export function UnsortPanel({ boardId }: { boardId: string }) {
           type="button"
           onClick={() => setOpen(false)}
           className="grid h-6 w-6 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-          aria-label="Đóng Unsort"
+          aria-label={t('SHORTCUTS.ACTION.CLOSE_UNSORT')}
+          title={t('SHORTCUTS.ACTION.CLOSE_UNSORT')}
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -194,9 +194,7 @@ export function UnsortPanel({ boardId }: { boardId: string }) {
           <div className="grid h-12 w-12 place-items-center rounded-full bg-muted text-muted-foreground">
             <Inbox className="h-5 w-5" />
           </div>
-          <div className="text-xs text-muted-foreground">
-            Empty
-          </div>
+          <div className="text-xs text-muted-foreground">{t('CANVAS.UNSORT.EMPTY')}</div>
         </div>
       ) : (
         <UnsortList
@@ -241,6 +239,7 @@ function UnsortList({
   ) => void;
   containerRef: React.RefObject<HTMLDivElement>;
 }) {
+  const { t } = useI18n();
   return (
     <div ref={containerRef} className="no-scrollbar relative flex-1 overflow-y-auto p-3">
       {items.map((obj, index) => (
@@ -254,7 +253,7 @@ function UnsortList({
       ))}
       <DropIndicatorLine />
       <div className="mt-2 rounded-lg border border-dashed border-border p-3 text-center text-[10.5px] text-muted-foreground">
-        Kéo 1 item ra canvas để đặt lên.
+        {t('CANVAS.UNSORT.HINT')}
       </div>
     </div>
   );
@@ -265,6 +264,7 @@ function UnsortList({
  * overlay). Ẩn khi panel đang mở.
  */
 export function UnsortToggle({ boardId }: { boardId: string }) {
+  const { t } = useI18n();
   const open = useUnsortStore((s) => s.panelOpen);
   const toggle = useUnsortStore((s) => s.toggle);
   const objectsMap = useObjectsStore((s) => s.objects);
@@ -286,6 +286,7 @@ export function UnsortToggle({ boardId }: { boardId: string }) {
       data-canvas-overlay="true"
       data-unsort-drop-target="true"
       onClick={toggle}
+      aria-label={t('CANVAS.UNSORT.TOGGLE', { count })}
       className={`absolute right-0 top-0 z-toolbar flex items-center gap-2 rounded-bl-lg border-b border-l bg-card/90 px-3 py-2 text-xs backdrop-blur transition-colors duration-[60ms] ${
         hoveredDropTarget
           ? 'border-primary text-primary ring-2 ring-primary'
@@ -295,7 +296,7 @@ export function UnsortToggle({ boardId }: { boardId: string }) {
       <span className="h-1.5 w-1.5 rounded-full bg-warning" />
       <Inbox className="h-3.5 w-3.5" />
       <span>
-        Unsort · <span className="font-semibold text-foreground">{count}</span>
+        {t('CANVAS.UNSORT.TITLE')} · <span className="font-semibold text-foreground">{count}</span>
       </span>
     </button>
   );

@@ -17,6 +17,8 @@ import { useCameraStore } from '../store/camera-store';
 import { useObjectsStore } from '../store/objects-store';
 import { ZOOM_MAX, ZOOM_MIN } from '../types';
 import { usePopup } from '../hooks/usePopup';
+import { shortcutKeys, useKeyboardPlatform } from '@/lib/shortcuts';
+import { CANVAS_SHORTCUT_DEFS } from '../shortcuts';
 
 /**
  * Nút + popup của header canvas (Milanote parity): View (bấm % zoom) và Xuất.
@@ -65,6 +67,7 @@ function ZoomBadge() {
 
 function ViewPopup({ onFit, onReset }: { onFit: () => void; onReset: () => void }) {
   const { t } = useI18n();
+  const platform = useKeyboardPlatform();
   const zoom = useCameraStore((s) => s.boardZoom);
   // Milanote: đang khác 100% → nút về 100%; đúng 100% → nút vừa nội dung.
   const atDefault = Math.round(zoom * 100) === 100;
@@ -73,7 +76,9 @@ function ViewPopup({ onFit, onReset }: { onFit: () => void; onReset: () => void 
     <div role="dialog" aria-label={t('CANVAS.VIEW_POPUP.ZOOM')} className={`${POPUP_CLS} w-72`}>
       <PopupSection
         title={t('CANVAS.VIEW_POPUP.ZOOM')}
-        explanation={t('CANVAS.VIEW_POPUP.ZOOM_TIP')}
+        explanation={t('CANVAS.VIEW_POPUP.ZOOM_TIP', {
+          keys: shortcutKeys(CANVAS_SHORTCUT_DEFS['canvas.zoom-wheel'], platform),
+        })}
       >
         <ZoomSlider zoom={zoom} />
         <button

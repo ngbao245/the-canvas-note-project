@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
+import { editKeyHandler } from '@/lib/dom';
 import { renameBoard } from '../engine/actions';
 import { ExportMenu, ViewMenu } from './HeaderPopups';
 import { useSaveStatusStore, type SavePhase } from '../store/save-status-store';
@@ -127,15 +128,7 @@ function TitleEditable({ board }: { board: Board }) {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            commit();
-          } else if (e.key === 'Escape') {
-            e.preventDefault();
-            setEditing(false);
-          }
-        }}
+        onKeyDown={editKeyHandler({ onCommit: commit, onCancel: () => setEditing(false) })}
         aria-label={t('CANVAS.HEADER.BOARD_NAME')}
         className={`col-start-1 row-start-1 w-full min-w-0 bg-transparent p-0 text-center outline-none ${TITLE_TEXT_CLS}`}
       />

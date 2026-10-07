@@ -3,7 +3,6 @@ import {
   Bell,
   Database,
   Grid3x3,
-  Keyboard,
   Languages,
   Palette,
   PanelLeft,
@@ -16,12 +15,18 @@ import { useSettingsModalStore, type SettingsSection } from '@/stores/settings-m
 import { Row, Section, SoonBadge } from './SettingsBlocks';
 import { AppearanceSection } from './sections/AppearanceSection';
 import { CanvasSection } from './sections/CanvasSection';
-import { ShortcutsSection } from './sections/ShortcutsSection';
 import { DataSection } from './sections/DataSection';
 import { NotificationsSection } from './sections/NotificationsSection';
 import { LocalizationSection } from './sections/LocalizationSection';
 import { useI18n, type MessageKey } from '@/lib/i18n';
 import { useInterfaceScale } from '@/stores/interface-store';
+import {
+  ESCAPE_COMBO,
+  formatCombo,
+  useKeyboardPlatform,
+  useShortcutLayer,
+} from '@/lib/shortcuts';
+import { trapTab } from '@/lib/dom';
 
 /**
  * SettingsModal — modal Cài đặt phủ toàn màn hình (Milanote /account/settings mở
@@ -85,12 +90,6 @@ const SECTIONS: {
     icon: Grid3x3,
   },
   {
-    id: 'shortcuts',
-    labelKey: 'SETTINGS.SHORTCUTS.TITLE',
-    descriptionKey: 'SETTINGS.SHORTCUTS.DESCRIPTION',
-    icon: Keyboard,
-  },
-  {
     id: 'data',
     labelKey: 'SETTINGS.DATA.TITLE',
     descriptionKey: 'SETTINGS.DATA.DESCRIPTION',
@@ -98,15 +97,13 @@ const SECTIONS: {
   },
 ];
 
-const FOCUSABLE =
-  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
 export function SettingsModal() {
   const open = useSettingsModalStore((s) => s.open);
   const close = useSettingsModalStore((s) => s.close);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   const uiScale = useInterfaceScale();
+  const platform = useKeyboardPlatform();
   const { t } = useI18n();
 
   useEffect(() => {
@@ -115,20 +112,33 @@ export function SettingsModal() {
     const prevFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     closeBtnRef.current?.focus();
 
-    const onKey = (e: KeyboardEvent) => {
-      e.stopPropagation();
-      if (e.key === 'Escape') {
-        close();
-        return;
-      }
-      if (e.key === 'Tab') trapTab(e, dialogRef.current);
-    };
-    window.addEventListener('keydown', onKey, true);
-    return () => {
-      window.removeEventListener('keydown', onKey, true);
-      prevFocus?.focus();
-    };
-  }, [open, close]);
+    return () => prevFocus?.focus();
+  }, [open]);
+
+  // Lớp overlay chặn: phím canvas (Ctrl+Z, Delete, F, 0) không chạy ngầm sau modal.
+  // Phím toàn app (Ctrl+Shift+D...) vẫn chạy vì lớp global nằm trên.
+  useShortcutLayer(
+    'overlay',
+    [
+      {
+        id: 'settings.close',
+        combos: [ESCAPE_COMBO],
+        run: () => {
+          close();
+        },
+      },
+      // Không consume: trapTab tự preventDefault khi cần xoay vòng, còn lại Tab đi bình thường.
+      {
+        id: 'settings.trap-tab',
+        combos: [{ shift: 'any', key: 'Tab' }],
+        consume: false,
+        run: (e) => {
+          trapTab(e, dialogRef.current);
+        },
+      },
+    ],
+    { enabled: open, blocking: true },
+  );
 
   if (!open) return null;
 
@@ -152,7 +162,10 @@ export function SettingsModal() {
           ref={closeBtnRef}
           type="button"
           onClick={close}
-          title={t('SETTINGS.CLOSE_TITLE')}
+          title={t('COMMON.WITH_SHORTCUT', {
+            label: t('SETTINGS.CLOSE'),
+            keys: formatCombo(ESCAPE_COMBO, platform),
+          })}
           aria-label={t('SETTINGS.CLOSE')}
           className="grid h-8 w-8 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
@@ -162,27 +175,6 @@ export function SettingsModal() {
       <SettingsBody />
     </div>
   );
-}
-
-/**
- * Giữ Tab trong modal: ở phần tử cuối Tab → về đầu, ở đầu Shift+Tab → về cuối.
- * Focus đang ngoài modal (hiếm, VD vừa bấm chuột ra nền) → kéo về trong.
- */
-function trapTab(e: KeyboardEvent, root: HTMLElement | null): void {
-  if (!root) return;
-  const items = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE));
-  if (items.length === 0) return;
-  const first = items[0];
-  const last = items[items.length - 1];
-  const active = document.activeElement;
-  const outside = !(active instanceof Node) || !root.contains(active);
-  if (e.shiftKey && (outside || active === first)) {
-    e.preventDefault();
-    last.focus();
-  } else if (!e.shiftKey && (outside || active === last)) {
-    e.preventDefault();
-    first.focus();
-  }
 }
 
 /**
@@ -268,8 +260,6 @@ function SettingsContent() {
       return <LocalizationSection {...props} />;
     case 'canvas':
       return <CanvasSection {...props} />;
-    case 'shortcuts':
-      return <ShortcutsSection {...props} />;
     case 'data':
       return <DataSection {...props} />;
     default:

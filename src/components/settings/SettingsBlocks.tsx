@@ -69,14 +69,6 @@ export function Field({
   );
 }
 
-/** 1 phím trong tổ hợp phím tắt. Tên phím (Ctrl, Shift) giữ nguyên mọi ngôn ngữ. */
-export function Kbd({ children }: { children: ReactNode }) {
-  return (
-    <kbd className="min-w-[1.5rem] rounded border border-border bg-muted px-1.5 py-0.5 text-center font-sans text-[11px] text-foreground">
-      {children}
-    </kbd>
-  );
-}
 
 /** Hàng: tiêu đề + mô tả bên trái, điều khiển bên phải. */
 export function Row({

@@ -14,6 +14,7 @@ import { useCardClipper } from '../../hooks/useCardClipper';
 import { CardClipperButton } from '../CardClipperButton';
 import { ObjectShell } from './ObjectShell';
 import { NoteElementActions, NoteEditingActions } from './NoteToolbar';
+import { isImeComposing } from '@/lib/dom';
 
 /** Padding dọc py-6 (24 trên + 24 dưới), xem NOTE_WRAPPER_CLASS.
  *  Empty note 68 = 1 dòng text-sm ~20 + padding dọc 48.
@@ -327,10 +328,14 @@ function NoteEditor({
 
   // Keyboard: Escape / Ctrl+Enter commit + đóng. Enter thường để Tiptap tạo
   // paragraph mới (default StarterKit behavior).
+  // Capture phase: chạy TRƯỚC keydown của ProseMirror. Tiptap HardBreak gắn sẵn
+  // Mod-Enter = xuống dòng mềm; nếu để bubble thì `<br>` đã chèn trước khi commit.
+  // preventDefault ở đây → ProseMirror thấy defaultPrevented nên bỏ qua phím.
   useEffect(() => {
     if (!editor) return;
     const dom = editor.view.dom;
     const onKeyDown = (e: KeyboardEvent) => {
+      if (isImeComposing(e)) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         commitAndClose();
@@ -339,8 +344,8 @@ function NoteEditor({
         commitAndClose();
       }
     };
-    dom.addEventListener('keydown', onKeyDown);
-    return () => dom.removeEventListener('keydown', onKeyDown);
+    dom.addEventListener('keydown', onKeyDown, true);
+    return () => dom.removeEventListener('keydown', onKeyDown, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]);
 

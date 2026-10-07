@@ -4,8 +4,9 @@ import Landing from '@/routes/Landing';
 import { applyUiStyleAttr, useUiStyleStore } from '@/stores/ui-style-store';
 import { applyThemeAttr, useResolvedTheme } from '@/stores/theme-store';
 import { SettingsModal } from '@/components/settings/SettingsModal';
+import { ShortcutsModal } from '@/components/shortcuts/ShortcutsModal';
 import { applyLangAttr, useLocaleStore } from '@/lib/i18n';
-import { useGlobalShortcuts } from '@/lib/useGlobalShortcuts';
+import { GLOBAL_SHORTCUTS, useShortcutDispatcher, useShortcutLayer } from '@/lib/shortcuts';
 
 // Trang thử nghiệm drawably (phong cách vẽ tay) — lazy load, tách bundle.
 const LandingDraw = lazy(() => import('@/experiments/drawably/LandingDraw'));
@@ -34,8 +35,9 @@ export default function App() {
     applyLangAttr(locale);
   }, [locale]);
 
-  // Phím tắt toàn app: Ctrl+Shift+< / > (kích thước giao diện), Ctrl+Shift+D (đảo theme).
-  useGlobalShortcuts();
+  // Bộ điều phối phím duy nhất + lớp phím toàn app (lib/shortcuts/global-shortcuts.ts).
+  useShortcutDispatcher();
+  useShortcutLayer('global', GLOBAL_SHORTCUTS);
 
   // Chặn browser page zoom qua trackpad pinch (wheel với ctrlKey — convention
   // native trackpad). Global listener trên window, passive:false để preventDefault
@@ -74,6 +76,8 @@ export default function App() {
       </Suspense>
       {/* Modal Cài đặt toàn app, mở qua useSettingsModalStore. */}
       <SettingsModal />
+      {/* Modal phím tắt, mở qua useShortcutsModalStore (Trợ giúp → Phím tắt, phím /). */}
+      <ShortcutsModal />
       {DevLocaleSwitch && (
         <Suspense fallback={null}>
           <DevLocaleSwitch />

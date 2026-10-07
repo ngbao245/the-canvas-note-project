@@ -11,6 +11,7 @@ import { hitZone, isInvalidZone } from '../lib/hit-test';
 import { reorderInUnsort, moveFromUnsortToCanvas, moveObjectsToUnsort } from '../engine/actions';
 import { boardDataSchema } from '../types';
 import { getInterfaceScale } from '@/stores/interface-store';
+import { isMacSecondaryClick } from '@/lib/shortcuts';
 
 /**
  * Pointer drag cho Unsort items. Hai chế độ:
@@ -46,6 +47,8 @@ export function useUnsortDrag(getListItems: () => CanvasObject[]) {
   const onPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>, object: CanvasObject, index: number) => {
       if (e.button !== 0) return;
+      // macOS Ctrl+click = chuột phải, không bắt đầu kéo.
+      if (isMacSecondaryClick(e)) return;
 
       const panelEl = (e.currentTarget as HTMLElement).closest('[data-unsort-panel="true"]');
       const panelRect = panelEl instanceof HTMLElement ? panelEl.getBoundingClientRect() : null;

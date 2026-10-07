@@ -5,6 +5,7 @@ import { noteDataSchema, boardDataSchema } from '../types';
 import { useSelectionStore } from '../store/selection-store';
 import { useBoardsStore } from '../store/boards-store';
 import { useUnsortStore } from '../store/unsort-store';
+import { isMacSecondaryClick, isPrimaryModifier } from '@/lib/shortcuts';
 
 /**
  * 1 item trong Unsort list. Milanote parity: render với aspect ratio khớp
@@ -58,6 +59,8 @@ export function UnsortItem({
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    // macOS Ctrl+click = chuột phải: giữ nguyên vùng chọn.
+    if (isMacSecondaryClick(e)) return;
     const sel = useSelectionStore.getState();
     const unsort = useUnsortStore.getState();
 
@@ -75,7 +78,7 @@ export function UnsortItem({
       return;
     }
 
-    if (e.ctrlKey || e.metaKey) {
+    if (isPrimaryModifier(e)) {
       sel.toggle(object.id);
       unsort.setLastSelectedIndex(index);
       return;

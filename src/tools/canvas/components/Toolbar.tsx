@@ -89,7 +89,7 @@ function TileButton({
       title={label}
       aria-label={onPointerDown ? `Tạo ${label}` : label}
       onPointerDown={onPointerDown}
-      className="group flex w-12 cursor-pointer flex-col items-center gap-0.5 rounded-lg py-1.5 text-muted-foreground transition-colors duration-[60ms] hover:bg-muted hover:text-foreground"
+      className="group flex w-12 cursor-pointer flex-col items-center gap-1 rounded-lg py-1.5 text-muted-foreground transition-colors duration-[60ms] hover:bg-muted hover:text-foreground"
     >
       <TileIcon type={tileType} />
       <span className="text-[9px] font-medium leading-tight text-muted-foreground group-hover:text-foreground">
@@ -372,7 +372,7 @@ export function Toolbar({ boardId }: { boardId: string }) {
             aria-label="Xoá object đang chọn"
             disabled={!hasSelection}
             onClick={onTrash}
-            className="group flex w-12 flex-col items-center gap-0.5 rounded-lg py-1.5 text-muted-foreground transition-all duration-[80ms] hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
+            className="group flex w-12 flex-col items-center gap-1 rounded-lg py-1.5 text-muted-foreground transition-all duration-[80ms] hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
           >
             <Trash2 className="h-5 w-5" />
             <span className="text-[9px] font-medium leading-tight">Xoá</span>

@@ -5,12 +5,13 @@
     "DELETE": "Xoá",
     "UNKNOWN": "Không rõ",
     "LIST_PLUS": "{a} + {b}",
-    "COMING_SOON": "Sắp có",
+    "COMING_SOON": "Sắp ra mắt",
     "RESET_DEFAULT": "Đặt lại mặc định",
-    "ERROR_TITLE": "Đã có lỗi",
+    "ERROR_TITLE": "Đã xảy ra lỗi",
     "RETRY": "Thử lại",
-    "LOADING": "Đang tải...",
-    "OR": "hoặc"
+    "LOADING": "Đang tải…",
+    "OR": "hoặc",
+    "WITH_SHORTCUT": "{label} ({keys})"
   },
   "LOCALE": {
     "VI": "Tiếng Việt",
@@ -19,43 +20,42 @@
   "SETTINGS": {
     "TITLE": "Cài đặt",
     "CLOSE": "Đóng cài đặt",
-    "CLOSE_TITLE": "Đóng (Esc)",
     "NAV": "Mục cài đặt",
-    "COMING_SOON_DESCRIPTION": "Mục này đang được thiết kế.",
+    "COMING_SOON_DESCRIPTION": "Mục này sắp ra mắt.",
     "ACCOUNT": {
       "TITLE": "Tài khoản",
-      "DESCRIPTION": "Đăng nhập và đồng bộ sẽ có khi bibo chốt backend.",
+      "DESCRIPTION": "Đăng nhập và đồng bộ sắp ra mắt.",
       "STATUS": {
         "TITLE": "Trạng thái",
-        "DESCRIPTION": "Đang dùng chế độ khách. Mọi board lưu trên trình duyệt này.",
+        "DESCRIPTION": "Bạn đang dùng chế độ khách. bibo lưu mọi board trên trình duyệt này.",
         "GUEST": "Khách"
       },
       "MENU": {
         "NOT_SIGNED_IN": "Chưa đăng nhập",
         "SIGN_IN": "Đăng nhập",
-        "SIGN_IN_SOON": "Sắp có, chờ chốt backend",
+        "SIGN_IN_SOON": "Sắp ra mắt",
         "LOCAL_TITLE": "Lưu trên trình duyệt này",
-        "LOCAL_DESCRIPTION": "Chưa đồng bộ đám mây. Xoá dữ liệu trình duyệt sẽ mất board."
+        "LOCAL_DESCRIPTION": "Chưa đồng bộ lên đám mây. Nếu xoá dữ liệu trình duyệt, bạn sẽ mất các board."
       }
     },
     "NOTIFICATIONS": {
       "TITLE": "Email và thông báo",
-      "DESCRIPTION": "Chọn khi nào bibo báo cho bạn. Sẽ có khi bibo có backend và tài khoản.",
+      "DESCRIPTION": "Chọn khi nào bibo báo cho bạn. Sắp ra mắt.",
       "DIGEST": {
         "TITLE": "Email tóm tắt hoạt động",
-        "DESCRIPTION": "Gửi email tổng hợp thay đổi trên các board bạn tham gia."
+        "DESCRIPTION": "Nhận email tóm tắt thay đổi trên các board bạn tham gia."
       },
       "MENTION": {
         "TITLE": "Khi có người nhắc tới bạn",
-        "DESCRIPTION": "Báo khi ai đó nhắc tên bạn trong note hoặc bình luận."
+        "DESCRIPTION": "Nhận thông báo khi ai đó nhắc đến bạn trong note hoặc bình luận."
       },
       "INVITE": {
         "TITLE": "Khi được mời vào board",
-        "DESCRIPTION": "Báo khi có người chia sẻ board với bạn."
+        "DESCRIPTION": "Nhận thông báo khi có người chia sẻ board với bạn."
       },
       "NEWS": {
         "TITLE": "Tin tức sản phẩm",
-        "DESCRIPTION": "Thỉnh thoảng gửi email về tính năng mới của bibo."
+        "DESCRIPTION": "Thỉnh thoảng nhận email về tính năng mới."
       }
     },
     "APPEARANCE": {
@@ -63,16 +63,16 @@
       "DESCRIPTION": "Tuỳ chỉnh cách bibo hiển thị. Lưu trên trình duyệt này.",
       "THEME": "Chủ đề",
       "MODE": {
-        "DARK": "Chế độ Tối",
-        "LIGHT": "Chế độ Sáng",
+        "DARK": "Tối",
+        "LIGHT": "Sáng",
         "SYSTEM": "Theo hệ thống"
       },
       "STYLE": {
         "TITLE": "Phong cách",
         "HAND": "Vẽ tay",
-        "HAND_HINT": "Nét viền nguệch ngoạc, cảm giác phác thảo.",
+        "HAND_HINT": "Nét viền như vẽ tay, mang cảm giác phác thảo.",
         "FLAT": "Phẳng",
-        "FLAT_HINT": "Viền thẳng, gọn, theo token theme."
+        "FLAT_HINT": "Viền thẳng, gọn gàng."
       },
       "SIZE": {
         "TITLE": "Kích thước giao diện",
@@ -81,7 +81,7 @@
         "LARGE": "Lớn",
         "RECOMMENDED": "Khuyên dùng",
         "PREVIEW_TITLE": "Ghi chú nhanh",
-        "PREVIEW_BODY": "Gom ý tưởng rời rạc, kéo thả sắp xếp lại rồi nhìn toàn cảnh trên cùng một bảng, không sót điều gì."
+        "PREVIEW_BODY": "Gom ý tưởng rời rạc, kéo thả sắp xếp lại rồi nhìn toàn cảnh trên cùng một board, không sót điều gì."
       }
     },
     "TOOLBAR": {
@@ -97,48 +97,10 @@
       },
       "SCROLL_SPEED": {
         "TITLE": "Tốc độ cuộn",
-        "DESCRIPTION": "Quãng di chuyển mỗi lần lăn chuột. Ctrl + lăn chuột vẫn là zoom.",
+        "DESCRIPTION": "Khoảng cách cuộn mỗi nấc lăn chuột. {keys} + lăn chuột để thu phóng.",
         "SLOW": "Chậm",
-        "NORMAL": "Vừa",
+        "NORMAL": "Bình thường",
         "FAST": "Nhanh"
-      }
-    },
-    "SHORTCUTS": {
-      "TITLE": "Phím tắt",
-      "DESCRIPTION": "Danh sách phím tắt đang có. Trên Mac dùng Cmd thay cho Ctrl.",
-      "DRAG": "kéo chuột",
-      "GROUP": {
-        "EDIT": "Chỉnh sửa",
-        "SELECT": "Chọn",
-        "VIEW": "Xem",
-        "LAYER": "Sắp lớp",
-        "UNSORT": "Unsort"
-      },
-      "ACTION": {
-        "UNDO": "Hoàn tác",
-        "REDO": "Làm lại",
-        "COPY": "Sao chép",
-        "CUT": "Cắt",
-        "PASTE": "Dán",
-        "DUPLICATE": "Nhân bản",
-        "DELETE": "Xoá",
-        "EDIT_SELECTED": "Sửa object đang chọn",
-        "SELECT_ALL": "Chọn tất cả trên canvas",
-        "DESELECT": "Bỏ chọn",
-        "FIT": "Vừa khít nội dung",
-        "RESET_VIEW": "Đặt lại góc nhìn",
-        "ZOOM_IN": "Phóng to",
-        "ZOOM_OUT": "Thu nhỏ",
-        "PAN": "Kéo để di chuyển canvas",
-        "SIZE_DOWN": "Giao diện nhỏ đi",
-        "SIZE_UP": "Giao diện to lên",
-        "TOGGLE_THEME": "Đổi giao diện sáng / tối",
-        "LAYER_UP": "Lên 1 lớp",
-        "LAYER_DOWN": "Xuống 1 lớp",
-        "LAYER_TOP": "Lên trên cùng",
-        "LAYER_BOTTOM": "Xuống dưới cùng",
-        "TO_UNSORT": "Đưa object đang chọn vào Unsort",
-        "CLOSE_UNSORT": "Đóng Unsort"
       }
     },
     "LOCALIZATION": {
@@ -150,25 +112,32 @@
       },
       "DATE_FORMAT": {
         "TITLE": "Định dạng ngày",
-        "DESCRIPTION": "Cách hiện ngày tháng trong app."
+        "DESCRIPTION": "Cách hiển thị ngày tháng."
       },
       "WEEK_START": {
         "TITLE": "Ngày đầu tuần",
         "DESCRIPTION": "Dùng cho lịch và chọn ngày.",
         "MONDAY": "Thứ Hai"
       },
-      "NOT_AVAILABLE": "Chưa đổi được"
+      "KEYBOARD": {
+        "TITLE": "Kiểu bàn phím",
+        "DESCRIPTION": "Cách hiện tên phím tắt (⌘ hay Ctrl) và phím giữ khi click để chọn thêm. Tự động nhận theo máy, chỉ đổi khi app nhận sai.",
+        "AUTO": "Tự động ({detected})",
+        "MACOS": "macOS",
+        "WINDOWS_LINUX": "Windows / Linux"
+      },
+      "NOT_AVAILABLE": "Chưa hỗ trợ"
     },
     "DATA": {
       "TITLE": "Dữ liệu",
-      "DESCRIPTION": "Số board, object và dung lượng đang dùng.",
+      "DESCRIPTION": "Số board, số mục và dung lượng đang dùng.",
       "BOARDS": {
         "TITLE": "Board",
         "DESCRIPTION": "Số board đang có, tính cả Home và board con."
       },
       "OBJECTS": {
-        "TITLE": "Object",
-        "DESCRIPTION": "Tổng số note, board tile và object khác, kể cả trong Unsort."
+        "TITLE": "Mục",
+        "DESCRIPTION": "Tổng số note, board và mục khác, kể cả trong Khay chờ."
       },
       "USAGE": {
         "TITLE": "Dung lượng",
@@ -176,19 +145,114 @@
       },
       "BACKUP": {
         "TITLE": "Sao lưu",
-        "DESCRIPTION": "Tải toàn bộ board về máy. Sẽ có khi bibo có backend và đồng bộ."
+        "DESCRIPTION": "Tải toàn bộ board về máy. Sắp ra mắt."
       },
       "READ_ERROR": "Không đọc được dữ liệu"
+    }
+  },
+  "SHORTCUTS": {
+    "TITLE": "Phím tắt",
+    "CLOSE": "Đóng danh sách phím tắt",
+    "NAV": "Nhóm phím tắt",
+    "SEARCH": "Tìm phím tắt",
+    "SEARCH_PLACEHOLDER": "Tìm thao tác hoặc phím",
+    "NO_RESULTS": "Không tìm thấy phím tắt nào cho \"{query}\"",
+    "TIP_PREFIX": "Bấm",
+    "TIP_SUFFIX": "để mở danh sách phím tắt",
+    "WORD": {
+      "HOLD": "giữ",
+      "THEN": "rồi",
+      "TYPE": "Gõ",
+      "WHILE_DRAGGING": "khi kéo"
+    },
+    "POINTER": {
+      "WHEEL": "lăn chuột",
+      "CLICK": "nhấp",
+      "DOUBLE_CLICK": "nhấp đúp",
+      "DRAG": "kéo",
+      "MIDDLE_DRAG": "kéo bằng chuột giữa"
+    },
+    "GROUP": {
+      "ESSENTIAL": "Hay dùng nhất",
+      "BASICS": "Thao tác chung",
+      "TEXT": "Định dạng chữ",
+      "MARKDOWN": "Markdown",
+      "NAVIGATION": "Di chuyển",
+      "APPEARANCE": "Giao diện",
+      "ZOOM": "Thu phóng"
+    },
+    "GROUP_HINT": {
+      "TEXT": "Khi đang sửa note."
+    },
+    "SUBGROUP": {
+      "LINE_START": "Gõ ở đầu dòng mới"
+    },
+    "ACTION": {
+      "UNDO": "Hoàn tác",
+      "REDO": "Làm lại",
+      "COPY": "Sao chép",
+      "CUT": "Cắt",
+      "PASTE": "Dán",
+      "DUPLICATE": "Nhân bản",
+      "DELETE": "Xoá",
+      "EDIT_SELECTED": "Sửa mục đang chọn",
+      "SELECT_ALL": "Chọn tất cả trên canvas",
+      "DESELECT": "Bỏ chọn",
+      "FIT": "Xem toàn bộ nội dung",
+      "RESET_VIEW": "Đặt lại góc nhìn",
+      "ZOOM_IN": "Phóng to",
+      "ZOOM_OUT": "Thu nhỏ",
+      "ZOOM_WHEEL": "Thu phóng bằng chuột",
+      "PAN": "Kéo để di chuyển canvas",
+      "SIZE_DOWN": "Thu nhỏ giao diện",
+      "SIZE_UP": "Phóng to giao diện",
+      "TOGGLE_THEME": "Chuyển chế độ sáng / tối",
+      "LAYER_UP": "Đưa lên 1 lớp",
+      "LAYER_DOWN": "Đưa xuống 1 lớp",
+      "LAYER_TOP": "Đưa lên trên cùng",
+      "LAYER_BOTTOM": "Đưa xuống dưới cùng",
+      "TO_UNSORT": "Đưa mục đang chọn vào Khay chờ",
+      "CLOSE_UNSORT": "Đóng Khay chờ",
+      "OPEN_BOARD": "Vào board con (nhấp đúp vào khối màu)",
+      "TOGGLE_SELECT": "Chọn thêm / bỏ chọn 1 mục",
+      "MARQUEE": "Chọn theo vùng (kéo trên vùng trống)",
+      "MARQUEE_ADD": "Chọn thêm theo vùng",
+      "SCROLL_SIDEWAYS": "Cuộn ngang",
+      "CLIP_CUT": "Tách 1 đoạn ra note mới (kéo biểu tượng thẻ bên cạnh đoạn)",
+      "CLIP_COPY": "Chép 1 đoạn ra note mới, giữ đoạn gốc",
+      "UNSORT_RANGE": "Chọn liên tiếp trong Khay chờ",
+      "OPEN_SHORTCUTS": "Mở danh sách phím tắt",
+      "BOLD": "Chữ đậm",
+      "ITALIC": "Chữ nghiêng",
+      "UNDERLINE": "Gạch chân",
+      "STRIKE": "Gạch ngang",
+      "CODE": "Code trong dòng",
+      "H1": "Tiêu đề 1",
+      "H2": "Tiêu đề 2",
+      "H3": "Tiêu đề 3",
+      "BULLET": "Danh sách chấm",
+      "NUMBERED": "Danh sách số",
+      "QUOTE": "Trích dẫn",
+      "CODE_BLOCK": "Khối code",
+      "HR": "Đường kẻ ngang"
     }
   },
   "CANVAS": {
     "COUNT": {
       "OBJECT": {
-        "other": "{count} object"
+        "other": "{count} mục"
       },
       "SUB_BOARD": {
         "other": "{count} board con"
       }
+    },
+    "UNSORT": {
+      "TITLE": "Khay chờ",
+      "TOGGLE": {
+        "other": "Mở Khay chờ ({count} mục)"
+      },
+      "EMPTY": "Chưa có mục nào",
+      "HINT": "Kéo một mục ra canvas để đặt lên."
     },
     "NOTE_COLOR": {
       "PICK": "Chọn màu",
@@ -201,58 +265,67 @@
       "PURPLE": "Tím"
     },
     "HEADER": {
-      "UNDO": "Undo",
-      "UNDO_TITLE": "Undo (Ctrl+Z)",
-      "REDO": "Redo",
-      "REDO_TITLE": "Redo (Ctrl+Shift+Z)",
-      "FIT_CONTENT": "Vừa nội dung",
+      "UNDO": "Hoàn tác",
+      "REDO": "Làm lại",
+      "FIT_CONTENT": "Xem toàn bộ nội dung",
       "RESET_VIEW": "Đặt lại góc nhìn",
       "SAVING": "Đang lưu…",
       "SAVED": "Đã lưu",
-      "SAVE_ERROR": "Lưu lỗi",
-      "RENAME_HINT": "Double-click để đổi tên",
+      "SAVE_ERROR": "Không lưu được",
+      "RENAME_HINT": "Nhấp đúp để đổi tên",
       "BOARD_NAME": "Tên board",
       "SHARE": "Chia sẻ",
-      "EXPORT": "Xuất"
+      "EXPORT": "Xuất",
+      "HELP": "Trợ giúp",
+      "SEARCH": "Tìm kiếm",
+      "NOTIFICATIONS": "Thông báo"
+    },
+    "HELP_MENU": {
+      "SHORTCUTS_TITLE": "Phím tắt",
+      "SHORTCUTS_DESCRIPTION": "Làm nhanh các thao tác thường dùng",
+      "TUTORIAL_TITLE": "Hướng dẫn",
+      "TUTORIAL_DESCRIPTION": "Làm quen với bibo từng bước"
     },
     "VIEW_POPUP": {
       "ZOOM": "Thu phóng",
-      "ZOOM_TIP": "Mẹo: giữ Ctrl và lăn chuột để thu phóng",
+      "ZOOM_TIP": "Mẹo: giữ {keys} và lăn chuột để thu phóng",
       "ZOOM_IN": "Phóng to",
       "ZOOM_OUT": "Thu nhỏ",
       "RESET_100": "Về 100%",
-      "SCALE_TO_FIT": "Vừa nội dung",
+      "SCALE_TO_FIT": "Xem toàn bộ nội dung",
       "PRESENTATION": "Chế độ trình chiếu",
       "PRESENTATION_TIP": "Toàn màn hình, ẩn thanh công cụ, lưới chấm…",
       "PRESENT": "Trình chiếu",
-      "FOCUS_SELECTED": "Chỉ hiện card đang chọn",
+      "FOCUS_SELECTED": "Chỉ hiện mục đang chọn",
       "HIDE_COMMENTS": "Ẩn bình luận",
-      "PREVENT_EDITING": "Không cho sửa"
+      "PREVENT_EDITING": "Khoá chỉnh sửa"
     },
     "EXPORT_POPUP": {
       "LAYOUT_TITLE": "Xuất bố cục board hiện tại",
-      "PDF_STANDARD": "PDF thường (file nhỏ)",
+      "PDF_STANDARD": "PDF tiêu chuẩn (file nhỏ)",
       "PDF_HIGH": "PDF chất lượng cao (file lớn)",
       "PNG": "Ảnh PNG",
-      "LINEAR_TITLE": "Chuyển thành tài liệu dạng dòng",
+      "LINEAR_TITLE": "Xuất thành tài liệu văn bản",
       "INCLUDE_SUB_BOARDS": "Gồm cả board con",
       "WORD": "Tài liệu Word",
       "MARKDOWN": "Markdown",
       "PLAIN_TEXT": "Văn bản thuần",
-      "FILES_TITLE": "Tải mọi ảnh và file",
+      "FILES_TITLE": "Tải tất cả ảnh và file",
       "NO_FILES": "Board này chưa có file nào",
-      "DOWNLOAD_FILES": "Tải {count} file"
+      "DOWNLOAD_FILES": {
+        "other": "Tải {count} file"
+      }
     },
     "CONFIRM": {
       "DELETE_MANY": {
-        "TITLE": "Xoá nhiều object?",
-        "DESCRIPTION": "Sẽ xoá {items}. Undo được (Ctrl+Z)."
+        "TITLE": "Xoá nhiều mục?",
+        "DESCRIPTION": "Sẽ xoá {items}. Có thể hoàn tác ({undo})."
       },
       "DELETE_BOARD": {
         "TITLE": "Xoá board \"{name}\"?",
-        "COUNTING": "Đang tính số nội dung bên trong...",
-        "EMPTY": "Board rỗng. Undo được (Ctrl+Z).",
-        "DESCRIPTION": "Sẽ mất {items}. Undo được (Ctrl+Z).",
+        "COUNTING": "Đang đếm nội dung bên trong…",
+        "EMPTY": "Board rỗng. Có thể hoàn tác ({undo}).",
+        "DESCRIPTION": "Sẽ xoá {items}. Có thể hoàn tác ({undo}).",
         "CONFIRM": "Xoá cả board"
       }
     }

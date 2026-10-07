@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect } from 'react';
 import { CanvasSurface } from './CanvasSurface';
 import { UnsortPanel } from './UnsortPanel';
 import { ConfirmDialog } from './ConfirmDialog';
-import { useDeleteKey } from '../hooks/useDeleteKey';
 import { useObjectsStore } from '../store/objects-store';
 import { useBoardsStore } from '../store/boards-store';
 import { useUnsortStore } from '../store/unsort-store';
@@ -14,10 +13,17 @@ import {
   moveToUnsortHere,
 } from '../engine/actions';
 import { boardDataSchema } from '../types';
-import { isEditableTarget } from '../lib/dom';
+import { CANVAS_SHORTCUT_DEFS } from '../shortcuts';
+import {
+  bindShortcuts,
+  shortcutKeys,
+  useKeyboardPlatform,
+  useShortcutLayer,
+} from '@/lib/shortcuts';
 import { scaledFillStyle } from '../lib/scaled-box';
 import { useI18n } from '@/lib/i18n';
 import { useInterfaceScale } from '@/stores/interface-store';
+
 
 /** Bề rộng panel Unsort ở mức Lớn (tỉ lệ 1). */
 const UNSORT_PANEL_WIDTH = 260;
@@ -43,6 +49,10 @@ export function CanvasApp({ boardId }: { boardId: string }) {
   const unsortOpen = useUnsortStore((s) => s.panelOpen);
   const uiScale = useInterfaceScale();
   const { t } = useI18n();
+  // Tổ hợp Undo chèn vào câu "Undo được (...)" của dialog xoá, lấy từ bảng phím.
+  // Tính trong component để đổi Kiểu bàn phím là câu đổi theo.
+  const platform = useKeyboardPlatform();
+  const undoKeys = shortcutKeys(CANVAS_SHORTCUT_DEFS['canvas.undo'], platform);
 
   const handleDelete = useCallback((ids: string[]) => {
     const objects = useObjectsStore.getState().objects;
@@ -66,30 +76,45 @@ export function CanvasApp({ boardId }: { boardId: string }) {
     else deleteObjects(ids);
   }, []);
 
-  useDeleteKey(handleDelete);
+  // Phím của CanvasApp (tổ hợp + nhãn ở ../shortcuts.ts).
+  useShortcutLayer(
+    'tool',
+    bindShortcuts(CANVAS_SHORTCUT_DEFS, {
+      // Route quyết show confirm dialog (board / nhiều object) hay xoá thẳng.
+      'canvas.delete': {
+        run: () => {
+          const ids = Array.from(useSelectionStore.getState().selectedIds);
+          if (ids.length === 0) return false;
+          handleDelete(ids);
+        },
+      },
+      // Chuyển selection từ canvas vào Unsort board hiện tại. Bỏ item đã ở Unsort.
+      'canvas.to-unsort': {
+        run: () => {
+          const store = useObjectsStore.getState();
+          const canvasIds = Array.from(useSelectionStore.getState().selectedIds).filter((id) => {
+            const o = store.objects.get(id);
+            return o && o.unsortIndex === null;
+          });
+          if (canvasIds.length === 0) return false;
+          moveToUnsortHere(canvasIds);
+        },
+      },
+    }),
+  );
 
-  // Ctrl+Shift+U → move selection từ canvas vào Unsort của board hiện tại.
-  // Chỉ áp dụng cho object có unsortIndex === null (đang ở canvas).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (isEditableTarget(e.target)) return;
-      const mod = e.ctrlKey || e.metaKey;
-      if (!mod || !e.shiftKey) return;
-      if (e.key !== 'u' && e.key !== 'U') return;
-      const ids = Array.from(useSelectionStore.getState().selectedIds);
-      if (ids.length === 0) return;
-      const store = useObjectsStore.getState();
-      const canvasIds = ids.filter((id) => {
-        const o = store.objects.get(id);
-        return o && o.unsortIndex === null;
-      });
-      if (canvasIds.length === 0) return;
-      e.preventDefault();
-      moveToUnsortHere(canvasIds);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  // Lớp panel nằm trên tool: Unsort mở → Esc chỉ đóng panel, lần sau mới bỏ chọn.
+  useShortcutLayer(
+    'panel',
+    bindShortcuts(CANVAS_SHORTCUT_DEFS, {
+      'unsort.close': {
+        when: () => useUnsortStore.getState().panelOpen,
+        run: () => {
+          useUnsortStore.getState().setOpen(false);
+        },
+      },
+    }),
+  );
 
   useEffect(() => {
     if (!pending || pending.kind !== 'board' || pending.count !== null) return;
@@ -105,17 +130,6 @@ export function CanvasApp({ boardId }: { boardId: string }) {
       cancelled = true;
     };
   }, [pending]);
-
-  // Escape đóng Unsort panel khi đang mở.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && useUnsortStore.getState().panelOpen) {
-        useUnsortStore.getState().setOpen(false);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
 
   return (
     <div className="relative flex flex-1 overflow-hidden">
@@ -149,6 +163,7 @@ export function CanvasApp({ boardId }: { boardId: string }) {
           title={t('CANVAS.CONFIRM.DELETE_MANY.TITLE')}
           description={t('CANVAS.CONFIRM.DELETE_MANY.DESCRIPTION', {
             items: t('CANVAS.COUNT.OBJECT', { count: pending.ids.length }),
+            undo: undoKeys,
           })}
           confirmLabel={t('COMMON.DELETE')}
           destructive
@@ -167,9 +182,10 @@ export function CanvasApp({ boardId }: { boardId: string }) {
             pending.count === null
               ? t('CANVAS.CONFIRM.DELETE_BOARD.COUNTING')
               : pending.count.objects === 0 && pending.count.boards === 0
-                ? t('CANVAS.CONFIRM.DELETE_BOARD.EMPTY')
+                ? t('CANVAS.CONFIRM.DELETE_BOARD.EMPTY', { undo: undoKeys })
                 : t('CANVAS.CONFIRM.DELETE_BOARD.DESCRIPTION', {
                     items: deleteBoardItems(t, pending.count),
+                    undo: undoKeys,
                   })
           }
           confirmLabel={t('CANVAS.CONFIRM.DELETE_BOARD.CONFIRM')}

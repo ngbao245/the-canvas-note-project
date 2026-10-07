@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useRef, type ReactNode, type RefObject } from 'react';
+import { useEscapeLayer } from '@/lib/shortcuts';
 
 /**
  * Overlay primitive dùng chung cho các popup mở từ toolbar (element mode + editing
@@ -66,6 +67,13 @@ export function useToolbarPopupClose({
   const callbacksRef = useRef({ onClose, onRefocus });
   callbacksRef.current = { onClose, onRefocus };
 
+  // Esc ở lớp overlay (consume): CHỈ đóng popup, không lọt xuống canvas (bỏ chọn)
+  // hay NoteEditor (thoát edit). Chạy cả khi focus trong ô URL của popup Link.
+  useEscapeLayer(() => {
+    callbacksRef.current.onClose();
+    callbacksRef.current.onRefocus?.();
+  });
+
   useEffect(() => {
     const onPointerDown = (e: PointerEvent) => {
       const t = e.target;
@@ -73,22 +81,7 @@ export function useToolbarPopupClose({
       if (t instanceof Element && t.closest(`[aria-label="${anchorLabel}"]`)) return;
       callbacksRef.current.onClose();
     };
-    // Capture phase + stopPropagation: Escape khi popup mở CHỈ đóng popup.
-    // Không để lọt xuống useCanvasKeys (clear selection) hay NoteEditor
-    // keydown (thoát edit) — 2 listener đó chạy ở bubble/target phase, sau
-    // capture ở window.
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.preventDefault();
-      e.stopPropagation();
-      callbacksRef.current.onClose();
-      callbacksRef.current.onRefocus?.();
-    };
     window.addEventListener('pointerdown', onPointerDown, true);
-    window.addEventListener('keydown', onKey, true);
-    return () => {
-      window.removeEventListener('pointerdown', onPointerDown, true);
-      window.removeEventListener('keydown', onKey, true);
-    };
+    return () => window.removeEventListener('pointerdown', onPointerDown, true);
   }, [popupRef, anchorLabel]);
 }
