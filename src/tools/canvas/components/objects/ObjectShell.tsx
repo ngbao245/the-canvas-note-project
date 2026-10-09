@@ -86,7 +86,7 @@ export function ObjectShell({
 
   return (
     <div
-      className={`relative h-full w-full overflow-hidden rounded-sm bg-card shadow-elevation-1 transition-shadow duration-[60ms] ${ringCls}`}
+      className={`relative h-full w-full overflow-hidden rounded-sm bg-card shadow-elevation-1 transition-shadow duration-fast ${ringCls}`}
       style={{
         boxShadow: 'inset 0 0 0 1px var(--background), var(--shadow-elevation-1)',
       }}

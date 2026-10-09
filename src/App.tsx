@@ -13,8 +13,9 @@ const LandingDraw = lazy(() => import('@/experiments/drawably/LandingDraw'));
 const CanvasDraw = lazy(() => import('@/experiments/drawably/CanvasDraw'));
 const StyleDemo = lazy(() => import('@/routes/StyleDemo'));
 const Canvas = lazy(() => import('@/tools/canvas/route'));
-// Nút đổi ngôn ngữ nhanh cho dev. Ở bản build, DEV = false → nhánh bị bỏ, file không vào bundle.
-const DevLocaleSwitch = import.meta.env.DEV ? lazy(() => import('@/dev/DevLocaleSwitch')) : null;
+// Nút đổi nhanh ngôn ngữ + kiểu bàn phím cho dev. Ở bản build, DEV = false → nhánh bị bỏ,
+// file không vào bundle.
+const DevQuickSwitch = import.meta.env.DEV ? lazy(() => import('@/dev/DevQuickSwitch')) : null;
 
 export default function App() {
   // Đồng bộ phong cách hiển thị lên <html data-ui-style> khi mount và mỗi lần đổi.
@@ -78,9 +79,9 @@ export default function App() {
       <SettingsModal />
       {/* Modal phím tắt, mở qua useShortcutsModalStore (Trợ giúp → Phím tắt, phím /). */}
       <ShortcutsModal />
-      {DevLocaleSwitch && (
+      {DevQuickSwitch && (
         <Suspense fallback={null}>
-          <DevLocaleSwitch />
+          <DevQuickSwitch />
         </Suspense>
       )}
     </BrowserRouter>

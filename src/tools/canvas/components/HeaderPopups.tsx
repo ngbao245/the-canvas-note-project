@@ -84,7 +84,7 @@ function ViewPopup({ onFit, onReset }: { onFit: () => void; onReset: () => void 
         <button
           type="button"
           onClick={atDefault ? onFit : onReset}
-          className="mt-3 h-7 self-start rounded-md border border-border px-3 text-xs font-medium text-foreground transition-colors duration-200 hover:bg-muted"
+          className="mt-3 h-7 self-start rounded-md border border-border px-3 text-xs font-medium text-foreground transition-colors duration-normal hover:bg-muted"
         >
           {atDefault ? t('CANVAS.VIEW_POPUP.SCALE_TO_FIT') : t('CANVAS.VIEW_POPUP.RESET_100')}
         </button>
@@ -141,7 +141,7 @@ function ZoomSlider({ zoom }: { zoom: number }) {
           aria-valuetext={`${pct}%`}
           aria-disabled="true"
           aria-label={t('CANVAS.VIEW_POPUP.ZOOM')}
-          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-not-allowed rounded-full border border-border bg-background px-1.5 text-[11px] font-medium tabular-nums text-foreground shadow-elevation-1"
+          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-border bg-background px-1.5 text-[11px] font-medium tabular-nums text-foreground shadow-elevation-1"
           style={{ left: `${toPct(zoom)}%` }}
         >
           {pct}%
@@ -177,14 +177,18 @@ function ExportPopup() {
   });
 
   return (
-    <div
-      role="dialog"
-      aria-label={t('CANVAS.HEADER.EXPORT')}
-      className={`${POPUP_CLS} w-72`}
-    >
+    <div role="dialog" aria-label={t('CANVAS.HEADER.EXPORT')} className={`${POPUP_CLS} w-72`}>
       <PopupSection title={t('CANVAS.EXPORT_POPUP.LAYOUT_TITLE')}>
-        <ExportItem icon={FileText} tone="text-destructive" label={t('CANVAS.EXPORT_POPUP.PDF_STANDARD')} />
-        <ExportItem icon={FileText} tone="text-destructive" label={t('CANVAS.EXPORT_POPUP.PDF_HIGH')} />
+        <ExportItem
+          icon={FileText}
+          tone="text-destructive"
+          label={t('CANVAS.EXPORT_POPUP.PDF_STANDARD')}
+        />
+        <ExportItem
+          icon={FileText}
+          tone="text-destructive"
+          label={t('CANVAS.EXPORT_POPUP.PDF_HIGH')}
+        />
         <ExportItem icon={ImageIcon} tone="text-success" label={t('CANVAS.EXPORT_POPUP.PNG')} />
       </PopupSection>
       <Divider />
@@ -193,8 +197,16 @@ function ExportPopup() {
           <SoonToggle label={t('CANVAS.EXPORT_POPUP.INCLUDE_SUB_BOARDS')} checked={false} />
         </div>
         <ExportItem icon={FileType} tone="text-primary" label={t('CANVAS.EXPORT_POPUP.WORD')} />
-        <ExportItem icon={FileCode} tone="text-muted-foreground" label={t('CANVAS.EXPORT_POPUP.MARKDOWN')} />
-        <ExportItem icon={File} tone="text-muted-foreground" label={t('CANVAS.EXPORT_POPUP.PLAIN_TEXT')} />
+        <ExportItem
+          icon={FileCode}
+          tone="text-muted-foreground"
+          label={t('CANVAS.EXPORT_POPUP.MARKDOWN')}
+        />
+        <ExportItem
+          icon={File}
+          tone="text-muted-foreground"
+          label={t('CANVAS.EXPORT_POPUP.PLAIN_TEXT')}
+        />
       </PopupSection>
       <Divider />
       <PopupSection title={t('CANVAS.EXPORT_POPUP.FILES_TITLE')}>
@@ -232,11 +244,14 @@ function ExportItem({
       type="button"
       aria-disabled="true"
       title={muted ? label : `${label} (${t('COMMON.COMING_SOON')})`}
-      className={`flex w-full cursor-not-allowed items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-xs transition-colors duration-200 ${
+      className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-xs transition-colors duration-normal ${
         muted ? 'text-muted-foreground/60' : 'text-foreground hover:bg-muted'
       }`}
     >
-      <Icon className={`h-4 w-4 shrink-0 ${muted ? 'text-muted-foreground/40' : tone}`} aria-hidden="true" />
+      <Icon
+        className={`h-4 w-4 shrink-0 ${muted ? 'text-muted-foreground/40' : tone}`}
+        aria-hidden="true"
+      />
       <span className="truncate">{label}</span>
     </button>
   );
@@ -266,7 +281,7 @@ function HeaderMenu({
         onClick={toggle}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className={`flex h-7 items-center gap-1 rounded-md text-xs font-medium transition-colors duration-200 hover:bg-muted hover:text-foreground ${padding} ${
+        className={`flex h-7 items-center gap-1 rounded-md text-xs font-medium transition-colors duration-normal hover:bg-muted hover:text-foreground ${padding} ${
           open ? 'bg-muted text-foreground' : 'text-muted-foreground'
         }`}
       >
@@ -311,7 +326,7 @@ function SoonButton({ className, children }: { className: string; children: Reac
       type="button"
       aria-disabled="true"
       title={t('COMMON.COMING_SOON')}
-      className={`h-7 cursor-not-allowed rounded-md text-xs font-medium ${className}`}
+      className={`h-7 rounded-md text-xs font-medium ${className}`}
     >
       {children}
     </button>
@@ -325,7 +340,7 @@ function SoonIconButton({ icon: Icon, label }: { icon: LucideIcon; label: string
       aria-disabled="true"
       aria-label={label}
       title={label}
-      className="grid h-7 w-7 shrink-0 cursor-not-allowed place-items-center rounded-md text-muted-foreground hover:bg-muted"
+      className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted"
     >
       <Icon className="h-4 w-4" />
     </button>

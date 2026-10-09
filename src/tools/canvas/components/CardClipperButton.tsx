@@ -5,6 +5,7 @@ import { hitZone, isInvalidZone, isSecondaryZone } from '../lib/hit-test';
 import { clipParagraphToNewNote } from '../engine/actions';
 import { extractParagraphHtml } from '../lib/note-clip';
 import { getObjectTypeDefinition } from '../hooks/useObjectRegistry';
+import { setCursorOverride } from '@/lib/cursor-override';
 import type { CanvasObject } from '../types';
 import { FloatingObjectPreview } from './FloatingObjectPreview';
 
@@ -114,7 +115,7 @@ export function CardClipperButton({
         draggingRef.current = true;
       }
       const zone = hitZone(ev.clientX, ev.clientY);
-      document.body.classList.toggle('canvas-drag-invalid', isInvalidZone(zone));
+      setCursorOverride(isInvalidZone(zone) ? 'not-allowed' : null);
       setPreview({
         clientX: ev.clientX,
         clientY: ev.clientY,
@@ -128,7 +129,7 @@ export function CardClipperButton({
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onCancel);
-      document.body.classList.remove('canvas-drag-invalid');
+      setCursorOverride(null);
       setPreview(null);
       startRef.current = null;
       draggingRef.current = false;
@@ -167,7 +168,7 @@ export function CardClipperButton({
         title="Kéo để tách paragraph thành note mới (Alt = copy)"
         aria-label="Tách paragraph thành note mới"
         style={{ top, right: -32 }}
-        className="absolute grid h-6 w-6 cursor-grab place-items-center rounded-md border border-border bg-card shadow-md transition-transform duration-[60ms] hover:scale-110 active:cursor-grabbing"
+        className="absolute grid h-6 w-6 cursor-grab place-items-center rounded-md border border-border bg-card shadow-md transition-transform duration-fast hover:scale-110 active:cursor-grabbing"
       >
         <CardIcon />
       </button>

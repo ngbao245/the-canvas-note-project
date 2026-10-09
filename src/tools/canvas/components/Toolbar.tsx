@@ -89,7 +89,7 @@ function TileButton({
       title={label}
       aria-label={onPointerDown ? `Tạo ${label}` : label}
       onPointerDown={onPointerDown}
-      className="group flex w-12 cursor-pointer flex-col items-center gap-1 rounded-lg py-1.5 text-muted-foreground transition-colors duration-[60ms] hover:bg-muted hover:text-foreground"
+      className="group flex w-12 flex-col items-center gap-1 rounded-lg py-1.5 text-muted-foreground transition-colors duration-fast hover:bg-muted hover:text-foreground"
     >
       <TileIcon type={tileType} />
       <span className="text-[9px] font-medium leading-tight text-muted-foreground group-hover:text-foreground">
@@ -214,7 +214,7 @@ export function ActionButton({
       onMouseDown={(e) => e.preventDefault()}
       title={label}
       aria-label={label}
-      className={`grid h-10 w-10 place-items-center rounded-lg transition-colors duration-[60ms] hover:bg-muted hover:text-foreground ${
+      className={`grid h-10 w-10 place-items-center rounded-lg transition-colors duration-fast hover:bg-muted hover:text-foreground ${
         active ? 'bg-muted text-foreground' : 'text-muted-foreground'
       }`}
     >
@@ -233,7 +233,7 @@ function DismissButton({ onClick, label = 'Bỏ chọn' }: { onClick: () => void
       onClick={onClick}
       title={label}
       aria-label={label}
-      className="mb-1 flex h-8 w-10 items-center justify-center rounded-lg border-b border-border text-muted-foreground transition-colors duration-[60ms] hover:bg-muted hover:text-foreground"
+      className="mb-1 flex h-8 w-10 items-center justify-center rounded-lg border-b border-border text-muted-foreground transition-colors duration-fast hover:bg-muted hover:text-foreground"
     >
       <ArrowLeft className="h-4 w-4" />
     </button>
@@ -372,7 +372,7 @@ export function Toolbar({ boardId }: { boardId: string }) {
             aria-label="Xoá object đang chọn"
             disabled={!hasSelection}
             onClick={onTrash}
-            className="group flex w-12 flex-col items-center gap-1 rounded-lg py-1.5 text-muted-foreground transition-all duration-[80ms] hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
+            className="group flex w-12 flex-col items-center gap-1 rounded-lg py-1.5 text-muted-foreground transition-all duration-fast hover:bg-destructive/10 hover:text-destructive disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
           >
             <Trash2 className="h-5 w-5" />
             <span className="text-[9px] font-medium leading-tight">Xoá</span>

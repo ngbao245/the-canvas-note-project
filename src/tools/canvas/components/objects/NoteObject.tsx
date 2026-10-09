@@ -122,8 +122,7 @@ function FadeOverlay() {
       aria-hidden
       className="pointer-events-none absolute inset-x-0 bottom-0 h-8"
       style={{
-        background:
-          'linear-gradient(to bottom, transparent 0%, var(--card) 100%)',
+        background: 'linear-gradient(to bottom, transparent 0%, var(--card) 100%)',
       }}
     />
   );
@@ -168,6 +167,9 @@ function NoteRenderer({ object, isSelected, isEditing, onEditEnd }: ObjectRender
 // đổi tone chữ note thì sửa ở đây, cả 2 mode auto follow.
 const NOTE_CONTENT_CLASS =
   'tiptap text-sm leading-relaxed text-foreground ' +
+  // Note nằm trong CanvasSurface (select-none). Mở lại tường minh: Safari không
+  // cho chọn chữ trong contenteditable khi tổ tiên là user-select: none.
+  'select-text ' +
   // Wrap behavior đồng bộ editor + view. ProseMirror mặc định có
   // `white-space: pre-wrap` + `word-wrap: break-word`. View mode HTML thuần
   // không có → text dài không space (URL, chuỗi ký tự) sẽ tràn ngang khỏi
@@ -209,10 +211,7 @@ function NoteView({ data, objectId }: { data: NoteData; objectId: string }) {
 
   return (
     <div ref={wrapperRef} className={NOTE_WRAPPER_CLASS}>
-      <div
-        ref={innerRef}
-        className={`relative h-full w-full ${isFixed ? 'overflow-hidden' : ''}`}
-      >
+      <div ref={innerRef} className={`relative h-full w-full ${isFixed ? 'overflow-hidden' : ''}`}>
         <div
           ref={contentRef}
           className={NOTE_CONTENT_CLASS}
@@ -395,10 +394,7 @@ function NoteEditor({
 
   return (
     <div ref={wrapperRef} className={NOTE_WRAPPER_CLASS}>
-      <div
-        ref={innerRef}
-        className={`relative h-full w-full ${isFixed ? 'overflow-hidden' : ''}`}
-      >
+      <div ref={innerRef} className={`relative h-full w-full ${isFixed ? 'overflow-hidden' : ''}`}>
         <EditorContent editor={editor} className="h-full" />
         {isFixed && overflow ? <FadeOverlay /> : null}
       </div>

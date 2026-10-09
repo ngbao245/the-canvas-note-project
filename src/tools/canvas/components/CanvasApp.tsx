@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { CanvasSurface } from './CanvasSurface';
 import { UnsortPanel } from './UnsortPanel';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -23,7 +23,6 @@ import {
 import { scaledFillStyle } from '../lib/scaled-box';
 import { useI18n } from '@/lib/i18n';
 import { useInterfaceScale } from '@/stores/interface-store';
-
 
 /** Bề rộng panel Unsort ở mức Lớn (tỉ lệ 1). */
 const UNSORT_PANEL_WIDTH = 260;
@@ -54,7 +53,7 @@ export function CanvasApp({ boardId }: { boardId: string }) {
   const platform = useKeyboardPlatform();
   const undoKeys = shortcutKeys(CANVAS_SHORTCUT_DEFS['canvas.undo'], platform);
 
-  const handleDelete = useCallback((ids: string[]) => {
+  const handleDelete = (ids: string[]) => {
     const objects = useObjectsStore.getState().objects;
     const boardObj = ids.map((id) => objects.get(id)).find((o) => o?.type === 'board');
     if (boardObj) {
@@ -74,7 +73,7 @@ export function CanvasApp({ boardId }: { boardId: string }) {
     }
     if (ids.length > 1) setPending({ kind: 'multi', ids });
     else deleteObjects(ids);
-  }, []);
+  };
 
   // Phím của CanvasApp (tổ hợp + nhãn ở ../shortcuts.ts).
   useShortcutLayer(

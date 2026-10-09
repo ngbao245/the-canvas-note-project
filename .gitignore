@@ -31,4 +31,4 @@ pnpm-debug.log*
 *.tsbuildinfo
 
 # Bản nháp / bản cũ giữ lại tham khảo, không đưa lên git
-/backup/
+/drafts/

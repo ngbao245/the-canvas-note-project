@@ -33,7 +33,7 @@ Sửa qua công cụ chuyên dụng (không dùng shell `sed/awk`). Tuân thủ 
 
 **Giữa phase**: dùng `getDiagnostics` cho file vừa sửa. Sạch thì tiếp. Có lỗi thì fix ngay.
 
-**Cuối phase, hoặc task đụng `vite.config`, `tsconfig`, `package.json`, hoặc lazy import**: chạy `npm run build 2>&1 | tail -c 4000`. Pass thì tiếp. Fail thì phân tích, fix, build lại. Tối đa 3 lần thử cùng cách. Sau 3 lần vẫn fail thì dừng, giải thích, hỏi bạn.
+**Cuối phase, hoặc task đụng `vite.config`, `tsconfig`, `package.json`, hoặc lazy import**: chạy `npm run build 2>&1 | Select-Object -Last 15`. Pass thì tiếp. Fail thì phân tích, fix, build lại. Tối đa 3 lần thử cùng cách. Sau 3 lần vẫn fail thì dừng, giải thích, hỏi bạn.
 
 ### 5. Tick `[x]` trong `tasks.md`
 

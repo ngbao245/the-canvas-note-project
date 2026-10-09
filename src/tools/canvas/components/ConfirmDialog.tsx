@@ -35,7 +35,13 @@ export function ConfirmDialog({
   useShortcutLayer(
     'overlay',
     [
-      { id: 'confirm.cancel', combos: [ESCAPE_COMBO], run: () => { onCancel(); } },
+      {
+        id: 'confirm.cancel',
+        combos: [ESCAPE_COMBO],
+        run: () => {
+          onCancel();
+        },
+      },
       {
         id: 'confirm.ok',
         combos: [{ shift: 'any', key: 'Enter' }],

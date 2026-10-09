@@ -1,4 +1,4 @@
-﻿import { bindShortcuts, useShortcutLayer } from '@/lib/shortcuts';
+import { bindShortcuts, useShortcutLayer } from '@/lib/shortcuts';
 import { useHistoryStore } from '../store/history-store';
 import { useSelectionStore } from '../store/selection-store';
 import { useObjectsStore } from '../store/objects-store';

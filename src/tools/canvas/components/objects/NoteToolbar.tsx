@@ -16,7 +16,8 @@ import {
   Type,
 } from 'lucide-react';
 import { ActionButton } from '../Toolbar';
-import { ToolbarPopup, useToolbarPopupClose } from '../ToolbarPopup';
+import { ToolbarPopup } from '../ToolbarPopup';
+import { useToolbarPopupClose } from '../../hooks/useToolbarPopupClose';
 import { updateObjectData } from '../../engine/actions';
 import { noteDataSchema, type CanvasObject } from '../../types';
 import { NOTE_COLOR_PALETTE } from '../../lib/note-colors';
@@ -187,10 +188,13 @@ function TextStyleButton({ editor }: { editor: Editor }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
-      <ActionButton icon={Type} label="Text style" active={open} onClick={() => setOpen((o) => !o)} />
-      {open ? (
-        <TextStylePopup editor={editor} onClose={() => setOpen(false)} />
-      ) : null}
+      <ActionButton
+        icon={Type}
+        label="Text style"
+        active={open}
+        onClick={() => setOpen((o) => !o)}
+      />
+      {open ? <TextStylePopup editor={editor} onClose={() => setOpen(false)} /> : null}
     </div>
   );
 }
@@ -217,13 +221,11 @@ function TextStylePopup({ editor, onClose }: { editor: Editor; onClose: () => vo
               opt.apply(editor);
               onClose();
             }}
-            className={`flex h-8 items-center rounded-md px-2 text-left transition-colors duration-[60ms] hover:bg-muted ${
+            className={`flex h-8 items-center rounded-md px-2 text-left transition-colors duration-fast hover:bg-muted ${
               active ? 'bg-muted text-foreground' : 'text-muted-foreground'
             }`}
           >
-            {opt.id === 'quote' ? (
-              <Quote className="mr-2 h-3.5 w-3.5 shrink-0" />
-            ) : null}
+            {opt.id === 'quote' ? <Quote className="mr-2 h-3.5 w-3.5 shrink-0" /> : null}
             <span className={opt.previewClass}>{opt.label}</span>
           </button>
         );
@@ -246,9 +248,7 @@ function LinkButton({ editor }: { editor: Editor }) {
         active={open || editor.isActive('link')}
         onClick={() => setOpen((o) => !o)}
       />
-      {open ? (
-        <LinkPopup editor={editor} onClose={() => setOpen(false)} />
-      ) : null}
+      {open ? <LinkPopup editor={editor} onClose={() => setOpen(false)} /> : null}
     </div>
   );
 }
@@ -305,7 +305,7 @@ function LinkPopup({ editor, onClose }: { editor: Editor; onClose: () => void })
           type="button"
           onClick={save}
           disabled={!canSave}
-          className="h-7 flex-1 rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground transition-colors duration-[60ms] hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-7 flex-1 rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground transition-colors duration-fast hover:bg-primary/90 disabled:opacity-40"
         >
           Save
         </button>
@@ -313,7 +313,7 @@ function LinkPopup({ editor, onClose }: { editor: Editor; onClose: () => void })
           <button
             type="button"
             onClick={remove}
-            className="h-7 rounded-md border border-border px-2 text-xs text-muted-foreground transition-colors duration-[60ms] hover:bg-muted hover:text-foreground"
+            className="h-7 rounded-md border border-border px-2 text-xs text-muted-foreground transition-colors duration-fast hover:bg-muted hover:text-foreground"
           >
             Remove
           </button>
@@ -321,7 +321,7 @@ function LinkPopup({ editor, onClose }: { editor: Editor; onClose: () => void })
         <button
           type="button"
           onClick={cancel}
-          className="h-7 rounded-md border border-border px-2 text-xs text-muted-foreground transition-colors duration-[60ms] hover:bg-muted hover:text-foreground"
+          className="h-7 rounded-md border border-border px-2 text-xs text-muted-foreground transition-colors duration-fast hover:bg-muted hover:text-foreground"
         >
           Cancel
         </button>
@@ -392,7 +392,7 @@ function ColorPopup({
         onClick={() => onSelect(null)}
         title={t('CANVAS.NOTE_COLOR.DEFAULT')}
         aria-label={t('CANVAS.NOTE_COLOR.DEFAULT')}
-        className={`flex h-8 w-full items-center justify-center gap-1 rounded-md border border-border text-xs text-muted-foreground transition-colors duration-[60ms] hover:bg-muted hover:text-foreground ${
+        className={`flex h-8 w-full items-center justify-center gap-1 rounded-md border border-border text-xs text-muted-foreground transition-colors duration-fast hover:bg-muted hover:text-foreground ${
           currentColor === null ? 'ring-2 ring-primary' : ''
         }`}
       >
@@ -408,7 +408,7 @@ function ColorPopup({
             title={t(c.labelKey)}
             aria-label={t(c.labelKey)}
             style={{ backgroundColor: c.hex }}
-            className={`h-8 w-full rounded-md transition-transform duration-[60ms] hover:scale-105 ${
+            className={`h-8 w-full rounded-md transition-transform duration-fast hover:scale-105 ${
               currentColor === c.hex ? 'ring-2 ring-primary ring-offset-1 ring-offset-card' : ''
             }`}
           />

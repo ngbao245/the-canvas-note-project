@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
+import { trapTab } from '@/lib/dom';
 import { installShortcutDispatcher, registerLayer } from './dispatcher';
 import type { KeyCombo, Shortcut, ShortcutLayerKind } from './types';
 
@@ -49,5 +50,38 @@ export function useEscapeLayer(
       },
     ],
     options,
+  );
+}
+
+/**
+ * Lớp overlay chặn cho modal: Esc gọi `onEscape`, Tab / Shift+Tab xoay vòng trong `rootRef`.
+ * Phím lớp dưới (canvas) không chạy ngầm sau modal; lớp global vẫn chạy.
+ */
+export function useModalLayer(
+  onEscape: () => void,
+  rootRef: RefObject<HTMLElement | null>,
+  { enabled = true }: { enabled?: boolean } = {},
+): void {
+  useShortcutLayer(
+    'overlay',
+    [
+      {
+        id: 'modal.escape',
+        combos: [ESCAPE_COMBO],
+        run: () => {
+          onEscape();
+        },
+      },
+      // Không consume: trapTab tự preventDefault khi cần xoay vòng, còn lại Tab đi bình thường.
+      {
+        id: 'modal.trap-tab',
+        combos: [{ shift: 'any', key: 'Tab' }],
+        consume: false,
+        run: (e) => {
+          trapTab(e, rootRef.current);
+        },
+      },
+    ],
+    { enabled, blocking: true },
   );
 }

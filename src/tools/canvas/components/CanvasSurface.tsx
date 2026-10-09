@@ -134,7 +134,6 @@ export function CanvasSurface({ boardId }: { boardId: string }) {
     // Cả 2 deps: objectsMap thay đổi khi drag (frame-by-frame),
     // mode thay đổi khi vào/thoát drag → recompute sau drop để pan bounds
     // ôm lại vị trí mới của item vừa move.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objectsMap, mode, interfaceSize]);
 
   // --- Wheel handler: pan mặc định, Ctrl+wheel zoom ---

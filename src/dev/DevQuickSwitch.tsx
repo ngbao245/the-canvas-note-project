@@ -17,7 +17,7 @@ const PLATFORMS: { value: KeyboardPlatform; label: string }[] = [
 const GROUP_CLS =
   'flex overflow-hidden rounded-md border border-border bg-popover/90 text-[11px] font-medium shadow-md backdrop-blur';
 
-export default function DevLocaleSwitch() {
+export default function DevQuickSwitch() {
   const locale = useLocaleStore((s) => s.locale);
   const setLocale = useLocaleStore((s) => s.setLocale);
   // Tô theo platform đang dùng (kể cả khi Cài đặt để Tự động). Bấm = chọn cố định kiểu đó.
@@ -65,7 +65,7 @@ function DevOption({
       role="radio"
       aria-checked={active}
       onClick={onClick}
-      className={`cursor-pointer px-2 py-1 uppercase transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+      className={`px-2 py-1 uppercase transition-colors duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
         active
           ? 'bg-primary text-primary-foreground'
           : 'text-muted-foreground hover:bg-muted hover:text-foreground'

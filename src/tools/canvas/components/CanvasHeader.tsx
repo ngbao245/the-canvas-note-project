@@ -37,7 +37,11 @@ export function CanvasHeader({
   return (
     // Kích thước giao diện: zoom (không transform) để header thấp lại thật, canvas lấp phần dư.
     // Menu tài khoản + View nằm trong header nên nhỏ theo.
-    <header style={{ zoom: uiScale }} className="flex flex-col border-b border-border bg-card">
+    // select-none: gốc vùng header (chrome). Ô sửa tên board là <input> nên vẫn chọn được.
+    <header
+      style={{ zoom: uiScale }}
+      className="flex select-none flex-col border-b border-border bg-card"
+    >
       {/* px-2 (8px) cả 2 hàng, để thẳng mép nhau: khoảng nhỏ với mép màn hình như Milanote. */}
       <div className="flex h-11 items-center gap-3 px-2">
         <div className="flex min-w-0 flex-1 items-center">
@@ -63,7 +67,7 @@ export function CanvasHeader({
 const ICON_BTN_CLS =
   'grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground';
 const ICON_BTN_DISABLED_CLS =
-  'disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent';
+  'disabled:opacity-40 disabled:hover:bg-transparent';
 
 function IconButton({
   icon: Icon,
@@ -124,7 +128,7 @@ function SoonIconButton({ icon: Icon, label }: { icon: LucideIcon; label: string
       aria-disabled="true"
       aria-label={label}
       title={`${label} (${t('COMMON.COMING_SOON')})`}
-      className="grid h-8 w-8 cursor-not-allowed place-items-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted"
+      className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors duration-normal hover:bg-muted"
     >
       <Icon className="h-6 w-6" strokeWidth={1.5} />
     </button>

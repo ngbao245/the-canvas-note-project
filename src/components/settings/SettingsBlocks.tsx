@@ -1,13 +1,12 @@
 import type { ReactNode } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
+import { FOCUS_RING } from '@/lib/focus-ring';
 
 /**
  * Khối dựng dùng chung cho các mục trong modal Cài đặt.
  * Mục mới chỉ ghép các khối này, không tự viết lại hàng / thẻ / công tắc.
  */
-
-const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
 export function Section({
   title,
@@ -32,7 +31,7 @@ export function Section({
           <button
             type="button"
             onClick={onReset}
-            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground ${FOCUS_RING}`}
+            className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors duration-normal hover:bg-muted hover:text-foreground ${FOCUS_RING}`}
           >
             <RotateCcw className="h-3.5 w-3.5" />
             {t('COMMON.RESET_DEFAULT')}
@@ -68,7 +67,6 @@ export function Field({
     </div>
   );
 }
-
 
 /** Hàng: tiêu đề + mô tả bên trái, điều khiển bên phải. */
 export function Row({
@@ -126,13 +124,15 @@ export function OptionCard({
       role="radio"
       aria-checked={selected}
       onClick={onSelect}
-      className={`cursor-pointer rounded-lg border p-3 text-left transition-colors duration-200 ${FOCUS_RING} ${
+      className={`rounded-lg border p-3 text-left transition-colors duration-normal ${FOCUS_RING} ${
         selected ? 'border-primary bg-primary-soft' : 'border-border hover:bg-muted'
       }`}
     >
       {children}
       {/* Không đổi độ đậm khi chọn → chữ không rộng ra, thẻ không nhích. */}
-      <span className={`block text-sm font-medium ${selected ? 'text-primary' : 'text-foreground'}`}>
+      <span
+        className={`block text-sm font-medium ${selected ? 'text-primary' : 'text-foreground'}`}
+      >
         {label}
       </span>
       {hint ? <span className="mt-1 block text-xs text-muted-foreground">{hint}</span> : null}
@@ -162,13 +162,13 @@ export function Switch({
       aria-labelledby={labelledBy}
       aria-disabled={disabled || undefined}
       onClick={disabled ? undefined : () => onChange(!checked)}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${FOCUS_RING} ${
-        disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-normal ${FOCUS_RING} ${
+        disabled ? 'opacity-50' : ''
       } ${checked ? 'bg-primary' : 'bg-muted ring-1 ring-inset ring-border'}`}
     >
       <span
         aria-hidden="true"
-        className={`absolute left-[3px] top-[3px] h-[18px] w-[18px] rounded-full bg-background shadow-elevation-1 transition-transform duration-200 ${
+        className={`absolute left-[3px] top-[3px] h-[18px] w-[18px] rounded-full bg-background shadow-elevation-1 transition-transform duration-normal ${
           checked ? 'translate-x-5' : 'translate-x-0'
         }`}
       />
@@ -203,7 +203,7 @@ export function Segmented<T extends string>({
             role="radio"
             aria-checked={selected}
             onClick={() => onChange(opt.value)}
-            className={`cursor-pointer rounded px-3 py-1 text-xs font-medium transition-colors duration-200 ${FOCUS_RING} ${
+            className={`rounded px-3 py-1 text-xs font-medium transition-colors duration-normal ${FOCUS_RING} ${
               selected
                 ? 'bg-background text-foreground shadow-elevation-1'
                 : 'text-muted-foreground hover:text-foreground'

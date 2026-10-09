@@ -181,6 +181,14 @@
       sans-serif;
     -webkit-font-smoothing: antialiased;
   }
+
+  /* Con trỏ chung (tầng 1). Nút đã có cursor: pointer từ preflight Tailwind.
+     Nút disabled thật và nút "sắp có" (aria-disabled) hiện cùng 1 con trỏ.
+     Nằm trong layer base → class utility ở component vẫn đè được khi cần. */
+  :disabled,
+  [aria-disabled='true'] {
+    cursor: not-allowed;
+  }
 }
 
 @keyframes shimmer {
@@ -200,12 +208,20 @@
   color: var(--foreground);
 }
 
-/* Canvas drag invalid zone — override cursor cho MỌI element (kể cả button
-   có cursor-pointer, link có cursor riêng). Toggle từ useObjectDrag/useToolbarDrag
-   khi cursor rời canvas surface (header/toolbar/document). Trash drop zone
-   không kích invalid (drag object → xoá) nên vẫn nhận cursor mặc định. */
-body.canvas-drag-invalid,
-body.canvas-drag-invalid * {
+/* Con trỏ tạm thời lúc thao tác (tầng 3). Bật / tắt qua setCursorOverride
+   (`src/lib/cursor-override.ts`), không gắn class hay style.cursor tay.
+   !important để đè con trỏ riêng của mọi phần tử con. Thứ tự rule = thứ tự ưu
+   tiên khi 2 gốc lồng nhau (VD giữ Space trên canvas + đang thả sai chỗ). */
+[data-cursor='grab'],
+[data-cursor='grab'] * {
+  cursor: grab !important;
+}
+[data-cursor='grabbing'],
+[data-cursor='grabbing'] * {
+  cursor: grabbing !important;
+}
+[data-cursor='not-allowed'],
+[data-cursor='not-allowed'] * {
   cursor: not-allowed !important;
 }
 

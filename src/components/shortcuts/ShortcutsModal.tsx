@@ -7,11 +7,10 @@ import {
   formatCombo,
   GLOBAL_SHORTCUT_DEFS,
   useKeyboardPlatform,
-  useShortcutLayer,
+  useModalLayer,
   type ShortcutDef,
 } from '@/lib/shortcuts';
 import type { KeyboardPlatform } from '@/stores/keyboard-platform-store';
-import { trapTab } from '@/lib/dom';
 import { EmptyState } from '@/components/shared';
 import { CANVAS_SHORTCUT_DEFS, NOTE_TEXT_SHORTCUT_DEFS } from '@/tools/canvas/shortcuts';
 import { useShortcutsModalStore } from '@/stores/shortcuts-modal-store';
@@ -136,7 +135,9 @@ function ShortcutsDialog() {
           .map((g) => ({
             key: g.key,
             rows: g.rows.filter((row) => {
-              const hay = normalize(`${t(row.labelKey)} ${t(g.key)} ${rowKeysText(row.def, platform)}`);
+              const hay = normalize(
+                `${t(row.labelKey)} ${t(g.key)} ${rowKeysText(row.def, platform)}`,
+              );
               return terms.every((term) => hay.includes(term));
             }),
           }))
@@ -157,32 +158,13 @@ function ShortcutsDialog() {
     scrollRef.current?.scrollTo({ top: 0 });
   };
 
-  useShortcutLayer(
-    'overlay',
-    [
-      // Ô tìm có chữ: Esc xoá chữ trước, Esc lần 2 mới đóng modal.
-      {
-        id: 'shortcuts-modal.close',
-        combos: [ESCAPE_COMBO],
-        run: () => {
-          if (query) {
-            onQueryChange('');
-            searchRef.current?.focus();
-          } else close();
-        },
-      },
-      // Không consume: trapTab tự preventDefault khi cần xoay vòng.
-      {
-        id: 'shortcuts-modal.trap-tab',
-        combos: [{ shift: 'any', key: 'Tab' }],
-        consume: false,
-        run: (e) => {
-          trapTab(e, dialogRef.current);
-        },
-      },
-    ],
-    { blocking: true },
-  );
+  // Ô tìm có chữ: Esc xoá chữ trước, Esc lần 2 mới đóng modal.
+  useModalLayer(() => {
+    if (query) {
+      onQueryChange('');
+      searchRef.current?.focus();
+    } else close();
+  }, dialogRef);
 
   const scrollToGroup = (key: MessageKey) => {
     const el = sectionRefs.current.get(key);
@@ -257,7 +239,7 @@ function ShortcutsDialog() {
               keys: formatCombo(ESCAPE_COMBO, platform),
             })}
             aria-label={t('SHORTCUTS.CLOSE')}
-            className="grid h-8 w-8 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors duration-normal hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <X className="h-4 w-4" />
           </button>
@@ -282,10 +264,10 @@ function ShortcutsDialog() {
                       disabled={!hasRows}
                       onClick={() => scrollToGroup(g.key)}
                       aria-current={isActive ? 'true' : undefined}
-                      className={`w-full rounded-md px-3 py-1.5 text-left text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-40 ${
+                      className={`w-full rounded-md px-3 py-1.5 text-left text-sm font-medium transition-colors duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 ${
                         isActive
-                          ? 'cursor-pointer bg-primary-soft text-primary'
-                          : 'cursor-pointer text-muted-foreground enabled:hover:bg-muted enabled:hover:text-foreground'
+                          ? 'bg-primary-soft text-primary'
+                          : 'text-muted-foreground enabled:hover:bg-muted enabled:hover:text-foreground'
                       }`}
                     >
                       {t(g.key)}

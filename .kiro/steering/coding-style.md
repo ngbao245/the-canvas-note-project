@@ -54,6 +54,10 @@ src/tools/{tên}/
 
 Import vào `App.tsx` bằng lazy: `lazy(() => import('./tools/{tên}/route'))`.
 
+## File shadcn (`src/components/ui/`)
+
+Giữ đúng bản gốc shadcn để sau này cập nhật không phải gộp tay. Không dọn class, không tách export, không sửa theo luật khác trong file này. Cần đổi giao diện thì bọc ngoài hoặc truyền `className` từ chỗ dùng. Cảnh báo lint trong thư mục này (VD `buttonVariants`) là đã biết, bỏ qua.
+
 ## Theme token
 
 Dùng token trong `src/styles/index.css`:
@@ -82,6 +86,83 @@ Sai:
 ```
 
 Data màu do user chọn (highlight vàng/xanh/đỏ, diff added/removed) là ngoại lệ — hard-code được vì là data, không phải theme.
+
+## Chọn chữ (user-select)
+
+Chặn theo vùng, không rải theo từng component.
+
+- Vùng tương tác (kéo thả, pan/zoom, list kéo được): đặt `select-none` 1 lần ở phần tử gốc của vùng. Con bên trong tự kế thừa, không thêm lại.
+- `input` / `textarea` trong vùng bị chặn: vẫn chọn được, không cần làm gì.
+- `contenteditable` (Tiptap) trong vùng bị chặn: bắt buộc `select-text` (Safari không cho chọn nếu tổ tiên là `none`).
+- Chữ trang trí (`aria-hidden`, ảnh preview): chặn ngay tại chỗ. Ảnh thêm `draggable={false}`.
+- Mảnh UI dùng lại nhiều nơi (phím `Kbd`, badge, chip): đặt `select-none` trong chính component dùng chung, không đặt ở từng nơi gọi hay ở hàng/bảng bọc ngoài. Chưa có component dùng chung thì tách ra trước rồi mới chặn.
+- Đang kéo bằng pointer: hook kéo thả gọi `preventDefault()` ở `pointerdown`, component không tự xử.
+
+Gốc vùng hiện có: `CanvasSurface` (canvas, gồm luôn thanh nút type `Toolbar` và nút mở Unsort), `UnsortPanel` (`<aside>`, ngoài canvas), `CanvasHeader` (`<header>`).
+
+Đúng:
+```tsx
+<div className="relative flex-1 select-none">   {/* gốc vùng */}
+  <div className="flex flex-col">...</div>      {/* con: không thêm select-none */}
+  <EditorContent className="select-text" />     {/* contenteditable: mở lại */}
+</div>
+```
+
+Sai:
+```tsx
+<div className="select-none">
+  <div className="select-none">...</div>        {/* trùng, cha đã chặn */}
+  <EditorContent />                             {/* Safari không chọn được chữ */}
+</div>
+```
+
+## Con trỏ chuột (cursor)
+
+Mỗi loại con trỏ có đúng 1 chỗ quyết định, theo 3 tầng.
+
+**Tầng 1 — chung toàn app, không viết class:**
+- `<button>`, `[role="button"]`: `pointer` có sẵn từ preflight Tailwind. Không thêm `cursor-pointer`.
+- `disabled` và `aria-disabled="true"`: `not-allowed` từ rule base trong `src/styles/index.css`. Không thêm `cursor-not-allowed` / `disabled:cursor-*`.
+- Phần tử click được mà không phải nút (`div`, `li`...): ưu tiên đổi thành `<button>` hoặc thêm `role="button"`. Chỉ khi không được mới viết `cursor-pointer`.
+
+**Tầng 2 — con trỏ riêng của loại vật, class tại component:**
+- Object trên canvas: `cursor-move` (`ObjectsLayer`).
+- Item kéo được ngoài canvas: `cursor-grab` (`UnsortItem`, `CardClipperButton`).
+- Góc resize: tên gốc trình duyệt (`nwse-resize` trong `SelectionBox`).
+- Chữ sửa được tại chỗ: `cursor-text` (`BoardTitleRow`).
+
+Vật mới chọn theo bảng trên, không đặt kiểu khác cho cùng ý nghĩa.
+
+**Tầng 3 — con trỏ tạm lúc thao tác (kéo, pan, thả sai chỗ):**
+- Chỉ dùng `setCursorOverride(value, target?)` từ `@/lib/cursor-override`. Giá trị: `'grab' | 'grabbing' | 'not-allowed' | null`.
+- Mặc định đè toàn trang (`<html>`). Truyền `target` khi chỉ đè trong 1 vùng (giữ Space → `grab` trên mặt canvas).
+- Bật ở đâu thì tắt ở cleanup của chính hook đó (pointerup, pointercancel, unmount).
+- Cấm `el.style.cursor = ...`, cấm `document.body.classList` cho con trỏ, cấm thêm rule `!important` khác.
+- Cần giá trị mới: thêm vào type `CursorOverride` + 1 rule trong `index.css` (đặt theo thứ tự ưu tiên).
+
+Đúng:
+```tsx
+<button onClick={save}>Lưu</button>                     {/* pointer tự có */}
+<button aria-disabled="true">Sắp có</button>             {/* not-allowed tự có */}
+setCursorOverride(invalid ? 'not-allowed' : null);        // trong hook kéo thả
+```
+
+Sai:
+```tsx
+<button className="cursor-pointer">Lưu</button>          {/* thừa */}
+<button disabled className="disabled:cursor-not-allowed" /> {/* thừa */}
+el.style.cursor = 'grabbing';                            // dùng setCursorOverride
+document.body.classList.add('drag-invalid');             // dùng setCursorOverride
+```
+
+## Chuyển động (transition)
+
+Nguồn chuẩn: `--duration-fast` (60ms), `--duration-normal` (200ms), `--easing-standard` trong `src/styles/index.css`. Tailwind map sang `duration-fast`, `duration-normal`, `ease-standard`.
+
+- `duration-normal`: hover, đổi màu ở chrome (header, settings, modal, menu) và mở / đóng panel.
+- `duration-fast`: thao tác trực tiếp trên canvas (toolbar type, popup note, object, nút thùng rác lúc kéo).
+- Cấm số cứng (`duration-200`, `duration-[60ms]`, `transition: ... 60ms`). Cần mức mới thì thêm token vào `index.css` + `tailwind.config.ts`, không viết số lẻ.
+- Ngoại lệ: Web Animations API (`el.animate`) không đọc `var()`, được ghi số / `cubic-bezier` trực tiếp, kèm comment trỏ về token (VD `SETTLE_EASING` trong `useObjectDrag.ts`).
 
 ## Console
 
@@ -114,6 +195,11 @@ console.warn('[canvas] persist failed', err);
   4. Export component chính
   5. Subcomponent (nếu có)
   6. Helper (nếu có)
+
+- File component chỉ export component. Hàm / hằng số cần dùng ở file khác đặt trong `lib/`, hook đặt trong `hooks/`. Không export "phòng hờ": chưa có file nào import thì để nội bộ.
+  Ngoại lệ: file object canvas (`components/objects/*Object.tsx`) không export gì vì tự đăng ký qua `registerObjectType`, và file shadcn (mục trên). Hai chỗ này lint báo `react-refresh` là đã biết.
+
+- Viền focus bàn phím: dùng `FOCUS_RING` từ `@/lib/focus-ring`, không chép chuỗi `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`. File cũ còn chuỗi chép tay thì đổi khi đụng tới.
 
 - Prop dùng inline object type nếu ≤ 4 field, tách interface nếu > 4:
 
@@ -165,18 +251,13 @@ Không tự viết inline copy-paste. Xem trực tiếp `src/components/shared/{
 
 ## Phím tắt
 
-Mọi phím đi qua bộ điều phối `@/lib/shortcuts` (spec `.kiro/specs/shortcuts/`). Cấm tự gắn `addEventListener('keydown')` trên `window` / `document`. Ngoại lệ duy nhất: listener trên chính phần tử đang gõ (Tiptap editor, `onKeyDown` của ô nhập). Ô sửa 1 dòng dùng `editKeyHandler({ onCommit, onCancel })` từ `@/lib/dom` (đã bỏ qua lúc bộ gõ ghép chữ); listener tự viết phải kiểm `isImeComposing(e)` trước.
+Luật cấm áp cho mọi component. **Thêm, đổi hoặc hiển thị 1 phím tắt: đọc `.kiro/steering/shortcuts.md` trước** (cách khai báo, thứ tự lớp, key / code, hiển thị). File đó tự nạp khi mở file phím tắt, nhưng sửa component thường thì không, nên Kiro phải chủ động đọc.
 
-- Phím của tool: khai báo dữ liệu ở `src/tools/{tên}/shortcuts.ts` (chỉ dữ liệu, không import store), gắn hành động bằng `bindShortcuts(defs, handlers)` + `useShortcutLayer('tool' | 'panel', ...)`. Có `display` → tự hiện trong modal phím tắt (`src/components/shortcuts/ShortcutsModal.tsx`; tool mới thì thêm bảng defs vào `ALL_DEFS` ở đó). Thao tác chuột / phím do Tiptap xử: khai báo `combos: []` + `display.ways` (chỉ hiển thị, không handler) và chỉ ghi khi đã thử thấy chạy.
-- Gợi ý phím trong UI (Cài đặt, tooltip) dùng `<ShortcutWays def={...} />` hoặc `shortcutKeys(def)`, không tự viết `<Kbd>Ctrl</Kbd>` — để Mac tự hiện ⌘. Phím 2 OS đều có (Shift, Alt, Enter, Backspace) hiện cùng tên chữ, chỉ Ctrl đổi thành ⌘.
-- Trong component, gọi `shortcutKeys` / `formatCombo` thì truyền `useKeyboardPlatform()` làm tham số thứ 2, để đổi Kiểu bàn phím trong Cài đặt là nhãn đổi ngay. Không tính nhãn phím ở cấp module.
-- Thao tác chuột có phím giữ (chọn thêm, kéo màn hình): dùng `isPrimaryModifier(e)` (Cmd trên Mac, Ctrl nơi khác), không viết `e.ctrlKey || e.metaKey`. Handler chọn / kéo bằng nút trái phải bỏ qua `isMacSecondaryClick(e)` (Ctrl + click trên Mac là chuột phải). Ngoại lệ: zoom bằng lăn chuột giữ `ctrlKey || metaKey` vì pinch trackpad gửi `ctrlKey`.
-- Popup / menu chỉ cần Esc: `useEscapeLayer(onClose, { enabled: open })`. Dialog / modal chặn phím bên dưới: `useShortcutLayer('overlay', [...], { enabled: open, blocking: true })`.
-- Thứ tự lớp: global → overlay (mở sau trước) → panel → tool. Lớp tool / panel không chạy khi đang gõ chữ.
-- `run` trả `false` = không xử lý, phím rơi xuống lớp dưới / trình duyệt. Hành động đọc state bằng `getState()`.
-- Chữ cái dùng `key` (không phân biệt hoa/thường). Phím đổi ký tự khi giữ Shift (`[` `]`) dùng `code`.
-- Thao tác tắt bằng chuột (Ctrl + lăn chuột...) cũng khai báo trong bảng với `pointer: 'wheel'`, không cần handler. Bộ điều phối bỏ qua loại này, hành động nằm ở listener chuột; bảng chỉ để hiện trong Cài đặt / tooltip.
-- Không ghi cứng tổ hợp phím trong file dịch. Tooltip: `t('COMMON.WITH_SHORTCUT', { label, keys: shortcutKeys(DEFS['id']) })`. Trong câu: thêm biến `{undo}`... rồi truyền `shortcutKeys(...)` / `formatCombo(...)`.
+- Mọi phím đi qua bộ điều phối `@/lib/shortcuts`. Cấm tự gắn `addEventListener('keydown')` trên `window` / `document`. Ngoại lệ duy nhất: listener trên chính phần tử đang gõ (Tiptap, `onKeyDown` của ô nhập). Ô sửa 1 dòng dùng `editKeyHandler({ onCommit, onCancel })` từ `@/lib/dom`; listener tự viết phải kiểm `isImeComposing(e)` trước.
+- Hiện phím trong UI: dùng `<ShortcutWays def={...} />` hoặc `shortcutKeys(def, useKeyboardPlatform())`. Không tự viết `<Kbd>Ctrl</Kbd>`, không tính nhãn phím ở cấp module.
+- Thao tác chuột có phím giữ: `isPrimaryModifier(e)`, không viết `e.ctrlKey || e.metaKey`. Handler chọn / kéo bằng nút trái bỏ qua `isMacSecondaryClick(e)`. Ngoại lệ: zoom lăn chuột giữ `ctrlKey || metaKey` (pinch trackpad gửi `ctrlKey`).
+- Popup / menu chỉ cần Esc: `useEscapeLayer(onClose, { enabled: open })`. Modal có Esc + giữ Tab: `useModalLayer(onClose, dialogRef, { enabled: open })`.
+- Không ghi cứng tổ hợp phím trong file dịch. Tooltip: `t('COMMON.WITH_SHORTCUT', { label, keys: shortcutKeys(DEFS['id']) })`.
 
 ## Chữ UI và đa ngôn ngữ (i18n)
 
@@ -201,7 +282,7 @@ Mọi chữ người dùng nhìn thấy hoặc nghe thấy phải qua bộ dịc
 - Ghép nhiều phần có số nhiều riêng: dịch từng phần rồi ghép bằng 1 key (xem `deleteBoardItems` trong `CanvasApp.tsx`).
 - Số đứng riêng: `formatNumber(n)` từ `useI18n()`. Không `toLocaleString('vi-VN')`.
   Cần cố định số chữ số thập phân thì truyền tham số thứ 2: `formatNumber(1.5, 1)` → vi "1,5", en "1.5".
-- Hằng số ngoài component (danh sách màu, menu): lưu KEY, dịch lúc render (xem `lib/note-colors.ts` + `NoteToolbar`).
+- Hằng số ngoài component (danh sách màu, menu): lưu KEY, dịch lúc render (xem `src/tools/canvas/lib/note-colors.ts` + `NoteToolbar`).
 - Ngoài React (engine, hàm tạo object): `import { t } from '@/lib/i18n'`. Chỉ cho chữ tạo 1 lần, không tự đổi khi đổi ngôn ngữ.
 
 Mẫu đã làm sẵn: `LocalizationSection`, `DataSection`, `CanvasHeader`, `ConfirmDialog` + `CanvasApp`, phần chọn màu trong `NoteToolbar`.

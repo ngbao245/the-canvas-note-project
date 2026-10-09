@@ -31,7 +31,13 @@ const PLATFORM_LABEL_KEY: Record<KeyboardPlatform, MessageKey> = {
   'windows-linux': 'SETTINGS.LOCALIZATION.KEYBOARD.WINDOWS_LINUX',
 };
 
-export function LocalizationSection({ title, description }: { title: string; description: string }) {
+export function LocalizationSection({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
   const { t, locale } = useI18n();
   const setLocale = useLocaleStore((s) => s.setLocale);
   const keyboardPref = useKeyboardPlatformStore((s) => s.pref);

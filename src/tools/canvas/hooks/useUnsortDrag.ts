@@ -12,6 +12,7 @@ import { reorderInUnsort, moveFromUnsortToCanvas, moveObjectsToUnsort } from '..
 import { boardDataSchema } from '../types';
 import { getInterfaceScale } from '@/stores/interface-store';
 import { isMacSecondaryClick } from '@/lib/shortcuts';
+import { setCursorOverride } from '@/lib/cursor-override';
 
 /**
  * Pointer drag cho Unsort items. Hai chế độ:
@@ -97,7 +98,7 @@ export function useUnsortDrag(getListItems: () => CanvasObject[]) {
         // Chung isInvalidZone với canvas + toolbar drag. Trong panel = reorder OK,
         // không block. Canvas/trash/unsort = valid drop khác nhau.
         const invalid = outside && isInvalidZone(hitZone(ev.clientX, ev.clientY));
-        document.body.classList.toggle('canvas-drag-invalid', invalid);
+        setCursorOverride(invalid ? 'not-allowed' : null);
 
         // Compute targetIndex trong panel (dựa vào cursor Y relative to panel content).
         let targetIndex = s.sourceIndex;
@@ -128,7 +129,7 @@ export function useUnsortDrag(getListItems: () => CanvasObject[]) {
       const onUp = (ev: PointerEvent) => {
         window.removeEventListener('pointermove', onMove);
         window.removeEventListener('pointerup', onUp);
-        document.body.classList.remove('canvas-drag-invalid');
+        setCursorOverride(null);
 
         const s = startRef.current;
         if (!s || !s.started) {
@@ -156,7 +157,7 @@ export function useUnsortDrag(getListItems: () => CanvasObject[]) {
           const draggedIds =
             selection.length > 0
               ? items.filter((o) => selection.includes(o.id)).map((o) => o.id)
-              : [items[s.sourceIndex]?.id].filter(Boolean) as string[];
+              : ([items[s.sourceIndex]?.id].filter(Boolean) as string[]);
           if (draggedIds.length === 0) return;
 
           // Check drop lên Board tile khác (nested cross-board move).

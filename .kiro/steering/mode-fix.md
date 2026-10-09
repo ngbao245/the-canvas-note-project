@@ -48,7 +48,7 @@ OK không?
 
 ### 5. Fix và verify build
 
-`npm run build 2>&1 | tail -c 4000`. Pass thì tiếp. Fail thì phân tích, thử cách khác. Không lặp 2 lần cùng cách.
+`npm run build 2>&1 | Select-Object -Last 15`. Pass thì tiếp. Fail thì phân tích, thử cách khác. Không lặp 2 lần cùng cách.
 
 ### 6. Chờ bạn verify
 

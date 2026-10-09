@@ -52,10 +52,10 @@ Muốn đổi stack thì sửa spec `bibo-foundation` trước, không tự đ�
 
 ## Rule giới hạn output lệnh (tiết kiệm token)
 
-Chạy lệnh shell có output khó đoán độ dài: pipe qua `head -c 4000` hoặc `tail -c 4000` để chặn theo byte.
+Shell là PowerShell (Windows), không có `head` / `tail`. Lệnh có output khó đoán độ dài thì chặn theo dòng: `Select-Object -First N` hoặc `-Last N`.
 
-Đúng: `npm run build 2>&1 | tail -c 4000`.  
-Sai: `npm run build` (có thể chảy tràn ngàn dòng).
+Đúng: `npm run build 2>&1 | Select-Object -Last 15`.  
+Sai: `npm run build` (có thể chảy tràn ngàn dòng), `... | tail -c 4000` (PowerShell báo lỗi).
 
 ## Mode làm việc
 
@@ -99,7 +99,7 @@ Chưa có skill nào — khi bạn import bộ skill vào folder này thì Kiro 
 
 Cập nhật 2026-09-18.
 
-- Foundation xong (`bibo-foundation`). Build + lint pass, 0 error (5 warning react-refresh cũ, không blocking).
+- Foundation xong (`bibo-foundation`). Build + lint pass, 0 error (8 warning react-refresh có chủ ý, không cần sửa: 7 ở file object đăng ký qua registry nên không export, 1 ở `ui/button.tsx` theo bản gốc shadcn).
 - Đã `git init`. Chưa commit lần nào.
 - Tool đang làm: **Canvas** (`src/tools/canvas/`). Chi tiết state + kiến trúc ở `.kiro/notes/canvas-session-handoff.md`.
 - Refactor B2 (tách file cho dễ đọc + rút helper reuse) đã xong toàn bộ 4 nhóm. Handoff cập nhật.

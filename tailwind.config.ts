@@ -89,9 +89,10 @@ const config: Config = {
       transitionTimingFunction: {
         standard: 'var(--easing-standard)',
       },
+      // Trỏ vào token trong index.css: đổi thời gian ở 1 chỗ, class + CSS thuần cùng theo.
       transitionDuration: {
-        fast: '60ms',
-        normal: '200ms',
+        fast: 'var(--duration-fast)',
+        normal: 'var(--duration-normal)',
       },
     },
   },

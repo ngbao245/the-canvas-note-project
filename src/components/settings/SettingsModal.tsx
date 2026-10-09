@@ -20,13 +20,7 @@ import { NotificationsSection } from './sections/NotificationsSection';
 import { LocalizationSection } from './sections/LocalizationSection';
 import { useI18n, type MessageKey } from '@/lib/i18n';
 import { useInterfaceScale } from '@/stores/interface-store';
-import {
-  ESCAPE_COMBO,
-  formatCombo,
-  useKeyboardPlatform,
-  useShortcutLayer,
-} from '@/lib/shortcuts';
-import { trapTab } from '@/lib/dom';
+import { ESCAPE_COMBO, formatCombo, useKeyboardPlatform, useModalLayer } from '@/lib/shortcuts';
 
 /**
  * SettingsModal — modal Cài đặt phủ toàn màn hình (Milanote /account/settings mở
@@ -117,28 +111,7 @@ export function SettingsModal() {
 
   // Lớp overlay chặn: phím canvas (Ctrl+Z, Delete, F, 0) không chạy ngầm sau modal.
   // Phím toàn app (Ctrl+Shift+D...) vẫn chạy vì lớp global nằm trên.
-  useShortcutLayer(
-    'overlay',
-    [
-      {
-        id: 'settings.close',
-        combos: [ESCAPE_COMBO],
-        run: () => {
-          close();
-        },
-      },
-      // Không consume: trapTab tự preventDefault khi cần xoay vòng, còn lại Tab đi bình thường.
-      {
-        id: 'settings.trap-tab',
-        combos: [{ shift: 'any', key: 'Tab' }],
-        consume: false,
-        run: (e) => {
-          trapTab(e, dialogRef.current);
-        },
-      },
-    ],
-    { enabled: open, blocking: true },
-  );
+  useModalLayer(close, dialogRef, { enabled: open });
 
   if (!open) return null;
 
@@ -167,7 +140,7 @@ export function SettingsModal() {
             keys: formatCombo(ESCAPE_COMBO, platform),
           })}
           aria-label={t('SETTINGS.CLOSE')}
-          className="grid h-8 w-8 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors duration-normal hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <X className="h-4 w-4" />
         </button>
@@ -229,7 +202,7 @@ function SettingsNav() {
             onClick={() => setSection(id)}
             aria-current={active ? 'page' : undefined}
             // Cùng font-medium cho mọi mục: mục chọn chỉ đổi màu, không đậm hơn → chữ không rộng ra.
-            className={`flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               active
                 ? 'bg-primary-soft text-primary'
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground'

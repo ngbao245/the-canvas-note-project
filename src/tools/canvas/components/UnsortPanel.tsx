@@ -162,7 +162,8 @@ export function UnsortPanel({ boardId }: { boardId: string }) {
       data-unsort-panel="true"
       data-unsort-drop-target="true"
       onPointerDown={handlePanelPointerDown}
-      className={`flex h-full flex-col overflow-hidden border-l bg-card transition-colors ${
+      // select-none: gốc vùng Unsort (panel nằm ngoài CanvasSurface). Item con tự kế thừa.
+      className={`flex h-full select-none flex-col overflow-hidden border-l bg-card transition-colors ${
         hoveredDropTarget ? 'border-primary ring-2 ring-primary ring-inset' : 'border-border'
       }`}
     >
@@ -287,7 +288,7 @@ export function UnsortToggle({ boardId }: { boardId: string }) {
       data-unsort-drop-target="true"
       onClick={toggle}
       aria-label={t('CANVAS.UNSORT.TOGGLE', { count })}
-      className={`absolute right-0 top-0 z-toolbar flex items-center gap-2 rounded-bl-lg border-b border-l bg-card/90 px-3 py-2 text-xs backdrop-blur transition-colors duration-[60ms] ${
+      className={`absolute right-0 top-0 z-toolbar flex items-center gap-2 rounded-bl-lg border-b border-l bg-card/90 px-3 py-2 text-xs backdrop-blur transition-colors duration-fast ${
         hoveredDropTarget
           ? 'border-primary text-primary ring-2 ring-primary'
           : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground'

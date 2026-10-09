@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEscapeLayer } from '@/lib/shortcuts';
 
 /**
- * State + đóng tự động cho popup nhỏ ở header (View, Xuất, "..." breadcrumb).
+ * State + đóng tự động cho popup nhỏ ở header (View, Xuất, Trợ giúp, "..." breadcrumb).
  * Đóng khi bấm ra ngoài `ref` hoặc nhấn Esc. Esc ở lớp overlay của bộ điều phối phím:
  * chỉ đóng popup, không lọt xuống canvas (canvas dùng Esc để bỏ chọn).
  *

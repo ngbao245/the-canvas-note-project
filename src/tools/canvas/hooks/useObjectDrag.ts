@@ -5,12 +5,7 @@ import { useCameraStore } from '../store/camera-store';
 import { useInteractionStore } from '../store/interaction-store';
 import { useCanvasDragStore } from '../store/canvas-drag-store';
 import { getCameraEngine } from '../engine/camera-engine';
-import {
-  aabbIntersect,
-  clientToCanvas,
-  visibleCanvasBounds,
-  type Bounds,
-} from '../engine/coord';
+import { aabbIntersect, clientToCanvas, visibleCanvasBounds, type Bounds } from '../engine/coord';
 import { computeSnapDelta, SNAP_THRESHOLD_PX, type SnapDelta } from '../engine/alignment';
 import { computeContentBounds } from '../lib/content-bounds';
 import {
@@ -25,6 +20,7 @@ import { hitZone, isInvalidZone } from '../lib/hit-test';
 import { boardDataSchema, type CanvasObject } from '../types';
 import { createEdgePanLoop } from './useEdgePan';
 import { isMacSecondaryClick, isPrimaryModifier } from '@/lib/shortcuts';
+import { setCursorOverride } from '@/lib/cursor-override';
 
 /**
  * Drag object trên canvas — Milanote pattern, unified visualize với toolbar/unsort:
@@ -44,7 +40,7 @@ import { isMacSecondaryClick, isPrimaryModifier } from '@/lib/shortcuts';
  *     - Update store drag position → preview follow cursor.
  *     - updateZone: hover trash/board-tile/unsort/invalid → dim preview + set
  *       hoveredBoardTileId/hoveredUnsortDropTarget cho highlight ring.
- *     - Toggle body.canvas-drag-invalid qua isInvalidZone (chung 3 case).
+ *     - Con trỏ not-allowed qua setCursorOverride + isInvalidZone (chung 3 case).
  *
  *   onUp: xử lý theo zone hover (trash/board-tile/unsort/invalid/canvas), cleanup.
  *
@@ -101,7 +97,7 @@ export function useObjectDrag(objectId: string) {
       trash.style.transform = '';
     }
 
-    document.body.classList.remove('canvas-drag-invalid');
+    setCursorOverride(null);
     invalidZoneRef.current = false;
     // Clear board tile hover state.
     if (useInteractionStore.getState().hoveredBoardTileId !== null) {
@@ -260,10 +256,8 @@ export function useObjectDrag(objectId: string) {
 
     if (invalid !== invalidZoneRef.current) {
       invalidZoneRef.current = invalid;
-      // Toggle body class → CSS global override cursor (canvas-drag-invalid,
-      // xem index.css). Cover cả preview element (pointer-events-none) vì
-      // selector `body.canvas-drag-invalid *` áp cho MỌI descendant.
-      document.body.classList.toggle('canvas-drag-invalid', invalid);
+      // Đè toàn trang → cover cả preview element (pointer-events-none).
+      setCursorOverride(invalid ? 'not-allowed' : null);
     }
 
     // Dim preview khi cursor KHÔNG ở canvas trống — nghĩa là hover trash,

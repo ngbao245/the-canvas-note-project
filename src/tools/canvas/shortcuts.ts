@@ -248,7 +248,7 @@ function typeThenSpace(chars: string | readonly string[]): DisplayWay {
 }
 
 /** "Gõ [---]" — mẫu Markdown tự đổi ngay khi gõ xong, không cần Space. */
-function typeWrap(chars: string): DisplayWay {
+function typeOnly(chars: string): DisplayWay {
   return [{ text: 'SHORTCUTS.WORD.TYPE' }, { combo: { key: chars } }];
 }
 
@@ -378,7 +378,7 @@ export const NOTE_TEXT_SHORTCUT_DEFS = {
       groupKey: MARKDOWN,
       labelKey: 'SHORTCUTS.ACTION.HR',
       subgroupKey: 'SHORTCUTS.SUBGROUP.LINE_START',
-      ways: [typeWrap('---')],
+      ways: [typeOnly('---')],
     },
   },
 } satisfies Record<string, ShortcutDef>;

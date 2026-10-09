@@ -4,6 +4,8 @@ import { hitZone, isInvalidZone, isSecondaryZone } from '../lib/hit-test';
 import type { DefaultGeometry } from './useObjectRegistry';
 import type { CanvasObject } from '../types';
 import { FloatingObjectPreview } from '../components/FloatingObjectPreview';
+import { isMacSecondaryClick } from '@/lib/shortcuts';
+import { setCursorOverride } from '@/lib/cursor-override';
 
 /**
  * Pointer-based drag cho toolbar palette. Milanote parity: preview trông y hệt
@@ -52,13 +54,15 @@ export function useToolbarDrag(opts: {
   const cleanup = useCallback(() => {
     startRef.current = null;
     draggingRef.current = false;
-    document.body.classList.remove('canvas-drag-invalid');
+    setCursorOverride(null);
     setState(null);
   }, []);
 
   const onPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLElement>) => {
       if (e.button !== 0) return;
+      // macOS Ctrl+click = chuột phải, không tạo object.
+      if (isMacSecondaryClick(e)) return;
       e.stopPropagation();
 
       startRef.current = { x: e.clientX, y: e.clientY };
@@ -84,7 +88,7 @@ export function useToolbarDrag(opts: {
         // để dim (rộng hơn: bao gồm trash/unsort/board-tile — chỗ "khác canvas
         // trống").
         const zone = hitZone(ev.clientX, ev.clientY);
-        document.body.classList.toggle('canvas-drag-invalid', isInvalidZone(zone));
+        setCursorOverride(isInvalidZone(zone) ? 'not-allowed' : null);
         setState({
           clientX: ev.clientX,
           clientY: ev.clientY,

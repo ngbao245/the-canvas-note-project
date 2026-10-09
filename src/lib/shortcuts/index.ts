@@ -17,7 +17,7 @@ export type {
   ShortcutHandler,
   ShortcutLayerKind,
 } from './types';
-export { bindShortcuts, matchCombo } from './combo';
+export { bindShortcuts } from './combo';
 export { registerLayer } from './dispatcher';
 export { comboKeyLabels, displayWays, formatCombo, shortcutKeys, type KeyLabel } from './format';
 export { detectKeyboardPlatform, getKeyboardPlatform, useKeyboardPlatform } from './platform';
@@ -25,6 +25,7 @@ export { isMacSecondaryClick, isPrimaryModifier } from './pointer';
 export {
   ESCAPE_COMBO,
   useEscapeLayer,
+  useModalLayer,
   useShortcutDispatcher,
   useShortcutLayer,
 } from './useShortcutLayer';

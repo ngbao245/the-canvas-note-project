@@ -36,7 +36,7 @@ export function hitZone(clientX: number, clientY: number): HitZone {
  *     ở caller: canvas = move/create, trash = delete, unsort = move to unsort).
  *   - 'overlay' / 'outside' — invalid → cursor block, drop silent revert.
  *
- * Dùng để toggle `body.canvas-drag-invalid` class thống nhất. Trước đó 3 case
+ * Dùng để bật con trỏ not-allowed (setCursorOverride) thống nhất. Trước đó 3 case
  * tự định nghĩa invalid khác nhau (toolbar coi unsort là invalid, canvas coi
  * trash là valid, ...) — inconsistent feedback cho user.
  */

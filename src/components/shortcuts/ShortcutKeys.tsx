@@ -42,7 +42,8 @@ export function Kbd({ children, title }: { children: ReactNode; title?: string }
     <kbd
       title={title}
       // min-h cố định: phím icon và phím chữ cao bằng nhau.
-      className="inline-flex min-h-[1.25rem] min-w-[1.5rem] items-center justify-center rounded border border-border bg-muted px-1.5 py-0.5 text-center font-sans text-[11px] text-foreground"
+      // select-none: phím là nhãn để nhìn, không cho bôi đen (mọi nơi dùng Kbd).
+      className="inline-flex min-h-[1.25rem] select-none min-w-[1.5rem] items-center justify-center rounded border border-border bg-muted px-1.5 py-0.5 text-center font-sans text-[11px] text-foreground"
     >
       {children}
     </kbd>
@@ -62,7 +63,7 @@ export function OrSeparator() {
   const { t } = useI18n();
   return (
     <>
-      <span aria-hidden="true" className="text-xs text-muted-foreground">
+      <span aria-hidden="true" className="select-none text-xs text-muted-foreground">
         |
       </span>
       <span className="sr-only">{t('COMMON.OR')}</span>
@@ -111,7 +112,7 @@ function Token({ token }: { token: DisplayToken }) {
     );
   }
   if ('text' in token) {
-    return <span className="text-xs text-muted-foreground">{t(token.text)}</span>;
+    return <span className="select-none text-xs text-muted-foreground">{t(token.text)}</span>;
   }
   // Thao tác chuột cũng nằm trong ô phím như Ctrl / Shift: 1 dòng đọc liền "Ctrl [kéo]".
   const { icon: Icon, labelKey, iconOnly } = POINTERS[token.pointer];

@@ -55,9 +55,7 @@ export function comboKeyLabels(combo: KeyCombo, platform: KeyboardPlatform): Key
   const out: KeyLabel[] = [];
   if (combo.mod) {
     out.push(
-      platform === 'macos'
-        ? { label: '⌘', title: 'Command', glyph: 'command' }
-        : { label: 'Ctrl' },
+      platform === 'macos' ? { label: '⌘', title: 'Command', glyph: 'command' } : { label: 'Ctrl' },
     );
   }
   if (combo.shift === true) out.push({ label: 'Shift' });

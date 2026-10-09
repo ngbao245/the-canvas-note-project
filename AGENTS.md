@@ -16,6 +16,7 @@ Steering setup dựa trên [`Theadd/kiro-agents`](https://github.com/Theadd/kiro
 
 **Load theo fileMatch** (Kiro tự đọc khi đọc file khớp pattern):
 - `.kiro/steering/coding-style.md` — chi tiết rule TS/theme/folder/comment. Match `src/**/*.{ts,tsx}`.
+- `.kiro/steering/shortcuts.md` — chi tiết khai báo phím tắt. Match `src/lib/shortcuts/**` và file tên có "shortcut". Sửa phím ở component thường thì Kiro phải chủ động đọc.
 
 **Handoff theo tool** (Kiro tự đọc khi làm tool đó):
 - Canvas → `.kiro/notes/canvas-session-handoff.md` (trạng thái tổng + rule cứng) + `.kiro/notes/canvas-backlog.md` (feature chưa làm)
@@ -27,7 +28,7 @@ Steering setup dựa trên [`Theadd/kiro-agents`](https://github.com/Theadd/kiro
 
 Cập nhật 2026-09-18.
 
-- App scaffold đủ. `npm run build` pass, `npm run lint` 0 error (5 warning cũ, không blocking).
+- App scaffold đủ. `npm run build` pass, `npm run lint` 0 error (8 warning react-refresh có chủ ý, không cần sửa).
 - Đã `git init`, chưa commit lần nào.
 - Tool đang làm: Canvas (`src/tools/canvas/`). Refactor B2 đã xong (4 nhóm: util reuse, gom UI trùng, tách file, tách camera-engine helper). Trạng thái đầy đủ ở `.kiro/notes/canvas-session-handoff.md`.
 - Spec: `bibo-foundation` (xong), `canvas`, `canvas-content-objects`, `design-system`. Template: `.kiro/specs/_TEMPLATE/`.

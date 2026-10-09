@@ -41,7 +41,7 @@ export function AccountMenu() {
         aria-label={accountLabel}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="grid h-8 w-8 cursor-pointer place-items-center rounded-full bg-muted text-muted-foreground ring-1 ring-border transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="grid h-8 w-8 place-items-center rounded-full bg-muted text-muted-foreground ring-1 ring-border transition-colors duration-normal hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <User className="h-6 w-6" strokeWidth={1.5} />
       </button>
@@ -76,7 +76,7 @@ export function AccountMenu() {
                     setOpen(false);
                     openSettings();
                   }}
-                  className="inline-flex cursor-pointer items-center gap-1 font-medium text-primary hover:underline"
+                  className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
                 >
                   <Settings className="h-3.5 w-3.5" />
                   {t('SETTINGS.TITLE')}
@@ -85,7 +85,7 @@ export function AccountMenu() {
                   type="button"
                   disabled
                   title={t('SETTINGS.ACCOUNT.MENU.SIGN_IN_SOON')}
-                  className="cursor-not-allowed text-muted-foreground opacity-60"
+                  className="text-muted-foreground opacity-60"
                 >
                   {t('SETTINGS.ACCOUNT.MENU.SIGN_IN')}
                 </button>

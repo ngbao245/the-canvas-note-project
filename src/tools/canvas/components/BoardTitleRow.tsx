@@ -147,7 +147,7 @@ function ShareButton() {
       type="button"
       aria-disabled="true"
       title={`${t('CANVAS.HEADER.SHARE')} (${t('COMMON.COMING_SOON')})`}
-      className="flex h-7 cursor-not-allowed items-center rounded-md bg-primary/60 px-3 text-xs font-medium text-primary-foreground"
+      className="flex h-7 items-center rounded-md bg-primary/60 px-3 text-xs font-medium text-primary-foreground"
     >
       {t('CANVAS.HEADER.SHARE')}
     </button>

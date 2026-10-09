@@ -10,6 +10,7 @@ import {
   isPrimaryModifier,
   registerLayer,
 } from '@/lib/shortcuts';
+import { setCursorOverride } from '@/lib/cursor-override';
 import { CANVAS_SHORTCUT_DEFS } from '../shortcuts';
 
 /**
@@ -29,15 +30,16 @@ export function usePointerInteraction(ref: RefObject<HTMLElement | null>) {
     let marqueeStart: { x: number; y: number; shift: boolean } | null = null;
 
     // Space giữ để kéo màn hình. Thả phím, mất focus cửa sổ hoặc unmount → release.
+    // Con trỏ `grab` chỉ đè trong mặt canvas (gốc = el), kể cả trên object.
     const panShortcuts = bindShortcuts(CANVAS_SHORTCUT_DEFS, {
       'canvas.pan': {
         run: () => {
           spacePressed = true;
-          el.style.cursor = 'grab';
+          setCursorOverride('grab', el);
         },
         release: () => {
           spacePressed = false;
-          el.style.cursor = '';
+          setCursorOverride(null, el);
         },
       },
     });
@@ -76,7 +78,8 @@ export function usePointerInteraction(ref: RefObject<HTMLElement | null>) {
         el.setPointerCapture(e.pointerId);
         panStart = { x: e.clientX, y: e.clientY };
         useInteractionStore.getState().setMode('panning');
-        el.style.cursor = 'grabbing';
+        // Toàn trang: lúc pan chuột có thể lướt qua object (cursor-move) hoặc ra header.
+        setCursorOverride('grabbing');
         return;
       }
 
@@ -121,7 +124,8 @@ export function usePointerInteraction(ref: RefObject<HTMLElement | null>) {
         el.releasePointerCapture(e.pointerId);
         panStart = null;
         useInteractionStore.getState().setMode('idle');
-        el.style.cursor = spacePressed ? 'grab' : '';
+        // Còn giữ Space thì `grab` trên el vẫn còn, không cần set lại.
+        setCursorOverride(null);
         return;
       }
       if (marqueeStart) {
@@ -132,10 +136,7 @@ export function usePointerInteraction(ref: RefObject<HTMLElement | null>) {
         if (rect && inter.mode === 'marquee') {
           const camera = getCameraEngine().getCamera();
           const p1 = screenToCanvas({ x: rect.x, y: rect.y }, camera);
-          const p2 = screenToCanvas(
-            { x: rect.x + rect.width, y: rect.y + rect.height },
-            camera,
-          );
+          const p2 = screenToCanvas({ x: rect.x + rect.width, y: rect.y + rect.height }, camera);
           const canvasRect = {
             x: Math.min(p1.x, p2.x),
             y: Math.min(p1.y, p2.y),
@@ -171,6 +172,8 @@ export function usePointerInteraction(ref: RefObject<HTMLElement | null>) {
 
     return () => {
       unregisterPan();
+      setCursorOverride(null, el);
+      if (panStart) setCursorOverride(null);
       el.removeEventListener('pointerdown', onPointerDown);
       el.removeEventListener('pointermove', onPointerMove);
       el.removeEventListener('pointerup', onPointerUp);

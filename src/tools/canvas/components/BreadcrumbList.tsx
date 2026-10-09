@@ -102,7 +102,7 @@ function Crumb({
         <Link
           to={linkTo(board)}
           title={board.name}
-          className={`${itemCls} -mx-1 rounded-sm px-1 py-0.5 text-foreground transition-colors duration-200 hover:bg-muted`}
+          className={`${itemCls} -mx-1 rounded-sm px-1 py-0.5 text-foreground transition-colors duration-normal hover:bg-muted`}
         >
           {content}
         </Link>

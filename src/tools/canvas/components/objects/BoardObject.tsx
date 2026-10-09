@@ -54,7 +54,7 @@ function BoardRenderer({ object, isSelected, isEditing, onEditEnd }: ObjectRende
       <div
         data-board-tile-id={object.id}
         data-linked-board-id={linkedBoardId}
-        className="relative flex h-full w-full flex-col items-center justify-start gap-2 pt-2 select-none"
+        className="relative flex h-full w-full flex-col items-center justify-start gap-2 pt-2"
       >
         {/* Icon — click vào đây double = navigate. Ring highlight khi hover drop. */}
         <div

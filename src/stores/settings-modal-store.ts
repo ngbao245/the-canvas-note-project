@@ -6,13 +6,7 @@ import { create } from 'zustand';
  */
 
 export type SettingsSection =
-  | 'account'
-  | 'notifications'
-  | 'appearance'
-  | 'localization'
-  | 'canvas'
-  | 'toolbar'
-  | 'data';
+  'account' | 'notifications' | 'appearance' | 'localization' | 'canvas' | 'toolbar' | 'data';
 
 interface SettingsModalState {
   open: boolean;

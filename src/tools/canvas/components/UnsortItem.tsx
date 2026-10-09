@@ -101,7 +101,7 @@ export function UnsortItem({
         margin: '0 auto 8px',
         opacity: isDragged ? 0.5 : 1,
       }}
-      className={`cursor-grab rounded-lg border p-2.5 select-none flex ${
+      className={`cursor-grab rounded-lg border p-2.5 flex ${
         vertical ? 'flex-col items-center gap-1.5' : 'items-start gap-2.5'
       } ${
         selected
@@ -122,15 +122,6 @@ export function UnsortItem({
       </div>
     </div>
   );
-}
-
-// Export IconBox + getName cho UnsortDragPreview reuse.
-export function UnsortIconBox({ type }: { type: string }) {
-  return <IconBox type={type} />;
-}
-
-export function getUnsortItemName(object: CanvasObject): string {
-  return getName(object);
 }
 
 function IconBox({ type }: { type: string }) {
