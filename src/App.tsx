@@ -1,12 +1,15 @@
+// Đăng ký tool vào sổ dùng chung trước mọi thứ khác (xem file đó).
+import '@/register-tools';
 import { lazy, Suspense, useEffect } from 'react';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import Landing from '@/routes/Landing';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { applyUiStyleAttr, useUiStyleStore } from '@/stores/ui-style-store';
 import { applyThemeAttr, useResolvedTheme } from '@/stores/theme-store';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 import { ShortcutsModal } from '@/components/shortcuts/ShortcutsModal';
 import { applyLangAttr, useLocaleStore } from '@/lib/i18n';
 import { GLOBAL_SHORTCUTS, useShortcutDispatcher, useShortcutLayer } from '@/lib/shortcuts';
+import { registerPwa } from '@/lib/pwa';
+import { OfflineBadge, UpdateBanner } from '@/components/shared';
 
 // Trang thử nghiệm drawably (phong cách vẽ tay) — lazy load, tách bundle.
 const LandingDraw = lazy(() => import('@/experiments/drawably/LandingDraw'));
@@ -35,6 +38,11 @@ export default function App() {
   useEffect(() => {
     applyLangAttr(locale);
   }, [locale]);
+
+  // Service worker để mở app khi offline. Chỉ chạy ở bản build (spec `app-offline`).
+  useEffect(() => {
+    registerPwa();
+  }, []);
 
   // Bộ điều phối phím duy nhất + lớp phím toàn app (lib/shortcuts/global-shortcuts.ts).
   useShortcutDispatcher();
@@ -65,20 +73,25 @@ export default function App() {
     <BrowserRouter>
       <Suspense fallback={null}>
         <Routes>
-          <Route path="/" element={<Landing />} />
+          {/* Landing ở domain riêng (landing.html + vite.landing.config.ts). App mở thẳng canvas. */}
+          <Route path="/" element={<Navigate to="/canvas" replace />} />
           <Route path="/thu/drawably-landing" element={<LandingDraw />} />
           <Route path="/thu/drawably-canvas" element={<CanvasDraw />} />
           <Route path="/thu/style-demo" element={<StyleDemo />} />
           <Route path="/canvas" element={<Canvas />} />
           <Route path="/canvas/:boardId" element={<Canvas />} />
           <Route path="/canvas/:boardId/:slug" element={<Canvas />} />
-          <Route path="*" element={<Landing />} />
+          <Route path="*" element={<Navigate to="/canvas" replace />} />
         </Routes>
       </Suspense>
       {/* Modal Cài đặt toàn app, mở qua useSettingsModalStore. */}
       <SettingsModal />
       {/* Modal phím tắt, mở qua useShortcutsModalStore (Trợ giúp → Phím tắt, phím /). */}
       <ShortcutsModal />
+      {/* Thanh báo "Có bản mới", bấm "Tải lại" mới chạy bản mới. */}
+      <UpdateBanner />
+      {/* TẠM: gỡ khi `canvas-sync` xử lý ngầm. */}
+      <OfflineBadge />
       {DevQuickSwitch && (
         <Suspense fallback={null}>
           <DevQuickSwitch />

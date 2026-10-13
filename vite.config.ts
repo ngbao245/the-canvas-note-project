@@ -1,9 +1,44 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
+import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Service worker để mở app khi offline (spec `app-offline`). Chỉ bản build app:
+    // dev không bật (devOptions mặc định tắt), landing build bằng config khác.
+    VitePWA({
+      // Bản mới chờ người dùng bấm "Tải lại", không tự tải lại giữa lúc gõ.
+      registerType: 'prompt',
+      // Tự đăng ký trong `src/lib/pwa/` qua module ảo, không chèn script vào HTML.
+      injectRegister: false,
+      // Cài như app (manifest + icon) để sau.
+      manifest: false,
+      workbox: {
+        globPatterns: ['**/*.{html,js,css,svg,png,ico,woff2}'],
+        // Mọi đường dẫn điều hướng trả index.html → link board sâu mở được khi offline.
+        navigateFallback: 'index.html',
+        cleanupOutdatedCaches: true,
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.origin === 'https://fonts.googleapis.com',
+            handler: 'StaleWhileRevalidate',
+            options: { cacheName: 'google-fonts-css' },
+          },
+          {
+            urlPattern: ({ url }) => url.origin === 'https://fonts.gstatic.com',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-files',
+              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
+      },
+    }),
+  ],
 
   resolve: {
     alias: {

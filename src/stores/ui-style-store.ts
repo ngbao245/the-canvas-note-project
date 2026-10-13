@@ -3,14 +3,14 @@ import { persist } from 'zustand/middleware';
 
 /**
  * Store phong cách hiển thị (trục độc lập với theme màu).
- * - hand: vẽ tay (drawably) — mặc định
- * - flat: phẳng (shadcn thuần theme token)
+ * - hand: vẽ tay (drawably)
+ * - flat: phẳng (shadcn thuần theme token) — mặc định
  * Lưu localStorage. Đổi trong Cài đặt → Giao diện.
  */
 
 export type UiStyle = 'hand' | 'flat';
 
-export const DEFAULT_UI_STYLE: UiStyle = 'hand';
+export const DEFAULT_UI_STYLE: UiStyle = 'flat';
 
 interface UiStyleState {
   style: UiStyle;
