@@ -41,7 +41,7 @@ const MOD = { combo: { mod: true } } as const;
 export const CANVAS_SHORTCUT_DEFS = {
   'canvas.undo': {
     combos: [{ mod: true, key: 'z' }],
-    display: { groupKey: EDIT, labelKey: 'SHORTCUTS.ACTION.UNDO' },
+    display: { groupKey: EDIT, labelKey: 'SHORTCUTS.ACTION.UNDO', essential: 4 },
   },
   'canvas.redo': {
     combos: [
@@ -64,14 +64,14 @@ export const CANVAS_SHORTCUT_DEFS = {
   },
   'canvas.duplicate': {
     combos: [{ mod: true, key: 'd' }],
-    display: { groupKey: EDIT, labelKey: 'SHORTCUTS.ACTION.DUPLICATE' },
+    display: { groupKey: EDIT, labelKey: 'SHORTCUTS.ACTION.DUPLICATE', essential: 5 },
   },
   'canvas.delete': {
     combos: [
       { shift: 'any', key: 'Delete' },
       { shift: 'any', key: 'Backspace' },
     ],
-    display: { groupKey: EDIT, labelKey: 'SHORTCUTS.ACTION.DELETE' },
+    display: { groupKey: EDIT, labelKey: 'SHORTCUTS.ACTION.DELETE', essential: 6 },
   },
   // Double-click object: ObjectsLayer → vào sửa, caret tại điểm click.
   'canvas.edit-selected': {
@@ -79,8 +79,15 @@ export const CANVAS_SHORTCUT_DEFS = {
     display: {
       groupKey: EDIT,
       labelKey: 'SHORTCUTS.ACTION.EDIT_SELECTED',
+      essential: 1,
       ways: [[{ combo: { key: 'Enter' } }], [{ pointer: 'double-click' }]],
     },
+  },
+  // 1 note đang chọn (chưa sửa): tạo note mới bên dưới + vào sửa. Đang sửa thì
+  // keymap Tiptap (lib/note-commit-keys.ts) xử, lớp tool bỏ qua khi đang gõ.
+  // Hiển thị chung 1 dòng `note.new-below` trong NOTE_TEXT_SHORTCUT_DEFS.
+  'canvas.new-note-below': {
+    combos: [{ mod: true, key: 'Enter' }],
   },
   // CardClipperButton: thả = cắt đoạn, giữ Alt khi thả = chép.
   'canvas.clip-cut': {
@@ -113,6 +120,7 @@ export const CANVAS_SHORTCUT_DEFS = {
     display: {
       groupKey: SELECT,
       labelKey: 'SHORTCUTS.ACTION.TOGGLE_SELECT',
+      essential: 7,
       ways: [
         [SHIFT, { pointer: 'click' }],
         [MOD, { pointer: 'click' }],
@@ -159,7 +167,7 @@ export const CANVAS_SHORTCUT_DEFS = {
   // Chỉ hiển thị: Ctrl/Cmd + lăn chuột (cả pinch trackpad) xử ở CanvasSurface (listener wheel).
   'canvas.zoom-wheel': {
     combos: [{ mod: true, pointer: 'wheel' }],
-    display: { groupKey: ZOOM, labelKey: 'SHORTCUTS.ACTION.ZOOM_WHEEL' },
+    display: { groupKey: ZOOM, labelKey: 'SHORTCUTS.ACTION.ZOOM_WHEEL', essential: 3 },
   },
   // Không consume: Space vẫn bấm được nút đang focus như trước.
   // usePointerInteraction: pan khi giữ Space, Ctrl/Cmd + kéo, hoặc kéo chuột giữa.
@@ -169,6 +177,7 @@ export const CANVAS_SHORTCUT_DEFS = {
     display: {
       groupKey: NAVIGATION,
       labelKey: 'SHORTCUTS.ACTION.PAN',
+      essential: 2,
       ways: [
         [MOD, { pointer: 'drag' }],
         [HOLD, { combo: { code: 'Space' } }, { pointer: 'drag' }],
@@ -212,7 +221,7 @@ export const CANVAS_SHORTCUT_DEFS = {
   },
   'canvas.to-unsort': {
     combos: [{ mod: true, shift: true, key: 'u' }],
-    display: { groupKey: UNSORT, labelKey: 'SHORTCUTS.ACTION.TO_UNSORT' },
+    display: { groupKey: UNSORT, labelKey: 'SHORTCUTS.ACTION.TO_UNSORT', essential: 8 },
   },
   'unsort.close': {
     combos: [{ shift: 'any', key: 'Escape' }],
@@ -260,6 +269,11 @@ function typeOnly(chars: string): DisplayWay {
  * Đổi extension (VD bỏ StarterKit) thì kiểm lại bảng này.
  */
 export const NOTE_TEXT_SHORTCUT_DEFS = {
+  // Xử ở lib/note-commit-keys.ts (keymap Tiptap). Esc / click ra ngoài vẫn là thoát sửa.
+  'note.new-below': {
+    combos: [{ mod: true, key: 'Enter' }],
+    display: { groupKey: TEXT, labelKey: 'SHORTCUTS.ACTION.NEW_NOTE_BELOW' },
+  },
   'note.bold': {
     combos: [{ mod: true, key: 'b' }],
     display: { groupKey: TEXT, labelKey: 'SHORTCUTS.ACTION.BOLD' },

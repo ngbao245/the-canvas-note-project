@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { ErrorState, Skeleton } from '@/components/shared';
 import { useI18n } from '@/lib/i18n';
+import { countData } from '@/lib/data-stats';
 import { Row, Section, SoonBadge } from '../SettingsBlocks';
 
 /**
  * Cài đặt → Dữ liệu: chỉ xem (quyết định 2026-10-05).
- *   - Board / Object: đếm key trong IndexedDB của Canvas. Module canvas tải lúc
- *     cần (dynamic import) để modal Cài đặt không kéo code canvas vào bundle chính.
+ *   - Board / Object: hàm đếm do Canvas đăng ký (`src/register-tools.ts`), tự tải module
+ *     canvas lúc cần nên modal Cài đặt không kéo code canvas vào bundle chính.
  *   - Dung lượng: ước tính của trình duyệt cho cả origin (navigator.storage.estimate).
  * Sao lưu: export chính lâu dài ở backend → "Sắp có".
  */
@@ -19,9 +20,8 @@ interface DataStats {
 }
 
 async function loadStats(): Promise<DataStats> {
-  const { getCanvasRepository } = await import('@/tools/canvas/api');
   const [counts, estimate] = await Promise.all([
-    getCanvasRepository().countAll(),
+    countData(),
     navigator.storage?.estimate ? navigator.storage.estimate() : Promise.resolve(null),
   ]);
   return { ...counts, usageBytes: estimate?.usage ?? null };

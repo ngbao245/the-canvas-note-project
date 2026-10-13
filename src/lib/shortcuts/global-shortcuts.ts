@@ -21,6 +21,8 @@ export const GLOBAL_SHORTCUT_DEFS = {
     display: {
       groupKey: 'SHORTCUTS.GROUP.NAVIGATION',
       labelKey: 'SHORTCUTS.ACTION.OPEN_SHORTCUTS',
+      // Số lớn: luôn đứng cuối nhóm "Thường dùng", sau phím của tool.
+      essential: 100,
     },
   },
   'app.toggle-theme': {

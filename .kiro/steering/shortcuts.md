@@ -13,7 +13,8 @@ Luật cấm chung (keydown, `<Kbd>` tự viết, phím giữ khi click, Esc cho
 
 - Dữ liệu ở `src/tools/{tên}/shortcuts.ts`: chỉ dữ liệu, không import store.
 - Gắn hành động bằng `bindShortcuts(defs, handlers)` + `useShortcutLayer('tool' | 'panel', ...)`. Hành động đọc state bằng `getState()`.
-- Có `display` thì tự hiện trong modal phím tắt (`src/components/shortcuts/ShortcutsModal.tsx`). Tool mới: thêm bảng defs vào `ALL_DEFS` ở đó.
+- Muốn phím có trong nhóm "Thường dùng": thêm `display.essential: <số thứ tự>` ngay trong bảng của tool (nhỏ đứng trước; phím toàn app `/` là 100, luôn cuối). Không sửa modal.
+- Có `display` thì tự hiện trong modal phím tắt (`src/components/shortcuts/ShortcutsModal.tsx`). Tool mới: đăng ký bảng defs bằng `registerShortcutDefs` trong `src/register-tools.ts` (code dùng chung không import thẳng `src/tools/`). Code dùng chung cần 1 phím của tool: `getShortcutDef(id)`.
 - Thao tác do Tiptap xử hoặc thao tác chuột: `combos: []` + `display.ways` (chỉ hiển thị, không handler). Chỉ ghi khi đã thử thấy chạy.
 - Thao tác chuột có phím (Ctrl + lăn chuột...): khai báo với `pointer: 'wheel'`, không cần handler. Bộ điều phối bỏ qua loại này, hành động nằm ở listener chuột.
 

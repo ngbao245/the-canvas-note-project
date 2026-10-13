@@ -43,6 +43,11 @@ export type DisplayWay = readonly DisplayToken[];
 export interface ShortcutDisplay {
   groupKey: MessageKey;
   labelKey: MessageKey;
+  /**
+   * Có mặt trong nhóm "Thường dùng" của modal phím tắt, số = thứ tự (nhỏ đứng trước).
+   * Dòng vẫn hiện ở nhóm gốc; "Thường dùng" chỉ lặp lại.
+   */
+  essential?: number;
   /** Tiêu đề con trong nhóm (VD Markdown: "Gõ ở đầu dòng mới"). Dòng liền nhau cùng key gom dưới 1 tiêu đề. */
   subgroupKey?: MessageKey;
   /**

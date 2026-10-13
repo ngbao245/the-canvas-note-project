@@ -5,6 +5,7 @@ import {
   displayWays,
   ESCAPE_COMBO,
   formatCombo,
+  getRegisteredShortcutDefs,
   GLOBAL_SHORTCUT_DEFS,
   useKeyboardPlatform,
   useModalLayer,
@@ -12,7 +13,6 @@ import {
 } from '@/lib/shortcuts';
 import type { KeyboardPlatform } from '@/stores/keyboard-platform-store';
 import { EmptyState } from '@/components/shared';
-import { CANVAS_SHORTCUT_DEFS, NOTE_TEXT_SHORTCUT_DEFS } from '@/tools/canvas/shortcuts';
 import { useShortcutsModalStore } from '@/stores/shortcuts-modal-store';
 import { useInterfaceScale } from '@/stores/interface-store';
 import { ShortcutWays } from './ShortcutKeys';
@@ -21,9 +21,9 @@ import { ShortcutWays } from './ShortcutKeys';
  * Modal phím tắt (Milanote ShortcutsModal). Mount 1 lần ở App, mở qua
  * useShortcutsModalStore: Trợ giúp → Phím tắt, hoặc phím `/`.
  *
- * Danh sách sinh từ bảng phím chung (ALL_DEFS), không chép tay: thêm/đổi phím trong
- * bảng là modal tự theo. Phím có `display` mới hiện; thứ tự trong nhóm = thứ tự khai báo.
- * Tool mới: thêm bảng defs của tool vào ALL_DEFS.
+ * Danh sách sinh từ bảng phím (của tool đã đăng ký + phím toàn app), không chép tay:
+ * thêm/đổi phím trong bảng là modal tự theo. Phím có `display` mới hiện; thứ tự trong
+ * nhóm = thứ tự khai báo. Tool mới: đăng ký bảng phím trong `src/register-tools.ts`.
  *
  * Bố cục: cột trái = nhóm (bấm → cuộn tới), cột phải = 1 danh sách cuộn liền,
  * nhóm đang xem được tô ở cột trái. Màn hẹp ẩn cột trái.
@@ -32,27 +32,10 @@ import { ShortcutWays } from './ShortcutKeys';
  * Lớp overlay chặn: phím canvas không chạy ngầm sau modal.
  */
 
-const ALL_DEFS = {
-  ...CANVAS_SHORTCUT_DEFS,
-  ...NOTE_TEXT_SHORTCUT_DEFS,
-  ...GLOBAL_SHORTCUT_DEFS,
-};
-type ShortcutId = keyof typeof ALL_DEFS;
-
 const ESSENTIAL = 'SHORTCUTS.GROUP.ESSENTIAL';
 
-/** Nhóm "Thường dùng": lấy lại dòng từ nhóm gốc, không khai báo trùng. */
-const ESSENTIAL_IDS: readonly ShortcutId[] = [
-  'canvas.edit-selected',
-  'canvas.pan',
-  'canvas.zoom-wheel',
-  'canvas.undo',
-  'canvas.duplicate',
-  'canvas.delete',
-  'canvas.toggle-select',
-  'canvas.to-unsort',
-  'app.open-shortcuts',
-];
+// Nhóm "Thường dùng": phím tự đánh dấu `display.essential` (số = thứ tự) trong bảng của
+// nơi sở hữu, modal không giữ danh sách id của tool nào.
 
 // Thứ tự theo Milanote. Milanote có thêm "Drawing" — bibo chưa có vẽ tay nên chưa có nhóm này.
 const GROUP_ORDER: readonly MessageKey[] = [
@@ -79,15 +62,32 @@ function toRow(id: string, def: ShortcutDef): Row[] {
   return def.display ? [{ id, labelKey: def.display.labelKey, def }] : [];
 }
 
-const GROUPS: { key: MessageKey; rows: Row[] }[] = GROUP_ORDER.map((key) => ({
-  key,
-  rows:
-    key === ESSENTIAL
-      ? ESSENTIAL_IDS.flatMap((id) => toRow(id, ALL_DEFS[id]))
-      : Object.entries(ALL_DEFS).flatMap(([id, def]: [string, ShortcutDef]) =>
-          def.display?.groupKey === key ? toRow(id, def) : [],
-        ),
-})).filter((g) => g.rows.length > 0);
+interface Group {
+  key: MessageKey;
+  rows: Row[];
+}
+
+/**
+ * Dựng nhóm lúc mở modal (không ở cấp module): tool đăng ký bảng phím lúc khởi động,
+ * dựng sớm hơn thì có thể đọc sổ còn trống. Phím tool đứng trước phím toàn app.
+ */
+function buildGroups(): Group[] {
+  const all: Record<string, ShortcutDef> = {
+    ...getRegisteredShortcutDefs(),
+    ...GLOBAL_SHORTCUT_DEFS,
+  };
+  const entries = Object.entries(all);
+  const essential = entries
+    .filter(([, def]) => def.display?.essential !== undefined)
+    .sort(([, a], [, b]) => (a.display?.essential ?? 0) - (b.display?.essential ?? 0));
+  return GROUP_ORDER.map((key) => ({
+    key,
+    rows: (key === ESSENTIAL
+      ? essential
+      : entries.filter(([, def]) => def.display?.groupKey === key)
+    ).flatMap(([id, def]) => toRow(id, def)),
+  })).filter((g) => g.rows.length > 0);
+}
 
 /** Chữ thường, bỏ dấu tiếng Việt: gõ "xoa" vẫn khớp "Xoá". */
 function normalize(s: string): string {
@@ -122,16 +122,18 @@ function ShortcutsDialog() {
   const searchRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef(new Map<MessageKey, HTMLElement>());
+  // Dựng 1 lần mỗi lần mở (component mount khi mở, xem ShortcutsModal).
+  const [groups] = useState(buildGroups);
   const [query, setQuery] = useState('');
-  const [active, setActive] = useState<MessageKey>(GROUPS[0]?.key ?? ESSENTIAL);
+  const [active, setActive] = useState<MessageKey>(groups[0]?.key ?? ESSENTIAL);
 
   // Lọc theo tên thao tác + tên nhóm + tên phím, mọi từ gõ vào đều phải có.
   // Đang tìm thì ẩn "Thường dùng": dòng ở đó lặp lại dòng của nhóm gốc.
   const terms = normalize(query).split(/\s+/).filter(Boolean);
   const visibleGroups =
     terms.length === 0
-      ? GROUPS
-      : GROUPS.filter((g) => g.key !== ESSENTIAL)
+      ? groups
+      : groups.filter((g) => g.key !== ESSENTIAL)
           .map((g) => ({
             key: g.key,
             rows: g.rows.filter((row) => {
@@ -254,7 +256,7 @@ function ShortcutsDialog() {
           >
             <ul className="flex flex-col gap-0.5">
               {/* Giữ đủ nhóm khi tìm (cột trái không nhảy), nhóm không có kết quả thì mờ. */}
-              {GROUPS.map((g) => {
+              {groups.map((g) => {
                 const hasRows = visibleKeys.has(g.key);
                 const isActive = hasRows && shownActive === g.key;
                 return (

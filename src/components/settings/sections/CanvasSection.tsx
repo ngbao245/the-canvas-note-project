@@ -1,7 +1,6 @@
 import { useCanvasSettingsStore, type ScrollSpeed } from '@/stores/canvas-settings-store';
 import { useI18n, type MessageKey } from '@/lib/i18n';
-import { shortcutKeys, useKeyboardPlatform } from '@/lib/shortcuts';
-import { CANVAS_SHORTCUT_DEFS } from '@/tools/canvas/shortcuts';
+import { getShortcutDef, shortcutKeys, useKeyboardPlatform } from '@/lib/shortcuts';
 import { Row, Section, Segmented, Switch } from '../SettingsBlocks';
 
 /** Cài đặt → Canvas: lưới nền, tốc độ cuộn. Hút cạnh khi thả luôn bật, không có ở đây. */
@@ -23,6 +22,7 @@ export function CanvasSection({ title, description }: { title: string; descripti
   const reset = useCanvasSettingsStore((s) => s.reset);
 
   const speedOptions = SPEED_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.labelKey) }));
+  const zoomWheel = getShortcutDef('canvas.zoom-wheel');
 
   return (
     <Section title={title} description={description} onReset={reset}>
@@ -37,7 +37,7 @@ export function CanvasSection({ title, description }: { title: string; descripti
         id="setting-scroll-speed"
         title={t('SETTINGS.CANVAS.SCROLL_SPEED.TITLE')}
         description={t('SETTINGS.CANVAS.SCROLL_SPEED.DESCRIPTION', {
-          keys: shortcutKeys(CANVAS_SHORTCUT_DEFS['canvas.zoom-wheel'], platform),
+          keys: zoomWheel ? shortcutKeys(zoomWheel, platform) : '',
         })}
       >
         <Segmented
