@@ -1,0 +1,238 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "bibo — Sửa khi mất mạng rồi khôi phục",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1000,
+      1000
+    ],
+    "views": [
+      {
+        "id": "offline-edit",
+        "label": "Mất mạng",
+        "focus": [
+          "user",
+          "app",
+          "idb",
+          "sync"
+        ],
+        "note": "Mỗi thay đổi ghi IndexedDB ngay, cùng 1 transaction với outbox. Không cần mạng."
+      },
+      {
+        "id": "replay",
+        "label": "Có mạng lại",
+        "focus": [
+          "sync",
+          "idb",
+          "server"
+        ],
+        "note": "Chỉ 1 tab gửi outbox. Server kiểm baseVersion và bỏ opId trùng."
+      },
+      {
+        "id": "conflict",
+        "label": "Xung đột",
+        "focus": [
+          "server",
+          "sync",
+          "idb",
+          "app"
+        ],
+        "note": "Bản server giữ nguyên, bản của mình thành note mới trong Khay chờ."
+      }
+    ]
+  },
+  "participants": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "Bạn",
+      "sublabel": "tab A"
+    },
+    {
+      "id": "app",
+      "type": "frontend",
+      "label": "App",
+      "sublabel": "canvas + header"
+    },
+    {
+      "id": "idb",
+      "type": "database",
+      "label": "IndexedDB",
+      "sublabel": "object + outbox"
+    },
+    {
+      "id": "sync",
+      "type": "backend",
+      "label": "Bộ gửi",
+      "sublabel": "1 tab giữ quyền"
+    },
+    {
+      "id": "server",
+      "type": "database",
+      "label": "Supabase",
+      "sublabel": "RPC + Postgres"
+    }
+  ],
+  "segments": [
+    {
+      "from": 159,
+      "to": 371,
+      "label": "Đang mất mạng"
+    },
+    {
+      "from": 390,
+      "to": 721,
+      "label": "Có mạng lại: gửi outbox"
+    },
+    {
+      "from": 740,
+      "to": 940,
+      "label": "Nếu xung đột chữ"
+    }
+  ],
+  "messages": [
+    {
+      "from": "user",
+      "to": "app",
+      "y": 190,
+      "label": "gõ / kéo / xoá",
+      "variant": "emphasis"
+    },
+    {
+      "from": "app",
+      "to": "idb",
+      "y": 237,
+      "label": "object + outbox, 1 transaction",
+      "variant": "emphasis"
+    },
+    {
+      "from": "sync",
+      "to": "server",
+      "y": 282,
+      "label": "gửi lỗi: không có mạng",
+      "variant": "dashed"
+    },
+    {
+      "from": "sync",
+      "to": "app",
+      "y": 329,
+      "label": "header: Chưa đồng bộ",
+      "variant": "return"
+    },
+    {
+      "from": "user",
+      "to": "app",
+      "y": 421,
+      "label": "mở lại app (kể cả sau crash)",
+      "variant": "default"
+    },
+    {
+      "from": "app",
+      "to": "idb",
+      "y": 466,
+      "label": "hiện bản trên máy ngay",
+      "variant": "default"
+    },
+    {
+      "from": "sync",
+      "to": "idb",
+      "y": 513,
+      "label": "đọc outbox theo thứ tự",
+      "variant": "default"
+    },
+    {
+      "from": "sync",
+      "to": "server",
+      "y": 558,
+      "label": "apply_ops(opId, baseVersion)",
+      "variant": "emphasis"
+    },
+    {
+      "from": "server",
+      "to": "sync",
+      "y": 629,
+      "label": "ack (đã kiểm version, bỏ trùng)",
+      "variant": "return"
+    },
+    {
+      "from": "sync",
+      "to": "idb",
+      "y": 696,
+      "label": "xoá mục đã ack",
+      "variant": "default"
+    },
+    {
+      "from": "server",
+      "to": "sync",
+      "y": 771,
+      "label": "conflict: có bản mới hơn",
+      "variant": "security"
+    },
+    {
+      "from": "sync",
+      "to": "idb",
+      "y": 816,
+      "label": "note phục hồi vào Khay chờ",
+      "variant": "security"
+    },
+    {
+      "from": "sync",
+      "to": "app",
+      "y": 863,
+      "label": "báo: bản của bạn ở Khay chờ",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "sync",
+      "from": 506,
+      "to": 701,
+      "type": "backend"
+    },
+    {
+      "participant": "server",
+      "from": 551,
+      "to": 656,
+      "type": "backend"
+    },
+    {
+      "participant": "sync",
+      "from": 764,
+      "to": 867,
+      "type": "backend"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Không mất chữ",
+      "items": [
+        "IndexedDB ghi ngay mỗi thay đổi",
+        "Object và outbox chung 1 transaction",
+        "Chỉ mất khi máy hỏng / xoá dữ liệu trình duyệt trước khi đồng bộ"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Gửi lại an toàn",
+      "items": [
+        "opId: server bỏ gói trùng",
+        "Lỗi mạng: giữ mục, thử lại chờ lâu dần",
+        "Chỉ 1 tab gửi (Web Locks)"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Xung đột",
+      "items": [
+        "Chỉ chữ note, khi baseVersion lệch",
+        "Vị trí / màu: theo trường, bản sau thắng",
+        "Bản thua vào Khay chờ, không đè"
+      ]
+    }
+  ]
+}

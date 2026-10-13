@@ -57,6 +57,45 @@ Các topic đã discuss với user (session 2026-09-18) nhưng chưa làm. Đán
 
 Redundant với #1, giữ như subitem của #1 nếu tách nhỏ hơn.
 
+## 5. Chia sẻ board + nhiều người cùng sửa (user chốt 2026-10-08)
+
+**Luật mời (user yêu cầu):**
+- Người được mời chỉ vào được đúng board được mời. Lúc mời có tuỳ chọn: chỉ board đó, hoặc board đó + các board con.
+- KHÔNG cho mời ở board gốc Home (Home là không gian riêng của chủ tài khoản).
+
+**Hướng đồng bộ: ĐÃ CHỐT phương án C (2026-10-08) — khoá note kiểu Milanote trước, chừa đường lên Yjs sau.**
+
+Giai đoạn 1 (làm khi có backend):
+- Object canvas (vị trí, kích thước, màu, tạo, xoá): học Figma, xung đột theo từng thuộc tính, bản đến server sau thắng.
+- (Đã thay 2026-10-09: nhịp gửi, outbox, backend Supabase chốt ở `.kiro/notes/milanote-sync-architecture.md` mục 2.5-2.10. Dòng dưới là bản cũ.)
+- Lưu: ghi IndexedDB trước (debounce ngắn), rồi hàng đợi gửi server (outbox lưu trong IndexedDB): 1 lô đang gửi, phần mới gom chờ, cùng thuộc tính chỉ giữ giá trị mới nhất. Lỗi thì thử lại chờ lâu dần, mất mạng thì giữ lại. Mỗi mục có mã riêng để server bỏ qua bản trùng.
+- Chữ trong note: vẫn HTML, gửi cả nội dung note. Khoá theo người chọn (giống Milanote): đang chọn / sửa thì người khác thấy nhãn tên + bị khoá, có nút "×" để giành quyền; bị đẩy ra thì lưu ngay phần đang gõ.
+- Đường truyền: (đã thay 2026-10-09) Supabase Broadcast cho realtime, ghi bền vững qua RPC `apply_ops`, không ghi qua WebSocket. Xem `milanote-sync-architecture.md` mục 2.7-2.8.
+- BẮT BUỘC vá 2 lỗ hổng của cách khoá:
+  1. Khoá có hạn: (đã chốt 2026-10-09) 30s không nghe → nhãn "mất kết nối", khoá vẫn giữ; 5 phút → tự nhả; nút × là đường chính. Xem mục 2.4a.
+  2. Sửa lúc mất mạng rồi xung đột: không đè. Bản thua thành note "bản xung đột" đặt cạnh note gốc (kiểu Dropbox), không mất chữ.
+
+Chừa đường lên Yjs (giai đoạn 2, chỉ làm khi cần 2 người gõ chung 1 note):
+- Tách riêng "nội dung chữ của note" khỏi các thuộc tính khác của object, cả lúc lưu lẫn lúc đồng bộ (hàng đợi xử lý chữ như 1 kênh riêng). Lên Yjs thì chỉ thay riêng kênh chữ (Yjs + Tiptap Collaboration + y-indexeddb), phần vị trí / màu / khoá / hàng đợi giữ nguyên.
+- Khi lên Yjs: cần bước đổi dữ liệu note cũ từ HTML sang Yjs, sửa spec `bibo-foundation` (thêm thư viện), và bỏ khoá note.
+
+Đã đưa vào spec `canvas-note-autosave` (làm trước, không cần backend):
+- Hàng đợi ghi IndexedDB kiểu Google Docs (1 lần ghi đang chạy, phần mới gom chờ, không debounce, đẩy ngay khi ẩn / đóng tab). Sẽ dùng lại làm hàng đợi gửi server.
+- Khoá note giữa các tab cùng tài khoản (Web Locks + BroadcastChannel). Đã làm, khoá theo người chọn. Milanote cũng khoá giữa tab / thiết bị cùng tài khoản (đo lại 2026-10-09, bản ghi cũ "Milanote không khoá" là sai).
+- Trường `version` trên object.
+- Tách kênh `chữ` / `thuộc tính` trong hàng đợi.
+
+Để lại cho `canvas-sync`:
+- Hàng đợi gửi server phải ghi CÙNG transaction với object (hiện idb-keyval tách 2 database → phải gộp thành 1 database nhiều store).
+- Lưu / gửi theo từng thuộc tính (kiểu Figma) thay vì cả object.
+
+Phương án đã loại và lý do:
+- A (chỉ khoá, không chừa đường): lên gõ chung sau này phải làm lại.
+- B (Yjs ngay): server phức tạp, đổi dữ liệu note, thêm thư viện, để có tính năng gõ chung mà Milanote cũng không có.
+- Milanote đo được (2026-10-08 / 10-09) + hướng lưu khi có backend (server là nguồn chuẩn, học Milanote rồi làm tốt hơn): xem `.kiro/notes/milanote-sync-architecture.md` (nguồn chuẩn, không đo lại bằng MCP).
+
+**Ưu tiên**: Khi chốt backend. Cần spec riêng `canvas-sync` + `canvas-sharing`.
+
 ## Session context
 
 - Session này ship: Note polish (radius, contrast shadow, ColorBar, Fraunces serif, padding, ResizeGrip decor), zoom smoothness fix (anchor lock + isolate ZoomBadge + alpha 0.20)
@@ -257,3 +296,21 @@ Preview toolbar/Unsort không có bug vì portal ra `document.body` — position
 - Đổi 6 token trong `src/styles/index.css` xuống 1-9 (hoặc 100-600 nếu muốn gap cho tier mới).
 - CSS var names giữ nguyên → mọi component dùng var tự follow, không breakage.
 - Tránh Tailwind default z-0..z-50, dùng z-index custom mapping trong `tailwind.config.ts`.
+
+## Badge "đang sửa ở tab khác" — polish sau (bạn chốt 2026-10-10: tạm OK)
+
+Hiện có (`components/RemoteEditBadge.tsx`): viền 2px `warning`, pill 30px đè góc trên phải lòi ra 14px, avatar icon người 22px, nhãn "You" / "Bạn", nút ×, vòng sáng `presence-pulse` 1.5s. Theo CSS Milanote `ElementUserTag`.
+
+Bạn đã test trên trình duyệt (C8-C10 pass 2026-10-11). Còn để sau:
+- Màu: đang `warning` (cam) để khác viền chọn `primary`. Khi có tài khoản: màu theo người (Milanote `--color-avatar-*`).
+- Avatar thật + tên người khác (spec `canvas-sharing`).
+- Nhãn có thể đè QuickLineDot cùng góc (hiện không sao vì object khoá không chọn được).
+
+## Unsort đang tách theo từng board — ĐÃ ĐÓNG, không phải lỗi
+
+(2026-10-12) Bạn kiểm lại: Unsort theo từng board là đúng, giữ như spec `canvas-unsort` (US-10). Không làm Unsort chung. Phần dưới giữ lại làm lịch sử, không dùng để quyết định.
+
+- Hiện tại: mỗi board có Unsort riêng (lọc `unsortIndex !== null && boardId === board đang mở`). Ném note vào Unsort ở board B, quay về Home → Unsort của Home không có note đó. Vào lại B mới thấy.
+- Bạn muốn: Unsort không ăn theo board, đi đâu cũng thấy cùng 1 danh sách (giống khay chờ chung). Bạn nói rõ thêm 2026-10-12: ở board nào cũng lấy note trong Unsort ra được (kéo ra canvas của board đang mở).
+- Chạm tới khi sửa: cách lưu (object trong Unsort vẫn mang `boardId` của board cũ, hay có "board" riêng cho Unsort), `loadObjects` theo chỉ mục `boardId` (Unsort chung phải nạp thêm phần Unsort ngoài board đang mở), kéo từ Unsort ra canvas thì đổi `boardId` sang board đang mở, đếm số, undo. Spec cũ `canvas-unsort` ghi Unsort theo board → spec mới phải có mục "Deprecates".
+- Kiểm lại Milanote trước khi viết spec: Unsort của Milanote là chung hay theo board (chưa đo, đừng đoán).

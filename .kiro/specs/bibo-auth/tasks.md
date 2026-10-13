@@ -1,6 +1,59 @@
 # Tasks — bibo-auth
 
-**Trạng thái**: Chờ duyệt
+**Trạng thái**: Phase 1-6 xong ở chế độ giả. Phase 7 chờ bạn duyệt (2026-10-13).
+
+> Ghi chú 2026-10-13 (Kiro kiểm máy): code ở `D:\develop\Side\bibo-hub\bibo-auth\` (viết 2026-09-28). Task 1-14 tick nhưng chỉ đúng ở chế độ giả (`.env` đang `BIBO_AUTH_MOCK=true`). Chế độ thật thiếu 3 chỗ, xem `design.md` mục "Lỗ hổng ở chế độ thật". `AGENTS.md` trong `bibo-auth` mục "Handoff notes" đã cũ.
+
+---
+
+## Phase 7: Chạy thật với Supabase (phase 1 tối thiểu, mở khoá `canvas-sync`)
+
+Thứ tự: 15 → 16 → 17 → 18 → 19 → 20. Task 15, 18 bạn làm trên dashboard, Kiro hướng dẫn và kiểm kết quả.
+
+- [ ] Task 15: Dựng 2 project mới + khoá ký (bạn làm)
+  - `docs/supabase-setup.md` bước 1-3: tạo project auth MỚI + project dữ liệu MỚI (Singapore), `npx supabase login`, sinh khoá ES256.
+  - Cất mật khẩu database + khoá riêng ngoài repo.
+  - Verify: bạn báo project ref + URL của 2 project. Kiro kiểm `bibo\` và `bibo-auth\` không chứa khoá riêng.
+
+- [ ] Task 16: Schema project auth mới
+  - Kiro viết migration tạo `profiles` + trigger tạo dòng khi có user mới, chạy trước migration OAuth. Sửa header migration OAuth (bỏ project ref cũ).
+    - Đã viết 2026-10-13: `20260927000000_profiles.sql` (bảng + `is_admin()` + policy đọc + trigger), `20261013000000_revoke_user_sessions.sql` (cho `/logout`, chỉ service_role gọi). Header OAuth đã sửa, seed `test-client` thêm `demo-app.html`. Chưa chạy trên project nào. Chưa kiểm: quyền xoá `auth.sessions` của owner hàm.
+  - Bạn chạy 2 migration (SQL Editor hoặc `npx supabase db push`).
+  - Thêm 1 client cho bibo bằng SQL, `redirect_uri` = trang callback dev của bibo.
+  - Tạo 1 user test trên dashboard, đặt `role = 'admin'` trong `profiles`.
+  - `.env` của `bibo-auth` đổi sang URL + key của project auth mới (bạn tự điền, Kiro không đọc giá trị).
+  - Verify: `SELECT` thấy `profiles`, `oauth_clients`, `auth_codes`, RLS bật; user test có dòng `profiles`.
+
+- [ ] Task 17: Sửa 3 lỗ hổng chế độ thật
+  - Endpoint server nhận access token sau đăng nhập → kiểm với project auth → đặt cookie `bibo_sso`.
+  - Login chế độ thật gọi endpoint đó, rồi chuyển cả trang tới `/authorize` của server.
+  - `/token` dùng `token_hash` khi đổi magic link lấy session.
+  - Thống nhất cổng API giữa `.env.example` và README.
+  - File: `bibo-auth/server/routes/*`, `bibo-auth/server/index.ts`, `bibo-auth/src/routes/Login.tsx`, `.env.example`.
+  - Tiến độ 2026-10-13: CODE XONG, chưa tick vì chưa chạy thật (chờ Task 15-16). Đã làm:
+    - `server/routes/session.ts` mới (`POST /session`: kiểm token bằng `getUser`, chỉ nhận origin SPA, đặt cookie). `server/index.ts` đăng ký + thêm origin SPA vào CORS.
+    - `server/lib/env-urls.ts` mới: tách `APP_BASE_URL` (server, 5180) và `AUTH_UI_URL` (SPA, 5174). Trước đó `/authorize` đẩy về `/login` trên cổng server (lỗi thứ 4, Kiro thấy khi sửa).
+    - `Login.tsx`: gọi `/session` rồi chuyển cả trang về `/authorize`; phiên hết thì bỏ phiên local và hiện lại form; bỏ `as any`; nhãn "Email" (username để sau).
+    - `token.ts`: `verifyOtp({ token_hash, type: 'magiclink' })`.
+    - `logout.ts`: kiểm `post_logout_redirect_uri` theo `client_id` (chống chuyển hướng mở, US-6); thu hồi phiên qua hàm SQL `revoke_user_sessions` vì `auth.admin.signOut` nhận JWT chứ không nhận user id (lỗi thứ 5, trước đó thất bại im lặng).
+    - `sso-cookie.ts`: bỏ `Domain=localhost`.
+    - Cổng thống nhất 5180 (`.env.example`, README, Login). `test/demo-app.html` gửi `client_id` khi đăng xuất. Sửa 1 lỗi lint cũ ở `mock-handlers.ts`.
+    - Đã kiểm ở chế độ giả bằng curl: `/authorize` không cookie → `localhost:5174/login?_auth=...`; có cookie → về app kèm `code`; `/logout` URI lạ → 400, đúng client → về URI đó. Build + lint pass (0 lỗi, 9 cảnh báo cũ).
+  - Verify: tắt chế độ giả, `test/demo-app.html` chạy hết authorize → token → làm mới token → đăng xuất; đăng nhập 1 lần, mở authorize lần 2 không hỏi mật khẩu (US-1, 2, 4, 6). Build + lint pass.
+
+- [ ] Task 18: Nhập khoá chung + tắt đăng ký (bạn làm)
+  - `docs/supabase-setup.md` bước 4 cho project auth rồi project dữ liệu (mỗi lần đổi khoá chờ ~5 phút). Bước 5 cho project dữ liệu.
+  - Verify: đăng nhập lại qua Task 17, header token mới có `kid` của khoá chung; gọi đăng ký ở project dữ liệu bị từ chối.
+
+- [ ] Task 19: Kiểm token chéo (US-11, bước 6)
+  - Tạo tạm hàm SQL trả `auth.uid()` ở project dữ liệu, gọi bằng token từ `/token`.
+  - Pass: ghi kết quả vào `docs/supabase-setup.md` bước 6, xoá hàm tạm.
+  - Fail (401 vì `iss` hoặc lý do khác): dừng, ghi lỗi, cùng bạn chọn dự phòng trước khi viết `canvas-sync`.
+  - Verify: trả đúng id user; token hết hạn / sai khoá bị 401.
+
+- [ ] Task 20: Cập nhật tài liệu
+  - `bibo-auth/AGENTS.md` (handoff), `bibo-auth/README.md` (cổng, cách chạy thật), `bibo\.kiro\notes\next-session-prompt.md` chỉ sang `canvas-sync`.
+  - Verify: tài liệu khớp code, không còn ghi "Task 3+ chưa làm".
 
 ---
 

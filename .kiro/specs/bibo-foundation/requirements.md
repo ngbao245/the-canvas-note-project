@@ -1,7 +1,7 @@
 # Yêu cầu — bibo-foundation
 
 **Trạng thái**: Đã duyệt  
-**Cập nhật cuối**: 2026-08-28
+**Cập nhật cuối**: 2026-10-13 (thêm Supabase + `bibo-auth` vào stack, chỉ ghi, không có task code)
 
 ## Mục tiêu
 
@@ -52,5 +52,5 @@ Là dev, tôi muốn ESLint + Prettier cài sẵn, để commit đầu tiên đ�
 ## Ngoài phạm vi
 
 - Bất kỳ tool cụ thể nào (Notes, Reader, Canvas...). Foundation chỉ là khung.
-- Backend, auth. Chờ tool đầu tiên cần.
+- Cài và dựng khung backend. Stack đã chốt 2026-10-13 (Supabase, auth qua `bibo-auth`, xem `design.md`), phần code làm ở `canvas-sync`.
 - CI, Storybook, E2E. Dịp sau.

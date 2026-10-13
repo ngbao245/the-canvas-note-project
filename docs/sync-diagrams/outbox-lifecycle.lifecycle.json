@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "bibo — Vòng đời 1 mục outbox",
+    "viewBox": [
+      980,
+      660
+    ],
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "main",
+        "label": "Đường chính",
+        "focus": [
+          "pending",
+          "sending",
+          "answer",
+          "done"
+        ],
+        "note": "Sửa object → chờ gửi → gửi → server trả lời → xoá mục."
+      },
+      {
+        "id": "retry",
+        "label": "Thử lại",
+        "focus": [
+          "sending",
+          "answer",
+          "retry",
+          "pending"
+        ],
+        "note": "Mất mạng, tab đóng, hoặc có sửa mới trong lúc gửi: mục quay lại chờ gửi."
+      },
+      {
+        "id": "exits",
+        "label": "Xung đột / từ chối",
+        "focus": [
+          "answer",
+          "conflict"
+        ],
+        "note": "Không thử lại. Chữ của bạn luôn được giữ trong Khay chờ."
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "Đường chính"
+    },
+    {
+      "id": "waiting",
+      "label": "Quay lại chờ"
+    },
+    {
+      "id": "terminal",
+      "label": "Kết thúc khác"
+    }
+  ],
+  "states": [
+    {
+      "id": "pending",
+      "type": "start",
+      "label": "Chờ gửi",
+      "sublabel": "gộp theo object + trường",
+      "lane": "main",
+      "col": 0,
+      "step": "01",
+      "tag": "IndexedDB"
+    },
+    {
+      "id": "sending",
+      "type": "active",
+      "label": "Đang gửi",
+      "sublabel": "apply_ops, throttle 2s",
+      "lane": "main",
+      "col": 1,
+      "step": "02",
+      "tag": "mạng"
+    },
+    {
+      "id": "answer",
+      "type": "decision",
+      "label": "Server trả lời",
+      "sublabel": "so baseVersion",
+      "lane": "main",
+      "col": 2,
+      "step": "03",
+      "tag": "kiểm"
+    },
+    {
+      "id": "done",
+      "type": "success",
+      "label": "Xong",
+      "sublabel": "xoá mục",
+      "lane": "main",
+      "col": 3,
+      "step": "04",
+      "tag": "đồng bộ"
+    },
+    {
+      "id": "retry",
+      "type": "waiting",
+      "label": "Quay lại chờ",
+      "sublabel": "mất mạng / có sửa mới",
+      "lane": "waiting",
+      "col": 0,
+      "tag": "giữ mục"
+    },
+    {
+      "id": "conflict",
+      "type": "failure",
+      "label": "Xung đột",
+      "sublabel": "hoặc bị từ chối",
+      "lane": "terminal",
+      "col": 1,
+      "tag": "không đè"
+    }
+  ],
+  "transitions": [
+    {
+      "id": "ack-newer",
+      "from": "answer",
+      "to": "retry",
+      "variant": "default",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight"
+    },
+    {
+      "id": "send-fail",
+      "from": "sending",
+      "to": "retry",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "retry-back",
+      "from": "retry",
+      "to": "pending",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "via": [
+        [
+          402,
+          372
+        ],
+        [
+          94,
+          372
+        ]
+      ]
+    },
+    {
+      "id": "to-exit",
+      "from": "answer",
+      "to": "conflict",
+      "variant": "security",
+      "fromSide": "right",
+      "toSide": "top",
+      "via": [
+        [
+          478,
+          157
+        ],
+        [
+          478,
+          385
+        ],
+        [
+          556,
+          385
+        ]
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Đường chính",
+      "items": [
+        "Gõ 100 phím vẫn chỉ 1 mục (gộp theo object + trường)",
+        "Mục chỉ xoá khi server ack đúng localRev",
+        "Thao tác nhiều object đi chung 1 nhóm"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Quay lại chờ",
+      "items": [
+        "Mất mạng, timeout: thử lại, chờ lâu dần",
+        "Tab đóng lúc gửi: gửi lại cùng opId, server bỏ trùng",
+        "Có sửa mới lúc gửi: giữ mục cho lượt sau"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Kết thúc khác",
+      "items": [
+        "Xung đột: bản server thắng, bản mình vào Khay chờ",
+        "Bị từ chối (mất quyền, đã xoá): không thử lại, chữ vào Khay chờ",
+        "Không nhánh nào làm mất chữ"
+      ]
+    }
+  ]
+}

@@ -16,7 +16,7 @@ Cập nhật cuối: 2026-09-18 (session Unsort polish).
 
 ## Placeholder chưa ship — dùng defaults này khi register
 
-Khi implement 1 type, put default vào `registerObjectType({ defaultGeometry })`.
+Khi implement 1 type, put default vào `defaultGeometry` của file định nghĩa `components/objects/{type}-type.ts(x)`, rồi thêm vào `OBJECT_TYPES` trong `objects/index.ts`.
 Sizes match Milanote pattern để UnsortItem preview trong panel trông tự nhiên.
 
 | Type | Width | Height | Ratio | Rationale |

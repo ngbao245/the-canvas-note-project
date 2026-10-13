@@ -1,11 +1,19 @@
 # Yêu cầu — bibo-auth
 
-**Trạng thái**: Nháp  
-**Cập nhật cuối**: 2026-09-28
+**Trạng thái**: TẠM DỪNG 2026-10-13. Bạn chốt đăng nhập nằm ngay trong app canvas, không có service SSO riêng (xem `bibo-foundation/design.md` dòng Auth). Spec này giữ làm lịch sử, không dùng cho quyết định mới. Phần nào dùng lại được (migration `profiles`, trang Login) sẽ ghi ở spec đăng nhập mới.  
+**Trạng thái cũ**: Nháp, sửa 2026-10-13  
+**Cập nhật cuối**: 2026-10-13
 
 ## Mục tiêu
 
 Dựng một auth service độc lập (`bibo-auth`) làm trung tâm xác thực cho toàn bộ hệ sinh thái bibo. Các app (bibo-hub, canvas, và các app tương lai) đều redirect sang đây để đăng nhập — user chỉ cần đăng nhập một lần (SSO). Supabase project auth hiện có (`fghrcpfxgdfibascmase`) làm backend lưu user/session.
+
+## ĐÃ CHỐT 2026-10-13
+
+- Dựng Supabase: chưa làm bước nào trong `docs/supabase-setup.md`. Task đầu là bạn dựng project.
+- Project auth: tạo project MỚI cho `bibo-auth` (bạn chốt 2026-10-13, để sạch và dễ mở rộng). Không dùng project auth cũ của donor (`fghrcpfxgdfibascmase`), không đụng donor. Hệ quả: tạo lại bảng `profiles` + user từ đầu. Ghi đè lựa chọn "dùng project cũ" mà Kiro ghi nhầm trước đó cùng ngày.
+- Phạm vi phase 1 tối thiểu: chạy thật với Supabase các US-1, US-2, US-4, US-6 + US-11 (kiểm token chéo). Các US còn lại có code sẵn nhưng chuyển xuống "Kiểm sau".
+- Code đã có ở `D:\develop\Side\bibo-hub\bibo-auth\` (2026-09-28), chỉ chạy được ở chế độ giả. Việc của phase 1 là cho chạy thật, không viết lại.
 
 ## User stories
 
@@ -98,10 +106,22 @@ Là **app consumer dạng backend/simple**, tôi muốn **gọi POST /verify v�
 - Cho `POST /verify` với valid bearer token, thì trả `{ valid: true, sub, username, role, allowed_tools }`.
 - Cho token expired/invalid, thì trả `{ valid: false }` (không throw 401 để app dễ handle).
 
+### US-11: Project dữ liệu tin token của project auth
+
+Là **bibo (app consumer)**, tôi muốn **gọi project dữ liệu bằng chính access token do `bibo-auth` cấp** để **RLS dùng `auth.uid()` chạy thẳng, client không cần khoá quản trị**.
+
+**Điều kiện chấp nhận**:
+- Cho project auth và project dữ liệu đã nhập chung 1 khoá ký và rotate xong, khi gọi 1 hàm SQL ở project dữ liệu trả `auth.uid()` kèm `Authorization: Bearer <access_token từ /token>` + publishable key của project dữ liệu, thì trả đúng id người dùng ở project auth.
+- Cho token hết hạn hoặc ký bằng khoá khác, khi gọi như trên, thì bị từ chối (401), không trả id.
+- Cho project dữ liệu đã tắt tự đăng ký, khi ai đó gọi đăng ký trực tiếp ở project dữ liệu, thì bị từ chối.
+
 ## Phân loại
 
-**Phải có (Phase 1)**:
-US-1, US-2, US-3, US-4, US-5, US-6, US-7, US-8, US-9, US-10
+**Phải có (Phase 1, sửa 2026-10-13)**:
+US-1, US-2, US-4, US-6, US-11. Đăng nhập bằng email là đủ. US-5 (đăng nhập bằng username) để "Kiểm sau" vì project mới chưa có hàm `lookup-username`.
+
+**Kiểm sau (code đã có, chỉ chạy ở chế độ giả)**:
+US-3, US-5, US-7, US-8, US-9, US-10. Phase 1 tạo user và đăng ký app bằng dashboard / SQL thay cho trang Admin.
 
 **Nên có (Phase 2 trở đi)**:
 - Forgot password / reset qua email
@@ -115,7 +135,7 @@ US-1, US-2, US-3, US-4, US-5, US-6, US-7, US-8, US-9, US-10
 
 ## Ngoài phạm vi (Phase 1)
 
-- Social login (Google, GitHub)
+- Social login (Google, GitHub). Bạn chốt 2026-10-13: đăng nhập Google CÓ làm, nhưng làm sau phase 1. Cách dự kiến: nút Google ở trang Login của `bibo-auth` gọi Supabase OAuth (provider Google bật ở project auth), xong vẫn đi chung đường đặt cookie `bibo_sso` như đăng nhập mật khẩu. App consumer không đổi gì.
 - Multi-tenant (organization)
 - Billing / subscription
 - Machine-to-machine token (client_credentials grant)

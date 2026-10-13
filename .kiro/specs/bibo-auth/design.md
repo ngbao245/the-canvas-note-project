@@ -1,6 +1,56 @@
 # Thiết kế — bibo-auth
 
-**Trạng thái**: Nháp
+**Trạng thái**: Nháp, sửa 2026-10-13 (chờ bạn duyệt)
+
+---
+
+## Sửa 2026-10-13: chạy thật + khoá ký chung
+
+### Vị trí code (ĐÃ CHỐT 2026-10-13)
+
+- `bibo-auth` giữ folder riêng `D:\develop\Side\bibo-hub\bibo-auth\`, không gộp vào `bibo\` kiểu landing. Lý do: có server Hono giữ `service_role_key` + `SSO_SECRET`, tách khỏi package của app.
+- Kiro được ghi vào folder này, cùng rule như `bibo\` (không commit, không ghi khoá bí mật).
+
+### Project và khoá
+
+- Project auth: tạo MỚI (ĐÃ CHỐT 2026-10-13), không dùng project auth của donor. Chứa `auth.users`, `profiles`, `oauth_clients`, `auth_codes`.
+- Project dữ liệu chính: tạo mới theo `docs/supabase-setup.md` bước 1.
+- Suất Free: project auth và project dữ liệu được nằm ở 2 tài khoản khác nhau (ĐÃ CHỐT 2026-10-13). Bạn tự xếp, donor không phải tạm dừng.
+- Migration `20260928000000_oauth_tables.sql` cần bảng `public.profiles` (RLS admin của `oauth_clients` đọc `profiles.role`). Project mới chưa có bảng này, nên phải thêm 1 migration tạo `profiles` (cột `id`, `username`, `role`, `allowed_tools`, `avatar_url`, `last_login_at`) + trigger tạo dòng `profiles` khi có user mới, chạy TRƯỚC migration OAuth. Mẫu đọc từ donor, không chép nguyên. Header file migration OAuth đang ghi project ref cũ, sửa lại.
+- Mọi project nhập chung 1 khoá ký ES256 (`docs/supabase-setup.md` bước 3-4). Token do project auth cấp (qua `/token`) dùng thẳng ở project dữ liệu.
+- `service_role_key` chỉ nằm ở server Hono của `bibo-auth` (cần cho `generateLink`, đọc `auth_codes`). Không bao giờ ra trình duyệt, không có trong biến `VITE_*`.
+
+### Lỗ hổng ở chế độ thật (Kiro đọc code 2026-10-13, chưa chạy thử)
+
+Code 2026-09-28 chạy trọn luồng chỉ ở chế độ giả. Chế độ thật thiếu 3 chỗ:
+
+1. Không có chỗ nào đặt cookie SSO sau khi đăng nhập thật. Chỉ `server/routes/mock-login.ts` gọi `createSsoCookie`. Trang Login chế độ thật gọi `signInWithPassword` ngay trên trình duyệt, xong không báo server. Hệ quả: `/authorize` luôn đẩy về `/login`, vòng lặp.
+   - Sửa: server thêm 1 endpoint nhận access token Supabase vừa đăng nhập, kiểm token với project auth (`getUser`), đúng thì đặt cookie `bibo_sso` (`httpOnly`, `Secure` khi production, `SameSite=Lax`). Trang Login gọi endpoint này kèm `credentials: 'include'`.
+2. Sau đăng nhập, Login chuyển tới `/authorize?...` bằng điều hướng trong SPA (cổng 5174), nhưng `/authorize` nằm ở server Hono, SPA không có route này nên rơi về `/account`.
+   - Sửa: chuyển cả trang (`window.location`) tới URL đầy đủ của server, hoặc cho Vite proxy `/authorize` sang server. Kiro nghiêng chuyển cả trang tới URL server: không phụ thuộc cấu hình dev, giống lúc deploy.
+3. `/token` gọi `verifyOtp({ email, token: hashed_token, type: 'magiclink' })`. Theo hiểu biết của Kiro (chưa đối chiếu tài liệu mới nhất), `token` là mã OTP 6 số; mã băm phải truyền qua `token_hash`, không kèm email. Sẽ lỗi khi chạy thật.
+   - Sửa: dùng `token_hash`, kiểm lại tên `type` hợp lệ ở bản supabase-js đang cài.
+
+Thêm: `.env.example` ghi cổng API 5180, README ghi 5175. Thống nhất 1 cổng khi sửa.
+
+Kiro thấy thêm 2 lỗi khi sửa (2026-10-13):
+
+4. `APP_BASE_URL` vừa dùng làm gốc server (well-known) vừa làm gốc trang `/login`. Sửa: tách `AUTH_UI_URL` cho SPA.
+5. `/logout` gọi `auth.admin.signOut(userId)`, nhưng hàm này nhận JWT. Sửa: hàm SQL `revoke_user_sessions(uuid)` xoá `auth.sessions` của user, chỉ service_role gọi. Access token đã cấp còn dùng tới hết hạn (1 giờ).
+
+`/logout` từ nay bắt buộc `client_id` khi có `post_logout_redirect_uri`, URI phải nằm trong danh sách của client.
+
+### Kiểm token chéo (US-11)
+
+- Ở project dữ liệu tạo tạm 1 hàm SQL trả `auth.uid()` (chạy trong SQL Editor, không đưa vào migration của `canvas-sync`, xoá sau khi kiểm).
+- Gọi qua REST `rpc` với publishable key của project dữ liệu + `Authorization: Bearer <access_token>`.
+- Rủi ro còn mở: token có `iss` là project auth. Nếu project dữ liệu từ chối vì khác nơi cấp thì dừng, chọn cùng bạn phương án dự phòng (Edge Function tự kiểm token như donor `workspace-proxy`), vì phương án đó đổi thiết kế RLS của `canvas-sync`.
+
+### Ngoài phase 1
+
+- `id_token` hiện chỉ là JSON mã base64, không ký. Phase 1 không dùng (bibo không đọc `id_token`). Muốn dùng phải ký đúng chuẩn trước.
+- Nối bibo vào `bibo-auth` (nút đăng nhập, trang callback, giữ token, tự làm mới) thuộc `canvas-sync`, không làm ở đây. Kiro tự chọn, bạn duyệt cùng spec này.
+- Deploy server Hono: chưa quyết. Phase 1 chạy local.
 
 ---
 
@@ -312,7 +362,7 @@ bibo-auth/                        ← folder riêng, ngoài bibo/
 
 ## Quyết định đã hoãn
 
-- Tạo Supabase project riêng cho bibo-auth hay dùng chung project auth của bibo-hub.
+- ~~Tạo Supabase project riêng cho bibo-auth hay dùng chung project auth của bibo-hub.~~ ĐÃ CHỐT 2026-10-13: tạo project auth mới.
 - `id_token` format đầy đủ (hiện tại đơn giản, sau có thể chuẩn OIDC `iss/aud/nonce`).
 - Rate limiting endpoint `/authorize` và `/token`.
 - Deploy target: Vercel Edge / Cloudflare Workers / VPS Node.

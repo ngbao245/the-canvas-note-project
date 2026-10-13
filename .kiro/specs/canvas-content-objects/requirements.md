@@ -44,6 +44,7 @@ Là người dùng, tôi muốn tạo Note ghi chữ, để lưu ý tưởng tr�
 - Cho Note, khi double-click, thì vào chế độ sửa, con trỏ focus vào title.
 - Cho đang sửa title, khi Enter, thì chuyển focus xuống body.
 - Cho đang sửa, khi blur ra ngoài / Escape / Ctrl+Enter, thì thoát sửa và lưu nếu nội dung đổi (undo được).
+  - **Đã thay (2026-10-09)** bởi `.kiro/specs/canvas-note-autosave/`: note tự lưu khi gõ; Ctrl+Enter giờ là lưu + tạo note mới bên dưới (US-4), chỉ blur / Escape còn là thoát sửa.
 - Cho Note đã có nội dung, khi reload trang, thì nội dung hiện lại đúng.
 
 ### US-3: Image object

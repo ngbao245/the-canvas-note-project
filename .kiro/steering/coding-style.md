@@ -87,6 +87,8 @@ Sai:
 
 Data màu do user chọn (highlight vàng/xanh/đỏ, diff added/removed) là ngoại lệ — hard-code được vì là data, không phải theme.
 
+Ngoại lệ thứ 2: giấy ký họa của landing (`src/routes/landing/sketch/` + `LandingPage.tsx`) dùng màu cứng (giấy, mực, đỏ, xanh) trong biến `--sk-*` của `sketch.css` và trong hình SVG, để giữ chất sổ vẽ dù đổi theme. Chỉ trong thư mục landing. Khung canvas thử (`src/routes/landing/demo/`) vẫn phải dùng token theme.
+
 ## Chọn chữ (user-select)
 
 Chặn theo vùng, không rải theo từng component.
@@ -162,7 +164,7 @@ Nguồn chuẩn: `--duration-fast` (60ms), `--duration-normal` (200ms), `--easin
 - `duration-normal`: hover, đổi màu ở chrome (header, settings, modal, menu) và mở / đóng panel.
 - `duration-fast`: thao tác trực tiếp trên canvas (toolbar type, popup note, object, nút thùng rác lúc kéo).
 - Cấm số cứng (`duration-200`, `duration-[60ms]`, `transition: ... 60ms`). Cần mức mới thì thêm token vào `index.css` + `tailwind.config.ts`, không viết số lẻ.
-- Ngoại lệ: Web Animations API (`el.animate`) không đọc `var()`, được ghi số / `cubic-bezier` trực tiếp, kèm comment trỏ về token (VD `SETTLE_EASING` trong `useObjectDrag.ts`).
+- Web Animations API (`el.animate`) không nhận `var()`: đọc token lúc chạy bằng `readCssToken('--easing-standard', 'ease')` từ `@/lib/css-token`, không chép giá trị sang TS.
 
 ## Console
 
@@ -197,7 +199,8 @@ console.warn('[canvas] persist failed', err);
   6. Helper (nếu có)
 
 - File component chỉ export component. Hàm / hằng số cần dùng ở file khác đặt trong `lib/`, hook đặt trong `hooks/`. Không export "phòng hờ": chưa có file nào import thì để nội bộ.
-  Ngoại lệ: file object canvas (`components/objects/*Object.tsx`) không export gì vì tự đăng ký qua `registerObjectType`, và file shadcn (mục trên). Hai chỗ này lint báo `react-refresh` là đã biết.
+  Ngoại lệ duy nhất: file shadcn (mục trên), lint báo `react-refresh` là đã biết.
+- Loại object canvas: renderer ở `components/objects/XxxObject.tsx` (chỉ export component), định nghĩa ở `xxx-type.ts(x)` (`ObjectTypeDefinition`), thêm vào mảng `OBJECT_TYPES` trong `objects/index.ts`. Không gọi `registerObjectType` trong file renderer.
 
 - Viền focus bàn phím: dùng `FOCUS_RING` từ `@/lib/focus-ring`, không chép chuỗi `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`. File cũ còn chuỗi chép tay thì đổi khi đụng tới.
 
@@ -253,9 +256,9 @@ Không tự viết inline copy-paste. Xem trực tiếp `src/components/shared/{
 
 Luật cấm áp cho mọi component. **Thêm, đổi hoặc hiển thị 1 phím tắt: đọc `.kiro/steering/shortcuts.md` trước** (cách khai báo, thứ tự lớp, key / code, hiển thị). File đó tự nạp khi mở file phím tắt, nhưng sửa component thường thì không, nên Kiro phải chủ động đọc.
 
-- Mọi phím đi qua bộ điều phối `@/lib/shortcuts`. Cấm tự gắn `addEventListener('keydown')` trên `window` / `document`. Ngoại lệ duy nhất: listener trên chính phần tử đang gõ (Tiptap, `onKeyDown` của ô nhập). Ô sửa 1 dòng dùng `editKeyHandler({ onCommit, onCancel })` từ `@/lib/dom`; listener tự viết phải kiểm `isImeComposing(e)` trước.
+- Mọi phím đi qua bộ điều phối `@/lib/shortcuts`. Cấm tự gắn `addEventListener('keydown')` trên `window` / `document`. Phím trong editor Tiptap: khai báo bằng extension `addKeyboardShortcuts` (mẫu: `src/tools/canvas/lib/note-commit-keys.ts`), không gắn `keydown` tay. Ô nhập thường dùng `onKeyDown` trên chính ô đó. Ô sửa 1 dòng dùng `editKeyHandler({ onCommit, onCancel })` từ `@/lib/dom`; listener tự viết phải kiểm `isImeComposing(e)` trước.
 - Hiện phím trong UI: dùng `<ShortcutWays def={...} />` hoặc `shortcutKeys(def, useKeyboardPlatform())`. Không tự viết `<Kbd>Ctrl</Kbd>`, không tính nhãn phím ở cấp module.
-- Thao tác chuột có phím giữ: `isPrimaryModifier(e)`, không viết `e.ctrlKey || e.metaKey`. Handler chọn / kéo bằng nút trái bỏ qua `isMacSecondaryClick(e)`. Ngoại lệ: zoom lăn chuột giữ `ctrlKey || metaKey` (pinch trackpad gửi `ctrlKey`).
+- Thao tác chuột có phím giữ: `isPrimaryModifier(e)`, không viết `e.ctrlKey || e.metaKey`. Handler chọn / kéo bằng nút trái bỏ qua `isMacSecondaryClick(e)`. Lăn chuột để zoom: `isZoomWheel(e)` (nhận cả Ctrl lẫn Cmd vì pinch trackpad gửi `ctrlKey`).
 - Popup / menu chỉ cần Esc: `useEscapeLayer(onClose, { enabled: open })`. Modal có Esc + giữ Tab: `useModalLayer(onClose, dialogRef, { enabled: open })`.
 - Không ghi cứng tổ hợp phím trong file dịch. Tooltip: `t('COMMON.WITH_SHORTCUT', { label, keys: shortcutKeys(DEFS['id']) })`.
 
@@ -317,7 +320,7 @@ const LABEL = t('CANVAS.HEADER.UNDO');                   // gọi t() ở ngoài
 
 - `title`, `aria-label`, `placeholder`, `alt` đều phải dịch, không chỉ chữ giữa thẻ.
 - `useToolbarPopupClose({ anchorLabel })` tìm nút mở theo `aria-label`. Dịch label của nút thì `anchorLabel` phải dùng cùng key, không thì click nút không đóng popup.
-- Tên mặc định của board ("Home", "New Board" trong `engine/actions.ts`, `lib/board-tree.ts`, `types.ts`): luôn tiếng Anh, KHÔNG đưa qua bộ dịch. `normalizeBoards` so tên "Home" / "Board", dịch là hỏng.
+- Tên mặc định của board ("Home", "New Board" trong `engine/actions.ts`, `types.ts`): luôn tiếng Anh, KHÔNG đưa qua bộ dịch, vì tên lưu vào dữ liệu.
 
 ### Tự kiểm tra (PowerShell, chạy ở gốc `bibo`)
 

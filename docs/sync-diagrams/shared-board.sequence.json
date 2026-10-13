@@ -1,0 +1,237 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "bibo — Nhiều người cùng 1 board",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1000,
+      1000
+    ],
+    "views": [
+      {
+        "id": "edit",
+        "label": "A đang sửa",
+        "focus": [
+          "a",
+          "room",
+          "db",
+          "b"
+        ],
+        "note": "A giữ khoá trong DB. B thấy nhãn tên A và chữ chạy qua bản xem trước."
+      },
+      {
+        "id": "drop",
+        "label": "A mất mạng",
+        "focus": [
+          "a",
+          "db",
+          "room",
+          "b"
+        ],
+        "note": "30s im lặng: nhãn \"mất kết nối\", khoá vẫn giữ. B bấm × nếu muốn. 5 phút: tự nhả."
+      },
+      {
+        "id": "takeover",
+        "label": "B bấm ×",
+        "focus": [
+          "b",
+          "room",
+          "db",
+          "a"
+        ],
+        "note": "A đã ngừng gõ: giành ngay. A đang gõ: xin quyền, A tự nhường."
+      }
+    ]
+  },
+  "participants": [
+    {
+      "id": "a",
+      "type": "external",
+      "label": "Người A",
+      "sublabel": "đang sửa note X"
+    },
+    {
+      "id": "room",
+      "type": "backend",
+      "label": "Kênh board",
+      "sublabel": "Presence + Broadcast"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "Supabase DB",
+      "sublabel": "khoá + nội dung"
+    },
+    {
+      "id": "b",
+      "type": "external",
+      "label": "Người B",
+      "sublabel": "đang xem board"
+    }
+  ],
+  "segments": [
+    {
+      "from": 160,
+      "to": 470,
+      "label": "A giữ note X"
+    },
+    {
+      "from": 490,
+      "to": 700,
+      "label": "A mất mạng"
+    },
+    {
+      "from": 720,
+      "to": 940,
+      "label": "B bấm × khi A còn kết nối"
+    }
+  ],
+  "messages": [
+    {
+      "from": "a",
+      "to": "db",
+      "y": 190,
+      "label": "giành khoá X (tự nhả sau 5 phút)",
+      "variant": "emphasis"
+    },
+    {
+      "from": "a",
+      "to": "room",
+      "y": 236,
+      "label": "Presence: A giữ X",
+      "variant": "default"
+    },
+    {
+      "from": "room",
+      "to": "b",
+      "y": 282,
+      "label": "hiện nhãn A, B không sửa được",
+      "variant": "return"
+    },
+    {
+      "from": "a",
+      "to": "room",
+      "y": 328,
+      "label": "xem trước chữ ~300-500ms",
+      "variant": "dashed"
+    },
+    {
+      "from": "room",
+      "to": "b",
+      "y": 374,
+      "label": "B thấy chữ chạy (không ghi DB)",
+      "variant": "dashed"
+    },
+    {
+      "from": "a",
+      "to": "db",
+      "y": 420,
+      "label": "outbox ~2s + gia hạn khoá ~10s",
+      "variant": "emphasis"
+    },
+    {
+      "from": "db",
+      "to": "room",
+      "y": 520,
+      "label": "30s không nghe A: vẫn giữ khoá",
+      "variant": "security"
+    },
+    {
+      "from": "room",
+      "to": "b",
+      "y": 566,
+      "label": "nhãn: A (mất kết nối)",
+      "variant": "return"
+    },
+    {
+      "from": "b",
+      "to": "db",
+      "y": 612,
+      "label": "B bấm ×: giành khoá X",
+      "variant": "emphasis"
+    },
+    {
+      "from": "db",
+      "to": "b",
+      "y": 658,
+      "label": "OK + bản bền vững (không ai bấm: 5 phút tự nhả)",
+      "variant": "return"
+    },
+    {
+      "from": "b",
+      "to": "room",
+      "y": 750,
+      "label": "A đang gõ: Xin quyền sửa",
+      "variant": "default"
+    },
+    {
+      "from": "room",
+      "to": "a",
+      "y": 796,
+      "label": "báo: B muốn sửa note này",
+      "variant": "return"
+    },
+    {
+      "from": "a",
+      "to": "db",
+      "y": 842,
+      "label": "đẩy outbox, nhả khoá",
+      "variant": "emphasis"
+    },
+    {
+      "from": "db",
+      "to": "b",
+      "y": 888,
+      "label": "B giành được (A ngừng gõ thì giành ngay)",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "a",
+      "from": 184,
+      "to": 426
+    },
+    {
+      "participant": "b",
+      "from": 606,
+      "to": 664
+    },
+    {
+      "participant": "a",
+      "from": 790,
+      "to": 848
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Khoá thật nằm trong DB",
+      "items": [
+        "Giành / gia hạn / nhả qua RPC, có expires_at",
+        "Presence chỉ để hiện nhãn tên",
+        "Mỗi note chỉ 1 người sửa, không cần ghép chữ"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Người xem thấy chữ chạy",
+      "items": [
+        "Bản xem trước chỉ chuyển tiếp, không ghi DB",
+        "Ghi DB vẫn ~2s, không đổi theo người xem",
+        "Nhả khoá thì người xem nạp lại bản bền vững"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Hai mốc thời gian",
+      "items": [
+        "30s im lặng: nhãn \"mất kết nối\", khoá vẫn giữ",
+        "5 phút im lặng: tự nhả, dọn khoá bỏ rơi",
+        "× là đường chính, không phải chờ"
+      ]
+    }
+  ]
+}

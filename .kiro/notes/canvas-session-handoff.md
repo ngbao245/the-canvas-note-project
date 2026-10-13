@@ -1,6 +1,6 @@
 # Canvas — Session Handoff
 
-Ghi 2026-09-18, cập nhật tới 2026-09-23 (mục cuối file). Đọc file này để nắm ngữ cảnh canvas thay vì replay lịch sử chat dài. Mục cũ ghi theo thời gian; chỗ nào bị session sau thay thế đã đánh dấu "(đã thay ở ...)".
+Ghi 2026-09-18, cập nhật tới 2026-10-11 (mục cuối file = việc còn mở). Đọc file này để nắm ngữ cảnh canvas thay vì replay lịch sử chat dài. Mục cũ ghi theo thời gian; chỗ nào bị session sau thay thế đã đánh dấu "(đã thay ở ...)".
 
 Liên quan: `.kiro/notes/canvas-backlog.md` (backlog feature chưa làm).
 
@@ -95,7 +95,7 @@ components/
     ObjectShell.tsx (93) — vỏ chung, flat/hand variant
     NoteObject.tsx (161) — Note renderer + inline editor
     RectObject.tsx (24) — debug
-    index.ts (4) — barrel side-effect register
+    index.ts — mảng OBJECT_TYPES, đăng ký mọi loại object (định nghĩa ở *-type.ts(x))
 api.ts (75) — CanvasRepository interface + IndexedDB adapter (idb-keyval)
 types.ts (112) — Zod schema object/board/geometry
 lib/content-bounds.ts (59) — dynamic zoom min + pan bounds
@@ -346,7 +346,7 @@ Object cũ giữ size cũ (không migrate). Chỉ note/board mới tạo dùng s
 MCP note: bibo KHÔNG có `.kiro/settings/mcp.json` (rule đó của donor). Chrome DevTools tools
 dùng trực tiếp, không cần config. Từ giờ Kiro hỏi user trước khi bật MCP.
 
-## Next feature (sau nested-boards)
+## Next feature (sau nested-boards) — LỖI THỜI, xem "Việc còn mở" cuối file
 
 - **Object types**: Image (blob IndexedDB, paste/drop/menu) → Link (fetch metadata) → To-do. Xem backlog.
 - **Task B (đã defer)**: Rail 56px + Workspace overlay (mockup 04). Chỉ có value khi bibo có ≥ 2 tool.
@@ -356,7 +356,7 @@ dùng trực tiếp, không cần config. Từ giờ Kiro hỏi user trước kh
 
 LƯU Ý: user reject 2 lần khi Kiro tự dựng Sidebar 232px / layout grid. Toolbar giữ dọc overlay. Workspace/Rail là feature riêng (Task B), KHÔNG tự refactor layout khi chỉ được yêu cầu thêm tile.
 
-## Build/lint status
+## Build/lint status (ghi lúc nested-boards, LỖI THỜI)
 
 - `npm run build` pass 10s (nested-boards).
 - `npm run lint`: 0 errors, 7 warnings (react-refresh only-export-components — 5 cũ + 2 mới từ BoardObject cùng pattern, non-blocking).
@@ -978,3 +978,97 @@ Thay mục "Cài đặt → Phím tắt" ở các mục trên: danh sách phím 
 Đang chờ bạn test bằng tay: 27 case spec shortcuts, 5 case ô sửa tên board / URL / bộ gõ, modal phím tắt (`/`, bấm nhóm, cuộn, Esc, giả lập Mac).
 Để sau: nút Tìm kiếm và Thông báo trên header vẫn là "Sắp có".
 Build pass, tsc + eslint sạch tại thời điểm ghi. Chưa commit.
+
+## Session 2026-10-08/09 — dọn code (chưa test trình duyệt) + note tự lưu
+
+### Dọn code session trước (chưa thử trên trình duyệt)
+- Chọn chữ: `select-none` đặt ở gốc vùng (CanvasSurface, UnsortPanel, CanvasHeader, Kbd). Editor note `select-text`.
+- Con trỏ 3 tầng: rule disabled trong index.css, `src/lib/cursor-override.ts` (`setCursorOverride`) thay `canvas-drag-invalid` và `style.cursor`.
+- Hằng ra lib: `src/lib/focus-ring.ts`, `src/lib/css-token.ts` (`readCssToken`), `isZoomWheel` trong `lib/shortcuts/pointer.ts`.
+- Thời gian chuyển động dùng token `duration-fast` / `duration-normal`, Tailwind trỏ biến CSS.
+- Định nghĩa object type tách ra `xxx-type.ts(x)`. Phím note chuyển sang Tiptap extension `lib/note-commit-keys.ts`.
+- Steering mới `.kiro/steering/shortcuts.md`.
+
+### Note tự lưu + khoá giữa tab + Ctrl+Enter (spec `.kiro/specs/canvas-note-autosave/`, 5/5 task, test tay pass 2026-10-11)
+
+Kiến trúc ghi:
+- `lib/write-queue.ts` (pure): 1 lô đang ghi, phần mới gom chờ, cùng id giữ thao tác mới nhất, không debounce.
+  Lỗi: giữ lại, dừng, lần enqueue / flush sau thử lại; KHÔNG reject caller (báo `onError`).
+  `flush({ urgent: true })`: ghi phần chờ ngay song song (IndexedDB chạy transaction ghi theo thứ tự tạo → vẫn đúng thứ tự).
+- `api.ts` `withWriteQueue`: mọi `saveObject` / `deleteObject` / `deleteObjectsByBoard` qua hàng đợi; mỗi lô 1 transaction,
+  đóng dấu `version`. `loadObjects` / `loadObject` tính cả phần chưa xuống đĩa. Ghi xong → BroadcastChannel báo tab khác.
+  Board vẫn ghi thẳng. Trạng thái lưu đo theo lô.
+- `types.ts`: `version` (default 0, chỉ hàng đợi tăng, caller không tự tăng).
+- `hooks/useCanvasPersistence.ts` (gắn ở route): ẩn tab / `pagehide` → đẩy gấp; nhận tin tab khác → đọc lại object, cập nhật
+  store (bỏ qua object tab này còn chờ ghi hoặc đang sửa); bật khoá sửa. `useBoardSync` chờ `flush` trước khi nạp board mới.
+
+Note:
+- Gõ → `setNoteBodySilently` (store + kênh `text`, không undo). Thoát sửa → `commitNoteBodyEdit` đúng 1 bước (chữ lúc vào sửa →
+  chữ cuối), không đổi thì không ghi. Undo / redo chỉ đổi chữ. Editor bị gỡ không qua Esc / blur (đổi board...) vẫn ghi bước.
+- `startBodyRef` chụp chữ lúc vào sửa: prop `initial` giờ đổi theo store mỗi lần gõ, KHÔNG dùng làm "trước".
+- Ctrl/Cmd+Enter (`onCommitAndNew`): thoát sửa + `createNoteBelow` (cùng cạnh trái, cách cạnh dưới 16px, size mặc định) + vào sửa.
+  Esc / click ngoài vẫn thoát. `updateObjectData` không còn dùng cho note.
+
+Khoá giữa tab (`lib/edit-locks.ts` + `store/remote-lock-store.ts`). Dòng "Bám `editingId`" dưới đây đã thay ở 2026-10-11: khoá theo mọi object đang CHỌN + đang sửa.
+- Bám `editingId`: đổi sang X thì xin Web Lock `bibo-canvas-edit:X` (ifAvailable). Không được → huỷ sửa + `showNotice`.
+  Mọi đường vào sửa đều qua đây. Khoá áp cho mọi object vào sửa (board tile đổi tên cũng khoá, vô hại).
+- Danh sách khoá của tab khác lấy từ `navigator.locks.query()`, hỏi lại khi có tin `locks`, khi focus, mỗi 3s lúc tab hiện.
+- RULE: object khoá ở tab khác KHÔNG vào được vùng chọn (`selection-store` lọc) → không kéo / resize / đổi màu / xoá / Ctrl+X...
+  Thao tác mới đụng object mà không qua vùng chọn thì phải tự kiểm `isLockedElsewhere`. Đã chặn thêm: double-click
+  (ObjectsLayer), pointerdown (useObjectDrag), nút tách đoạn (NoteView).
+- Thông báo ngắn: `store/notice-store.ts` + `components/CanvasNotice.tsx` (giữa mép trên canvas, tự ẩn 2.5s).
+
+Rủi ro đã chấp nhận: undo ở tab B có thể hồi chữ cũ của note tab A vừa sửa (để `canvas-sync` so `version`).
+Board (đổi tên, tạo) chưa đồng bộ giữa tab.
+
+Build pass, lint 0 lỗi (1 cảnh báo shadcn cũ). Chưa commit.
+
+### Fix 2026-10-10 sau test thủ công (spec `canvas-note-autosave`)
+- Kéo / resize góc: lúc đang kéo CHỈ đổi store (`applyMoveDelta`, `previewResize`), thả mới ghi (`commitMove` / `commitResize`). F5 giữa lúc kéo → về chỗ cũ. Huỷ kéo (pointercancel) và thả vào thùng rác cũng trả về chỗ cũ trước. `applyResize` (ghi ngay) chỉ còn cho note tự cao theo chữ.
+- Note: đổi tab làm editor blur → trước đây thoát sửa, nhả khoá, nên tab B sửa được (C2 "không thấy tính năng"). Giờ `onBlur` bỏ qua khi `!document.hasFocus()`.
+- Ctrl+Enter khi 1 note đang chọn (chưa sửa) cũng tạo note bên dưới + vào sửa (`canvas.new-note-below` trong `shortcuts.ts`, chạy ở `useCanvasKeys`).
+- Lỗi đã biết, CHƯA sửa: mở 2 tab cùng lúc trên dữ liệu trống → mỗi tab bootstrap tạo 1 board "Home", `normalizeBoards` gắn cái sau làm con cái trước → 2 tab ở 2 board khác nhau. Đã thấy khi test bằng MCP (2026-10-10).
+
+### 2026-10-10 — Badge "đang sửa ở tab khác" (Milanote `ElementUserTag` + `remote-selected`)
+- `components/RemoteEditBadge.tsx`: object khoá ở tab khác → viền `warning` 2px quanh card + pill đè góc trên phải, lòi ra 14px (avatar icon người + "You"/"Bạn" + nút ×). Pill co giãn theo zoom như note (không bù zoom). Pulse chỉ là box-shadow lan 16px (`tailwind.config.ts`), không scale. Gắn trong `ObjectView` (`ObjectsLayer.tsx`) theo `useRemoteLockStore`. Polish thêm để sau (backlog).
+- Nút × = `requestRelease(id)` (`lib/edit-locks.ts`) → tin `release` qua BroadcastChannel → tab đang sửa thoát sửa + bỏ chọn + báo `CANVAS.NOTE_LOCK.TAKEN`, nhả khoá → badge tab kia biến. Chữ không mất (đã tự lưu).
+- Viền `warning` để khác viền chọn `primary` của chính mình. Khi có tài khoản (`canvas-sharing`): thay icon + "Tab khác" bằng avatar + tên thật, màu theo người.
+- Đã thử bằng MCP 2 tab: badge hiện, × chạy.
+
+### Fix 2026-10-11 — khoá theo người CHỌN + B7
+- `lib/edit-locks.ts` viết lại: khoá = mọi object đang CHỌN + đang sửa (Milanote "khoá theo người chọn"), không chỉ đang sửa. Subscribe selection-store + editingId, `sync()` diff xin / nhả. Xin không được → bỏ chọn / huỷ sửa + báo.
+- B7 (click vùng trống khi đang sửa → bị bỏ chọn luôn): nguyên nhân là race lúc nhả khoá. `release` xoá khỏi `held` ngay, trình duyệt nhả bất đồng bộ → refresh định kỳ thấy khoá còn mà không phải của mình → coi là tab khác → selection-store tự bỏ chọn. Sửa: set `inFlight` giữ id lúc đang xin / đang nhả, refresh bỏ qua.
+- Đã thử MCP 2 tab: tab A chỉ chọn → tab B có badge; tab A sửa rồi thoát → vẫn chọn sau 4.5s.
+- Sửa lại B7 (bạn chốt 2026-10-11): đang sửa mà click vùng trống canvas → thoát sửa + BỎ CHỌN (về canvas). `usePointerInteraction` clear selection rồi để editor blur commit. Esc / nút Dismiss vẫn thoát 2 tầng (sửa → chọn → bỏ chọn).
+
+### 2026-10-11 — Đóng spec `canvas-note-autosave`
+- Bạn test thủ công pass hết (A1–A10, B1–B7, C1–C10, D1–D7). Spec chuyển "Xong".
+
+## Việc còn mở (nguồn chuẩn, cập nhật 2026-10-12)
+
+ĐÃ CHỐT thứ tự (bạn chốt 2026-10-12): test Task 1-2 `canvas-storage-v2` → Task 3 → service worker mở app khi offline (mục 4 dưới) → rồi mới tới backend (mục 3). Mục 1, 2, 4 đã xong code. VIỆC KẾ: mục 3 (sửa `bibo-foundation` thêm Supabase). Prompt mở session: `.kiro/notes/next-session-prompt.md`. (2026-10-13: mục 3 phần `bibo-foundation` xong, prompt đã đổi sang `bibo-auth`.)
+
+Danh sách việc:
+1. Spec `canvas-storage-v2` (đã viết 2026-10-12, chờ duyệt, `.kiro/specs/canvas-storage-v2/`). Chốt: IndexedDB thuần tự bọc, bỏ `idb-keyval`; dữ liệu cũ là test nên KHÔNG chuyển, xoá 2 database cũ; làm luôn khoá khởi động giữa tab (mục 2 dưới). Nội dung gốc: gộp 2 database IndexedDB (`bibo-canvas-boards`, `bibo-canvas-objects`) thành 1 database nhiều store, thêm chỉ mục `boardId` (hiện `loadObjects` quét mọi key), sửa `ObjectsLayer` render lại cả danh sách mỗi lần gõ (subscribe cả Map `objects`). Là nền cho outbox (`milanote-sync-architecture.md` mục 2.5, 2.10).
+2. (Đã sửa 2026-10-11 trong `canvas-storage-v2` Task 2, chờ test) Lỗi 2 board "Home".
+   `canvas-storage-v2` Task 1-2 xong code: 1 database `bibo-canvas` phiên bản 2 (boards, objects + chỉ mục boardId, cameras), lớp bọc `lib/idb.ts`, đã gỡ `idb-keyval`, bỏ code chuyển đổi dữ liệu cũ. Task 1-2 test pass 2026-10-12. Task 3 (render nhẹ khi gõ) test pass 2026-10-12. Spec `canvas-storage-v2` XONG. Bước tiếp: service worker (mục 4).
+3. (VIỆC KẾ) Backend. `bibo-foundation` đã ghi Supabase + `bibo-auth` (2026-10-13). Thứ tự: bạn dựng project theo `docs/supabase-setup.md` → `bibo-auth` → spec `canvas-sync` → `canvas-sharing`. Chia project: hướng A + chuẩn bị cho C (chốt 2026-10-13). Khi viết `canvas-sync` nhớ: cột chủ sở hữu, bảng "board → project", client theo board, gỡ `OfflineBadge`, `onblocked` trong `lib/idb.ts`. Đọc `milanote-sync-architecture.md` trước. Khi làm `canvas-sync`: gỡ nhãn tạm `OfflineBadge` (xem `docs/architecture.md` mục "Mở app khi offline"), chốt "xử lý ngầm" có mâu thuẫn với header 3 trạng thái không, xử `onblocked` trong `lib/idb.ts`.
+4. (XONG 2026-10-12, bạn test tay pass) Mở app khi offline: `vite-plugin-pwa` 2.0.0, `src/lib/pwa/`, `UpdateBanner`, `OfflineBadge` (tạm). Kiro đã thử MCP: F5 offline, link board sâu offline, thanh báo bản mới + "Tải lại", dev không có service worker. Chi tiết `docs/architecture.md` mục "Mở app khi offline".
+
+5. (Để sau, bạn chốt 2026-10-12) Cài bibo như app (PWA install): manifest (tên, màu, icon) + bộ icon nhiều cỡ → có icon trên taskbar, mở cửa sổ riêng không thanh địa chỉ. Không liên quan offline. Làm khi có icon chính thức; cần service worker của `app-offline` trước.
+
+Spec còn task mở (không chặn việc trên):
+- `canvas-content-objects` Task 5-9: Image + Link.
+- `canvas-unsort-multi-select` Task 5-7: kéo nhiều item trong Unsort.
+- `i18n` Task 5-7: bạn chuyển nốt chữ cứng, Kiro rà soát.
+- `settings` Task 11 (khoan, bạn đang cân nhắc). `shortcuts-modal`: 1 mục. `design-system` Task 9 hoãn.
+
+Chưa xác nhận (trạng thái spec ghi "chờ bạn test"): `canvas-nested-boards`, `canvas-unsort`, `canvas-landing-demo`, `shortcuts` (27 case), `shortcuts-modal`. Bạn xác nhận thì Kiro đổi sang "Xong".
+
+Polish để sau: badge khoá (backlog mục cuối), font app, lazy chunk Tiptap (route chunk ~580kb).
+
+### 2026-10-12 — Ngoài canvas, làm trong cùng session
+- Sửa 3 cảnh báo lint "import ngược": thêm `src/register-tools.ts` (file duy nhất nối tool với phần chung), sổ `src/lib/shortcuts/registry.ts`, `src/lib/data-stats.ts`. Luật nâng lên `error`. Lint chỉ còn cảnh báo shadcn `ui/button.tsx`.
+- Nhóm "Thường dùng" trong modal phím tắt: phím tự khai `display.essential: <số thứ tự>` trong bảng của tool, modal không giữ id nào.
+- Review còn treo (chưa sửa, làm cùng `canvas-sync`): `lib/idb.ts` chưa xử `onblocked` khi nâng phiên bản database; tab cũ bị đóng kết nối thì ghi lỗi tới khi F5. `aria-label` nút Unsort lúc đang tải vẫn đọc "0" (nhỏ).
+- Unsort theo từng board là ĐÚNG (bạn kiểm lại), không làm Unsort chung.

@@ -23,13 +23,17 @@ Gọi bạn là "bạn". Kiro xưng "Kiro". Không dùng "anh/em/mình/tớ/chú
 - React 18 + Tailwind 3 + shadcn/ui (copy vào repo, không dùng như package)
 - Zustand cho state UI, TanStack Query v5 cho state server
 - React Router v6
-- Backend, auth, deploy: chưa quyết, chờ tool đầu tiên cần
+- Offline: `vite-plugin-pwa` (Workbox), chỉ bản build app (spec `app-offline`)
+- Backend: Supabase, project dữ liệu riêng cho bibo (chốt 2026-10-13). `@supabase/supabase-js` chưa cài, cài ở `canvas-sync`
+- Auth: đăng nhập ngay trong app (Supabase Auth). Không có service SSO riêng (bạn chốt 2026-10-13, thay hướng `bibo-auth`). Sản phẩm chỉ có 2 phần: landing + app canvas
+- Deploy: chưa quyết
 
 Muốn đổi stack thì sửa spec `bibo-foundation` trước, không tự đổi trong code.
 
 ## Rule ghi file
 
 - Chỉ ghi vào `d:\develop\Side\bibo-hub\bibo\`.
+- Ngoại lệ (bạn cho quyền 2026-10-13): được ghi vào `D:\develop\Side\bibo-hub\bibo-auth\` (folder riêng, không gộp vào `bibo\`). Áp cùng rule: không commit, không push, không ghi khoá bí mật (`.env` chỉ đọc tên biến, không in giá trị).
 - Cấm ghi sang `d:\develop\Side\bibo-hub\bibo-hub\` (donor, chỉ đọc).
 - Copy code từ donor phải ghi rõ file nguồn trong commit hoặc task log.
 
@@ -72,8 +76,18 @@ Kiro thông báo trước khi chuyển mode, dạng: `[mode: planner] Bắt đ�
 Trước khi làm việc với một tool đã có handoff, Kiro tự đọc file handoff của tool đó để nắm ngữ cảnh, không chờ bạn đính kèm:
 
 - Canvas (`src/tools/canvas/`) → đọc `.kiro/notes/canvas-session-handoff.md` (state đã ship, kiến trúc, gotcha) + `.kiro/notes/canvas-backlog.md` (feature chưa làm).
+- Backend / lưu / đồng bộ (spec `canvas-sync`, `canvas-sharing`) → đọc `.kiro/notes/milanote-sync-architecture.md` trước. Không đo lại Milanote bằng MCP trừ câu ở mục "Chưa đo".
 
 Handoff là nguồn chuẩn cho trạng thái tool. Nếu handoff lệch với code thực tế thì tin code, rồi báo bạn để cập nhật handoff.
+
+## Cách bạn làm việc (rút từ các session trước)
+
+Session mới không có lịch sử chat, chỉ có file. Mấy thói quen dưới đây trước giờ chỉ nằm trong chat:
+
+- Bạn test tay, báo theo mã case (VD "B7 sai"). Case nào bạn không nhắc tới là đã test và OK, không hỏi lại.
+- Hướng sản phẩm: làm giống Milanote trước, rồi cải tiến. Hành vi chưa rõ thì tra `milanote-sync-architecture.md` / handoff trước khi hỏi.
+- Quyết định đã chốt trong chat phải ghi vào spec / handoff / note ngay trong lượt đó, không để tới cuối session.
+- Câu đã có trong mục "Câu cần chốt" của note / spec thì hỏi được (chưa ai trả lời). Câu đã ghi "ĐÃ CHỐT" thì không hỏi lại.
 
 ## Rule cứng khi hỏi
 
@@ -97,10 +111,13 @@ Chưa có skill nào — khi bạn import bộ skill vào folder này thì Kiro 
 
 ## Trạng thái hiện tại
 
-Cập nhật 2026-09-18.
+Cập nhật 2026-10-12.
 
-- Foundation xong (`bibo-foundation`). Build + lint pass, 0 error (8 warning react-refresh có chủ ý, không cần sửa: 7 ở file object đăng ký qua registry nên không export, 1 ở `ui/button.tsx` theo bản gốc shadcn).
+- Foundation xong (`bibo-foundation`). Build + lint pass, 0 error (1 warning react-refresh ở `ui/button.tsx`, giữ theo bản gốc shadcn, không cần sửa).
 - Đã `git init`. Chưa commit lần nào.
 - Tool đang làm: **Canvas** (`src/tools/canvas/`). Chi tiết state + kiến trúc ở `.kiro/notes/canvas-session-handoff.md`.
-- Refactor B2 (tách file cho dễ đọc + rút helper reuse) đã xong toàn bộ 4 nhóm. Handoff cập nhật.
-- Bước tiếp: soạn nốt bộ rule + doc (đang làm), rồi sang feature mới hoặc object type.
+- Spec gần nhất xong: `canvas-note-autosave` (note tự lưu, hàng đợi ghi, khoá giữa tab theo người chọn, badge, Ctrl+Enter), test tay pass 2026-10-11.
+- 2026-10-13: đã ghi Supabase + `bibo-auth` vào `bibo-foundation`. Thứ tự mới: `bibo-auth` → `canvas-sync` → `canvas-sharing`. Hướng dẫn dựng project: `docs/supabase-setup.md` (board ở 1 project chính, file chia nhiều project, đã chốt).
+- `canvas-storage-v2` xong 2026-10-12. `app-offline` xong 2026-10-12 (service worker, bạn test pass). Mở session mới bằng `.kiro/notes/next-session-prompt.md`.
+- Landing tách bản build riêng (domain gốc), app ở domain `app.`: `npm run dev:landing` / `build:landing`, chi tiết `docs/architecture.md` mục "2 bản build". App `/` chuyển thẳng vào `/canvas`.
+- Landing (spec `canvas-landing-demo`, 2026-10-10): canvas mini thử ngay trên trang + phần ký họa. Canvas mini nằm ở `src/routes/landing/demo/`, độc lập hẳn canvas thật: không import `src/tools/canvas/`, không lưu dữ liệu. Canvas thật đổi giao diện thì demo không tự theo.
