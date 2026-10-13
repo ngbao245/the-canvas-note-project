@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bibo — Canvas (04b, hướng riêng)</title>
+<link rel="stylesheet" href="shared.css" />
+<script src="icons.js"></script>
+<!--
+  Mockup 04b: hướng giao diện riêng của bibo, không theo khung Milanote.
+  Ý chính:
+  - Canvas tràn màn hình, mọi điều khiển là "đảo" nổi bo tròn (không sidebar, không header 2 hàng).
+  - Dock trái chỉ icon nét, có tooltip + phím tắt. Có công cụ Hình khối và Dây nối.
+  - Note: nền màu nhạt phủ cả card, bo 12px, chữ không chân. Không dải màu trên đầu.
+  - Board tile: card có ảnh thu nhỏ nội dung bên trong.
+  - Chọn object: thanh thao tác nổi ngay trên vùng chọn + 4 chấm nối giữa cạnh.
+  - Ghi nhanh (brain dump) ở đáy, Khay chờ là ngăn kéo nổi mở từ dock.
+  - Một board chứa cả 3 kiểu dùng: xả ý tưởng, mind map, sơ đồ.
+-->
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  body { background: var(--background); }
+
+  .stage {
+    position: fixed; inset: 0; overflow: hidden;
+    background-color: var(--background);
+    background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--foreground) 9%, transparent) 1px, transparent 0);
+    background-size: 24px 24px;
+  }
+  .world { position: absolute; inset: 0; transform-origin: 0 0; }
+  .links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+
+  /* ---- Đảo nổi dùng chung ---- */
+  .island {
+    position: absolute; z-index: 20;
+    background: color-mix(in srgb, var(--card) 92%, transparent);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(12px);
+  }
+  .ibtn {
+    height: 32px; min-width: 32px; padding: 0 8px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    border: 0; border-radius: 9px; background: transparent;
+    color: var(--muted-foreground); font-size: 12.5px;
+    transition: background var(--duration-normal) var(--easing-standard), color var(--duration-normal) var(--easing-standard);
+  }
+  .ibtn:hover { background: var(--muted); color: var(--foreground); }
+  .ibtn.active { background: var(--primary-soft); color: var(--primary); }
+  .sep-v { width: 1px; height: 18px; background: var(--border); margin: 0 4px; }
+  .sep-h { height: 1px; width: 22px; background: var(--border); margin: 4px auto; }
+  kbd { font: 11px/1 inherit; padding: 2px 5px; border: 1px solid var(--border-strong); border-radius: 5px; background: var(--muted); color: var(--muted-foreground); }
+</style>
+<style>
+  /* ---- Header: 2 đảo 1 hàng ở góc trên, giữa để trống cho canvas ---- */
+  .top-left { top: 12px; left: 12px; display: flex; align-items: center; gap: 2px; padding: 4px; }
+  .logo { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--foreground); color: var(--background); font-weight: 800; font-size: 13px; margin-right: 4px; }
+  .crumb { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border-radius: 8px; font-size: 13px; color: var(--muted-foreground); border: 0; background: transparent; }
+  .crumb:hover { background: var(--muted); color: var(--foreground); }
+  .crumb .sw { width: 10px; height: 10px; border-radius: 3px; }
+  .crumb.current { color: var(--foreground); font-weight: 650; cursor: text; }
+  .crumb-sep { color: var(--subtle-foreground); font-size: 12px; }
+  .save { font-size: 11.5px; color: var(--subtle-foreground); padding: 0 8px; display: inline-flex; align-items: center; gap: 5px; }
+  .save i { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+
+  .top-right { top: 12px; right: 12px; display: flex; align-items: center; gap: 2px; padding: 4px; }
+  .btn-share { height: 30px; padding: 0 12px; border: 0; border-radius: 9px; background: var(--primary); color: var(--primary-foreground); font-size: 12.5px; font-weight: 650; }
+  .btn-share:hover { background: var(--primary-hover); }
+  .me { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); font-size: 11px; font-weight: 750; margin-left: 4px; }
+
+  /* ---- Dock trái: thanh dọc nổi, chỉ icon ---- */
+  .dock { left: 12px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px; }
+  .dock .ibtn { width: 36px; height: 36px; padding: 0; position: relative; }
+  .dock .ibtn .icon { width: 19px; height: 19px; }
+  .dock .badge { position: absolute; top: 3px; right: 3px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px; background: var(--warning); color: #1a1a1a; font-size: 9.5px; font-weight: 800; line-height: 15px; }
+  /* Tooltip: tên + phím tắt, hiện bên phải */
+  [data-tip] { position: relative; }
+  [data-tip]::after {
+    content: attr(data-tip); position: absolute; left: calc(100% + 10px); top: 50%; transform: translate(-4px, -50%);
+    white-space: nowrap; font-size: 11.5px; padding: 5px 8px; border-radius: 7px;
+    background: var(--foreground); color: var(--background); opacity: 0; pointer-events: none;
+    transition: opacity var(--duration-normal) var(--easing-standard), transform var(--duration-normal) var(--easing-standard);
+  }
+  [data-tip]:hover::after { opacity: 1; transform: translate(0, -50%); }
+
+  /* ---- Đáy: ghi nhanh giữa, minimap + zoom phải ---- */
+  .capture { bottom: 14px; left: 50%; transform: translateX(-50%); width: min(520px, calc(100vw - 420px)); display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; }
+  .capture input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 13px; color: var(--foreground); }
+  .capture input::placeholder { color: var(--subtle-foreground); }
+  .capture .hint { font-size: 11px; color: var(--subtle-foreground); display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
+  .nav { right: 12px; bottom: 14px; padding: 6px; display: flex; flex-direction: column; gap: 6px; }
+  .minimap { width: 168px; height: 104px; border-radius: 9px; background: var(--background); border: 1px solid var(--border); position: relative; overflow: hidden; }
+  .minimap i { position: absolute; border-radius: 2px; background: var(--muted-foreground); opacity: 0.45; }
+  .minimap .view { position: absolute; border: 1.5px solid var(--primary); border-radius: 4px; background: var(--primary-soft); }
+  .zoom { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--muted-foreground); }
+</style>
+<style>
+  /* ---- Object chung ---- */
+  .obj { position: absolute; z-index: 2; user-select: none; cursor: move; }
+  .obj.selected { z-index: 5; }
+  .obj.selected::before { content: ''; position: absolute; inset: -4px; border: 1.5px solid var(--primary); border-radius: 15px; pointer-events: none; }
+  .obj.shape-diamond.selected::before { border-radius: 6px; }
+
+  /* Note: màu nhạt phủ cả card, viền cùng tông. Màu note là data người dùng chọn. */
+  .note {
+    --c: #a1a1aa;
+    background: color-mix(in srgb, var(--c) 14%, var(--card));
+    border: 1px solid color-mix(in srgb, var(--c) 34%, var(--border));
+    border-radius: 12px; padding: 12px 14px;
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--foreground) 4%, transparent), var(--shadow-soft);
+    font-size: 13px; line-height: 1.5;
+  }
+  .note h4 { margin: 0 0 4px; font-size: 13.5px; font-weight: 700; letter-spacing: -0.01em; }
+  .note p { margin: 0; color: color-mix(in srgb, var(--foreground) 82%, transparent); }
+  .note .meta { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .note .tag { font-size: 10.5px; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--c) 22%, transparent); color: color-mix(in srgb, var(--c) 70%, var(--foreground)); }
+  .note ul { margin: 4px 0 0; padding-left: 16px; }
+  .note li { margin: 1px 0; }
+  .c-amber { --c: #f59e0b; } .c-sky { --c: #38bdf8; } .c-rose { --c: #fb7185; }
+  .c-lime { --c: #84cc16; } .c-violet { --c: #a78bfa; } .c-gray { --c: #a1a1aa; }
+
+  /* Mind map: nút trung tâm + nhánh dạng viên thuốc */
+  .mm-root { padding: 12px 18px; border-radius: 16px; background: var(--foreground); color: var(--background); font-weight: 750; font-size: 15px; box-shadow: var(--shadow); }
+  .mm-node { padding: 7px 13px; border-radius: 999px; font-size: 12.5px; font-weight: 600; border: 1px solid color-mix(in srgb, var(--c) 45%, var(--border)); background: color-mix(in srgb, var(--c) 16%, var(--card)); }
+  .mm-leaf { padding: 4px 10px; border-radius: 999px; font-size: 12px; color: var(--muted-foreground); background: var(--card); border: 1px solid var(--border); }
+  .mm-collapse { position: absolute; right: -9px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--card); font-size: 10px; display: grid; place-items: center; color: var(--muted-foreground); }
+
+  /* Sơ đồ: hình khối */
+  .shape { display: grid; place-items: center; text-align: center; font-size: 12.5px; font-weight: 600; padding: 8px; }
+  .shape-rect { border-radius: 10px; background: var(--card); border: 1.5px solid var(--border-strong); }
+  .shape-pill { border-radius: 999px; background: color-mix(in srgb, var(--c) 18%, var(--card)); border: 1.5px solid color-mix(in srgb, var(--c) 50%, var(--border)); }
+  .shape-diamond { background: transparent; }
+  .shape-diamond svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .shape-diamond span { position: relative; }
+
+  /* Board tile: card có ảnh thu nhỏ nội dung bên trong */
+  .board-tile { width: 196px; border-radius: 12px; background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-soft); overflow: hidden; }
+  .board-tile .thumb { height: 92px; position: relative; background-color: color-mix(in srgb, var(--c) 10%, var(--background)); background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--foreground) 8%, transparent) 1px, transparent 0); background-size: 10px 10px; border-bottom: 1px solid var(--border); }
+  .board-tile .thumb i { position: absolute; border-radius: 3px; background: color-mix(in srgb, var(--c) 45%, var(--card)); }
+  .board-tile .foot { display: flex; align-items: center; gap: 8px; padding: 8px 10px; }
+  .board-tile .foot b { font-size: 12.5px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .board-tile .foot span { font-size: 11px; color: var(--subtle-foreground); }
+  .board-tile .sw { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+
+  .zone-label { position: absolute; z-index: 1; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--subtle-foreground); }
+</style>
+<style>
+  /* ---- Chọn object: 4 chấm nối giữa cạnh + nút resize góc ---- */
+  .handles { position: absolute; inset: -4px; pointer-events: none; display: none; }
+  .obj.selected .handles, .obj:hover .handles.hover-only { display: block; }
+  .cdot { position: absolute; width: 10px; height: 10px; border-radius: 50%; background: var(--card); border: 2px solid var(--primary); pointer-events: auto; cursor: crosshair; transition: transform var(--duration-fast) var(--easing-standard); }
+  .cdot:hover { transform: scale(1.25); }
+  .cdot.t { top: -5px; left: calc(50% - 5px); } .cdot.b { bottom: -5px; left: calc(50% - 5px); }
+  .cdot.l { left: -5px; top: calc(50% - 5px); } .cdot.r { right: -5px; top: calc(50% - 5px); }
+  .rsz { position: absolute; right: -4px; bottom: -4px; width: 10px; height: 10px; border-radius: 3px; background: var(--primary); pointer-events: auto; cursor: nwse-resize; }
+
+  /* ---- Thanh thao tác nổi trên vùng chọn ---- */
+  .ctx { display: none; align-items: center; gap: 2px; padding: 4px; z-index: 25; transform: translate(-50%, calc(-100% - 12px)); }
+  .ctx.show { display: flex; }
+  .ctx .dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--border-strong); padding: 0; }
+  .ctx .dot.on { box-shadow: 0 0 0 2px var(--primary); }
+  .ctx .colors { display: flex; gap: 5px; padding: 0 6px; }
+
+  /* ---- Khay chờ: ngăn kéo nổi mở từ dock ---- */
+  .inbox { left: 64px; top: 50%; width: 264px; max-height: min(520px, calc(100vh - 160px)); padding: 12px; display: flex; flex-direction: column; gap: 8px;
+    opacity: 0; pointer-events: none; transform: translate(-8px, -50%);
+    transition: opacity var(--duration-normal) var(--easing-standard), transform var(--duration-normal) var(--easing-standard); }
+  .inbox.show { opacity: 1; pointer-events: auto; transform: translate(0, -50%); }
+  .inbox-head { display: flex; align-items: center; gap: 8px; }
+  .inbox-head strong { flex: 1; font-size: 13px; }
+  .inbox-desc { font-size: 11.5px; color: var(--subtle-foreground); margin: 0; }
+  .inbox-list { display: grid; gap: 6px; overflow-y: auto; scrollbar-width: none; }
+  .inbox-item { border-radius: 10px; padding: 8px 10px; font-size: 12.5px; cursor: grab; }
+  .inbox-item:hover { border-color: var(--border-strong); }
+
+  /* ---- Ghi chú so sánh cho mockup ---- */
+  .legend[hidden] { display: none; }
+  .legend { position: absolute; z-index: 30; top: 104px; right: 12px; width: 260px; padding: 12px 14px; font-size: 12px; color: var(--muted-foreground); }
+  .legend b { color: var(--foreground); }
+  .legend ol { margin: 6px 0 0; padding-left: 18px; }
+  .legend li { margin: 3px 0; }
+  .legend .x { position: absolute; top: 6px; right: 6px; }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="world" id="world">
+    <svg class="links" id="links"></svg>
+
+    <!-- ===== Vùng 1: Xả ý tưởng ===== -->
+    <div class="zone-label" style="left: 92px; top: 70px;">Xả ý tưởng</div>
+
+    <div class="obj note c-amber" data-id="n1" data-kind="note" style="left: 92px; top: 96px; width: 220px;">
+      <h4>App ghi chú cho team nhỏ</h4>
+      <p>Không cần đăng nhập để thử. Mở link là vẽ được luôn.</p>
+      <div class="meta"><span class="tag">ý tưởng</span></div>
+    </div>
+    <div class="obj note c-sky" data-id="n2" data-kind="note" style="left: 330px; top: 110px; width: 170px;">
+      <p>Dán link YouTube → tự ra card có ảnh bìa</p>
+    </div>
+    <div class="obj note c-gray" data-id="n3" data-kind="note" style="left: 110px; top: 238px; width: 190px;">
+      <h4>Câu hỏi</h4>
+      <ul><li>Offline trước?</li><li>Chia sẻ bằng link?</li><li>Giá bao nhiêu?</li></ul>
+    </div>
+    <div class="obj note c-rose" data-id="n4" data-kind="note" style="left: 318px; top: 214px; width: 182px;">
+      <p>Đối thủ: Milanote, Miro, tldraw. Mình hơn ở <b>gõ liền tay</b>.</p>
+    </div>
+    <div class="obj note c-lime" data-id="n5" data-kind="note" style="left: 318px; top: 322px; width: 182px;">
+      <p>Ctrl+Enter = note mới ngay dưới, gõ không dừng</p>
+    </div>
+
+    <!-- Board tile có ảnh thu nhỏ -->
+    <div class="obj board-tile c-violet" data-id="b1" data-kind="board" style="left: 92px; top: 420px; --c: #a78bfa;">
+      <div class="thumb">
+        <i style="left: 12px; top: 12px; width: 48px; height: 30px;"></i>
+        <i style="left: 68px; top: 18px; width: 36px; height: 22px;"></i>
+        <i style="left: 18px; top: 50px; width: 40px; height: 28px;"></i>
+        <i style="left: 120px; top: 30px; width: 56px; height: 40px; border-radius: 999px;"></i>
+      </div>
+      <div class="foot"><span class="sw"></span><b>Moodboard UI</b><span>14</span></div>
+    </div>
+    <div class="obj board-tile" data-id="b2" data-kind="board" style="left: 304px; top: 420px; --c: #38bdf8;">
+      <div class="thumb">
+        <i style="left: 70px; top: 32px; width: 54px; height: 24px; border-radius: 999px;"></i>
+        <i style="left: 14px; top: 14px; width: 34px; height: 16px; border-radius: 999px;"></i>
+        <i style="left: 14px; top: 62px; width: 34px; height: 16px; border-radius: 999px;"></i>
+        <i style="left: 146px; top: 14px; width: 34px; height: 16px; border-radius: 999px;"></i>
+        <i style="left: 146px; top: 62px; width: 34px; height: 16px; border-radius: 999px;"></i>
+      </div>
+      <div class="foot"><span class="sw"></span><b>Roadmap Q4</b><span>9</span></div>
+    </div>
+
+    <!-- ===== Vùng 2: Mind map (Tab = nhánh con, Enter = nhánh cùng cấp) ===== -->
+    <div class="zone-label" style="left: 600px; top: 70px;">Mind map</div>
+
+    <div class="obj mm-root" data-id="root" data-kind="mind" style="left: 600px; top: 272px;">Ra mắt bibo</div>
+
+    <div class="obj mm-node c-amber" data-id="m1" data-kind="mind" style="left: 800px; top: 140px;">Sản phẩm</div>
+    <div class="obj mm-node c-sky" data-id="m2" data-kind="mind" style="left: 800px; top: 232px;">Người dùng<span class="mm-collapse" title="Thu gọn nhánh">−</span></div>
+    <div class="obj mm-node c-lime" data-id="m3" data-kind="mind" style="left: 800px; top: 324px;">Kênh</div>
+    <div class="obj mm-node c-rose" data-id="m4" data-kind="mind" style="left: 800px; top: 416px;">Rủi ro<span class="mm-collapse" title="Mở nhánh">+</span></div>
+
+    <div class="obj mm-leaf" data-id="l1" data-kind="mind" style="left: 960px; top: 120px;">Canvas</div>
+    <div class="obj mm-leaf" data-id="l2" data-kind="mind" style="left: 960px; top: 160px;">Ghi nhanh</div>
+    <div class="obj mm-leaf" data-id="l3" data-kind="mind" style="left: 960px; top: 214px;">Sinh viên</div>
+    <div class="obj mm-leaf" data-id="l4" data-kind="mind" style="left: 960px; top: 254px;">Team nhỏ</div>
+    <div class="obj mm-leaf" data-id="l5" data-kind="mind" style="left: 960px; top: 324px;">Cộng đồng</div>
+
+    <!-- ===== Vùng 3: Sơ đồ (hình khối + dây có mũi tên, có nhãn) ===== -->
+    <div class="zone-label" style="left: 600px; top: 540px;">Sơ đồ</div>
+
+    <div class="obj shape shape-pill" data-id="s1" data-kind="shape" style="left: 600px; top: 600px; width: 120px; height: 46px; --c: #84cc16;">Có ý tưởng</div>
+    <div class="obj shape shape-rect" data-id="s2" data-kind="shape" style="left: 770px; top: 596px; width: 140px; height: 54px;">Ghi nhanh vào board</div>
+    <div class="obj shape shape-diamond" data-id="s3" data-kind="shape" style="left: 960px; top: 578px; width: 120px; height: 90px;">
+      <svg viewBox="0 0 120 90" preserveAspectRatio="none"><path d="M60 2 L118 45 L60 88 L2 45 Z" fill="var(--card)" stroke="var(--border-strong)" stroke-width="1.5"/></svg>
+      <span>Đủ rõ?</span>
+    </div>
+    <div class="obj shape shape-rect" data-id="s4" data-kind="shape" style="left: 1130px; top: 596px; width: 130px; height: 54px;">Chuyển thành task</div>
+    <div class="obj shape shape-rect" data-id="s5" data-kind="shape" style="left: 950px; top: 720px; width: 140px; height: 50px;">Để vào Khay chờ</div>
+  </div>
+
+  <!-- ===== Header: 1 hàng, tách 2 đảo ===== -->
+  <div class="island top-left">
+    <span class="logo">b</span>
+    <button class="crumb">Home</button><span class="crumb-sep">/</span>
+    <button class="crumb"><span class="sw" style="background:#38bdf8"></span>Dự án</button><span class="crumb-sep">/</span>
+    <button class="crumb current" title="Double-click để đổi tên"><span class="sw" style="background:#f59e0b"></span>Ý tưởng app ghi chú</button>
+    <span class="save"><i></i>Đã lưu</span>
+  </div>
+  <div class="island top-right">
+    <button class="ibtn" title="Hoàn tác (Ctrl+Z)"><svg class="icon icon-sm" style="transform: scaleX(-1)"><use href="#i-arrow-right"/></svg></button>
+    <button class="ibtn" title="Tìm trong board (Ctrl+F)"><svg class="icon icon-sm"><use href="#i-search"/></svg></button>
+    <button class="ibtn" title="Xuất"><svg class="icon icon-sm"><use href="#i-download"/></svg></button>
+    <button class="ibtn" id="themeBtn" title="Đổi giao diện sáng / tối"><svg class="icon icon-sm"><use href="#i-moon"/></svg></button>
+    <span class="sep-v"></span>
+    <button class="btn-share">Chia sẻ</button>
+    <span class="me">BN</span>
+  </div>
+
+  <!-- ===== Dock trái ===== -->
+  <nav class="island dock" aria-label="Công cụ">
+    <button class="ibtn active" data-tip="Chọn  V"><svg class="icon"><use href="#i-arrow-right"/></svg></button>
+    <button class="ibtn" data-tip="Kéo màn hình  H"><svg class="icon"><use href="#i-grid"/></svg></button>
+    <span class="sep-h"></span>
+    <button class="ibtn" data-tip="Note  N"><svg class="icon"><use href="#i-note"/></svg></button>
+    <button class="ibtn" data-tip="Hình khối  S"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2"/><circle cx="17" cy="7" r="4"/><path d="M12 13l5 8H7z"/></svg></button>
+    <button class="ibtn" data-tip="Dây nối  C"><svg class="icon" viewBox="0 0 24 24"><circle cx="5" cy="18" r="2"/><circle cx="19" cy="6" r="2"/><path d="M7 17c6 0 4-10 10-10"/></svg></button>
+    <button class="ibtn" data-tip="Mind map  M"><svg class="icon" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="5" r="2"/><circle cx="18" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="M8.5 12H16M8 11l8-5M8 13l8 5"/></svg></button>
+    <button class="ibtn" data-tip="Board con  B"><svg class="icon"><use href="#i-canvas"/></svg></button>
+    <button class="ibtn" data-tip="Thêm khác: ảnh, link, to-do, file  /"><svg class="icon"><use href="#i-plus"/></svg></button>
+    <span class="sep-h"></span>
+    <button class="ibtn" id="inboxBtn" data-tip="Khay chờ  I"><svg class="icon"><use href="#i-inbox"/></svg><span class="badge">3</span></button>
+    <button class="ibtn" data-tip="Thùng rác (kéo object vào đây)"><svg class="icon"><use href="#i-trash"/></svg></button>
+  </nav>
+
+  <!-- ===== Khay chờ: ngăn kéo nổi ===== -->
+  <aside class="island inbox" id="inbox" aria-label="Khay chờ">
+    <div class="inbox-head"><strong>Khay chờ</strong><button class="ibtn" id="inboxClose" title="Đóng (Esc)"><svg class="icon icon-sm" style="transform: rotate(45deg)"><use href="#i-plus"/></svg></button></div>
+    <p class="inbox-desc">Ghi trước, xếp sau. Kéo ra board để đặt vị trí.</p>
+    <div class="inbox-list">
+      <div class="note c-sky inbox-item">Xem lại onboarding của Notion</div>
+      <div class="note c-amber inbox-item">Gợi ý tên: bibo, bọt, bong bóng</div>
+      <div class="note c-gray inbox-item">https://tldraw.dev — tham khảo dây nối</div>
+    </div>
+  </aside>
+
+  <!-- ===== Thanh thao tác nổi trên vùng chọn (nội dung đổi theo loại) ===== -->
+  <div class="island ctx" id="ctx" role="toolbar" aria-label="Thao tác object"></div>
+
+  <!-- ===== Ghi nhanh ===== -->
+  <div class="island capture">
+    <svg class="icon icon-sm" style="color: var(--subtle-foreground)"><use href="#i-zap"/></svg>
+    <input id="captureInput" placeholder="Gõ để ghi nhanh một ý…" aria-label="Ghi nhanh" />
+    <span class="hint"><kbd>Enter</kbd> thả lên board · <kbd>Shift</kbd><kbd>Enter</kbd> vào Khay chờ</span>
+  </div>
+
+  <!-- ===== Minimap + zoom ===== -->
+  <div class="island nav">
+    <div class="minimap" aria-hidden="true">
+      <i style="left: 8px; top: 10px; width: 30px; height: 40px;"></i>
+      <i style="left: 8px; top: 56px; width: 30px; height: 12px;"></i>
+      <i style="left: 56px; top: 14px; width: 40px; height: 44px; opacity: .3;"></i>
+      <i style="left: 56px; top: 66px; width: 60px; height: 20px; opacity: .3;"></i>
+      <i style="left: 130px; top: 30px; width: 26px; height: 20px;"></i>
+      <div class="view" style="left: 4px; top: 6px; width: 120px; height: 86px;"></div>
+    </div>
+    <div class="zoom">
+      <button class="ibtn" title="Thu nhỏ (Ctrl -)">−</button>
+      <button class="ibtn" title="Vừa nội dung (F)">100%</button>
+      <button class="ibtn" title="Phóng to (Ctrl +)">+</button>
+    </div>
+  </div>
+
+  <!-- ===== Ghi chú so sánh (chỉ có trong mockup) ===== -->
+  <button class="island ibtn" id="legendToggle" style="position:absolute; top: 64px; right: 12px; height: 32px; padding: 0 12px;">Khác Milanote ở đâu?</button>
+  <div class="island legend" id="legend" hidden>
+    <button class="ibtn x" id="legendClose" title="Ẩn ghi chú"><svg class="icon icon-sm" style="transform: rotate(45deg)"><use href="#i-plus"/></svg></button>
+    <b>Khác Milanote ở đâu</b>
+    <ol>
+      <li>Canvas tràn màn hình, điều khiển là đảo nổi. Không sidebar, header 1 hàng.</li>
+      <li>Dock icon nét, có Hình khối, Dây nối, Mind map.</li>
+      <li>Note nền màu nhạt cả card, bo 12px, chữ không chân.</li>
+      <li>Board tile có ảnh thu nhỏ nội dung.</li>
+      <li>Click object: thanh thao tác nổi ngay trên nó, 4 chấm nối giữa cạnh.</li>
+      <li>Ghi nhanh ở đáy, Khay chờ là ngăn kéo nổi.</li>
+      <li>Có minimap.</li>
+    </ol>
+    <p style="margin: 8px 0 0;">Thử: click note / nhánh / hình khối, bấm Khay chờ trên dock, gõ vào ô ghi nhanh rồi Enter.</p>
+  </div>
+</div>
+
+<script>
+  const world = document.getElementById('world');
+  const linksSvg = document.getElementById('links');
+  const ctx = document.getElementById('ctx');
+  const NS = 'http://www.w3.org/2000/svg';
+  const COLORS = ['#a1a1aa', '#f59e0b', '#38bdf8', '#84cc16', '#fb7185', '#a78bfa'];
+
+  // ---- Dây nối: [từ, đến, cạnh từ, cạnh đến, kiểu, nhãn] ----
+  const LINKS = [
+    ['root', 'm1', 'r', 'l', 'mind'], ['root', 'm2', 'r', 'l', 'mind'],
+    ['root', 'm3', 'r', 'l', 'mind'], ['root', 'm4', 'r', 'l', 'mind'],
+    ['m1', 'l1', 'r', 'l', 'mind'], ['m1', 'l2', 'r', 'l', 'mind'],
+    ['m2', 'l3', 'r', 'l', 'mind'], ['m2', 'l4', 'r', 'l', 'mind'], ['m3', 'l5', 'r', 'l', 'mind'],
+    ['s1', 's2', 'r', 'l', 'arrow'], ['s2', 's3', 'r', 'l', 'arrow'],
+    ['s3', 's4', 'r', 'l', 'arrow', 'Có'], ['s3', 's5', 'b', 't', 'arrow', 'Chưa'],
+    ['n4', 'root', 'r', 'l', 'free', 'vì sao'],
+  ];
+
+  function anchor(el, side) {
+    const x = el.offsetLeft, y = el.offsetTop, w = el.offsetWidth, h = el.offsetHeight;
+    if (side === 'r') return [x + w, y + h / 2];
+    if (side === 'l') return [x, y + h / 2];
+    if (side === 't') return [x + w / 2, y];
+    return [x + w / 2, y + h];
+  }
+
+  function drawLinks() {
+    linksSvg.innerHTML = `<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" style="fill: var(--muted-foreground)"/></marker></defs>`;
+    LINKS.forEach(([a, b, sa, sb, kind, label]) => {
+      const ea = world.querySelector(`[data-id="${a}"]`), eb = world.querySelector(`[data-id="${b}"]`);
+      if (!ea || !eb) return;
+      const [x1, y1] = anchor(ea, sa), [x2, y2] = anchor(eb, sb);
+      const p = document.createElementNS(NS, 'path');
+      let d;
+      if (kind === 'mind' || kind === 'free') {
+        const dx = Math.max(30, (x2 - x1) / 2);
+        d = `M${x1} ${y1} C${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+      } else {
+        d = sa === 'b' ? `M${x1} ${y1} L${x2} ${y2 - 2}` : `M${x1} ${y1} L${x2 - 2} ${y2}`;
+      }
+      p.setAttribute('d', d);
+      p.setAttribute('fill', 'none');
+      const color = kind === 'mind' ? getComputedStyle(eb).getPropertyValue('--c').trim() || 'var(--border-strong)' : 'var(--muted-foreground)';
+      p.setAttribute('style', `stroke: ${color}; stroke-width: ${kind === 'mind' ? 2 : 1.5}; opacity: ${kind === 'mind' ? 0.75 : 0.8}`);
+      if (kind === 'free') p.setAttribute('stroke-dasharray', '4 4');
+      if (kind === 'arrow') p.setAttribute('marker-end', 'url(#arrow)');
+      linksSvg.appendChild(p);
+      if (label) {
+        const t = document.createElementNS(NS, 'text');
+        t.setAttribute('x', (x1 + x2) / 2 + (sa === 'b' ? 8 : 0));
+        t.setAttribute('y', (y1 + y2) / 2 - 6);
+        t.setAttribute('text-anchor', sa === 'b' ? 'start' : 'middle');
+        t.setAttribute('style', 'fill: var(--muted-foreground); font-size: 11px;');
+        t.textContent = label;
+        linksSvg.appendChild(t);
+      }
+    });
+  }
+</script>
+
+<script>
+  // ---- 4 chấm nối giữa cạnh + nút resize, gắn vào mọi object ----
+  function addHandles(el) {
+    const h = document.createElement('div');
+    h.className = 'handles';
+    h.innerHTML = '<span class="cdot t"></span><span class="cdot r"></span><span class="cdot b"></span><span class="cdot l"></span>' +
+      (el.dataset.kind === 'mind' ? '' : '<span class="rsz"></span>');
+    el.appendChild(h);
+  }
+
+  const icon = (id, extra = '') => `<svg class="icon icon-sm" ${extra}><use href="#${id}"/></svg>`;
+  const btn = (inner, title, cls = '') => `<button class="ibtn ${cls}" title="${title}">${inner}</button>`;
+  const sep = '<span class="sep-v"></span>';
+  function colorDots(el) {
+    const cur = getComputedStyle(el).getPropertyValue('--c').trim();
+    return '<div class="colors">' + COLORS.map((c) =>
+      `<button class="dot ${cur === c ? 'on' : ''}" data-color="${c}" style="background:${c}" title="Đổi màu"></button>`).join('') + '</div>';
+  }
+
+  // Nội dung thanh thao tác theo loại object
+  function ctxFor(el) {
+    const kind = el.dataset.kind;
+    const more = btn(icon('i-more'), 'Thêm');
+    if (kind === 'note') return colorDots(el) + sep + btn('<b>B</b>', 'Đậm (Ctrl+B)') + btn('Aa', 'Kiểu chữ') +
+      btn(icon('i-tag'), 'Nhãn') + sep + btn(icon('i-plus') + 'Nhánh', 'Biến thành nút mind map (Tab)') + more + btn(icon('i-trash'), 'Xoá (Delete)');
+    if (kind === 'mind') return colorDots(el) + sep + btn(icon('i-plus') + 'Con', 'Nhánh con (Tab)') +
+      btn(icon('i-plus') + 'Cùng cấp', 'Nhánh cùng cấp (Enter)') + btn('−', 'Thu gọn nhánh') + sep + btn('Tự xếp', 'Xếp lại cây') + more;
+    if (kind === 'shape') return btn('▢', 'Chữ nhật') + btn('◯', 'Viên thuốc') + btn('◇', 'Hình thoi') + sep +
+      btn(icon('i-arrow-right'), 'Kiểu dây: mũi tên') + btn('Nhãn', 'Thêm nhãn lên dây') + sep + more;
+    return btn(icon('i-external') + 'Mở', 'Vào board (double-click)') + sep + colorDots(el) + sep + more;
+  }
+
+  let selected = null;
+  function placeCtx() {
+    if (!selected) return;
+    const r = selected.getBoundingClientRect();
+    ctx.style.left = `${r.left + r.width / 2}px`;
+    ctx.style.top = `${r.top - 4}px`;
+  }
+  function select(el) {
+    if (selected) selected.classList.remove('selected');
+    selected = el;
+    el.classList.add('selected');
+    ctx.innerHTML = ctxFor(el);
+    ctx.classList.add('show');
+    placeCtx();
+  }
+  function clearSelection() {
+    if (selected) selected.classList.remove('selected');
+    selected = null;
+    ctx.classList.remove('show');
+  }
+
+  function wireObj(el) {
+    addHandles(el);
+    el.addEventListener('pointerdown', (e) => { e.stopPropagation(); select(el); });
+  }
+  world.querySelectorAll('.obj').forEach(wireObj);
+  document.getElementById('stage').addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.island')) return;
+    clearSelection();
+  });
+
+  ctx.addEventListener('click', (e) => {
+    const dot = e.target.closest('[data-color]');
+    if (!dot || !selected) return;
+    selected.style.setProperty('--c', dot.dataset.color);
+    ctx.innerHTML = ctxFor(selected);
+    drawLinks();
+  });
+</script>
+
+<script>
+  // ---- Khay chờ ----
+  const inbox = document.getElementById('inbox');
+  const inboxBtn = document.getElementById('inboxBtn');
+  const badge = inboxBtn.querySelector('.badge');
+  const setInbox = (open) => { inbox.classList.toggle('show', open); inboxBtn.classList.toggle('active', open); };
+  inboxBtn.addEventListener('click', () => setInbox(!inbox.classList.contains('show')));
+  document.getElementById('inboxClose').addEventListener('click', () => setInbox(false));
+
+  // ---- Ghi nhanh: Enter thả lên board, Shift+Enter vào Khay chờ ----
+  const capture = document.getElementById('captureInput');
+  let dropped = 0;
+  capture.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || e.isComposing) return;
+    const text = capture.value.trim();
+    if (!text) return;
+    e.preventDefault();
+    const color = COLORS[(dropped + 1) % COLORS.length];
+    if (e.shiftKey) {
+      const item = document.createElement('div');
+      item.className = 'note inbox-item';
+      item.style.setProperty('--c', color);
+      item.textContent = text;
+      inbox.querySelector('.inbox-list').prepend(item);
+      badge.textContent = String(Number(badge.textContent) + 1);
+      setInbox(true);
+    } else {
+      const note = document.createElement('div');
+      note.className = 'obj note';
+      note.dataset.kind = 'note';
+      note.style.cssText = `left:${1120 + (dropped % 2) * 16}px; top:${400 + dropped * 72}px; width:190px; --c:${color};`;
+      const p = document.createElement('p');
+      p.textContent = text;
+      note.appendChild(p);
+      world.appendChild(note);
+      wireObj(note);
+      select(note);
+      dropped = (dropped + 1) % 3;
+    }
+    capture.value = '';
+  });
+
+  // ---- Theme + Esc + ẩn ghi chú ----
+  const saved = localStorage.getItem('bibo-mockup-theme');
+  if (saved) document.documentElement.dataset.theme = saved;
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = t;
+    localStorage.setItem('bibo-mockup-theme', t);
+  });
+  document.getElementById('legendClose').addEventListener('click', () => { document.getElementById('legend').hidden = true; });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (inbox.classList.contains('show')) setInbox(false);
+    else clearSelection();
+  });
+  // ---- Vừa nội dung: scale world để cả 3 vùng nằm gọn giữa các đảo ----
+  const zoomLabel = document.querySelector('.zoom .ibtn:nth-child(2)');
+  function fit() {
+    const pad = { left: 76, right: 24, top: 70, bottom: 76 };
+    const bx = 80, by = 60, bw = 1200, bh = 730; // khung nội dung mẫu
+    const aw = innerWidth - pad.left - pad.right, ah = innerHeight - pad.top - pad.bottom;
+    const s = Math.min(1, aw / bw, ah / bh);
+    const tx = pad.left + (aw - bw * s) / 2 - bx * s, ty = pad.top + (ah - bh * s) / 2 - by * s;
+    world.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
+    zoomLabel.textContent = `${Math.round(s * 100)}%`;
+    placeCtx();
+  }
+  window.addEventListener('resize', fit);
+  zoomLabel.addEventListener('click', fit);
+
+  // Ghi chú so sánh: mặc định thu gọn thành nút
+  const legend = document.getElementById('legend');
+  const legendToggle = document.getElementById('legendToggle');
+  legendToggle.addEventListener('click', () => { legend.hidden = !legend.hidden; });
+
+  drawLinks();
+  fit();
+</script>
+</body>
+</html>
