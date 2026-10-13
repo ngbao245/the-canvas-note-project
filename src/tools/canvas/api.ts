@@ -109,7 +109,7 @@ class IndexedDbCanvasRepository {
     const cameraById = new Map(cameras.map((c) => [c.boardId, c]));
     return boards.map((b) => {
       const c = cameraById.get(b.id);
-      return { ...b, camera: c ? { x: c.x, y: c.y, zoom: c.zoom } : DEFAULT_CAMERA };
+      return { ...b, camera: c ? { x: c.x, y: c.y, zoom: c.zoom } : { ...DEFAULT_CAMERA } };
     });
   }
 
@@ -217,7 +217,7 @@ function withWriteQueue(inner: IndexedDbCanvasRepository): CanvasRepository {
       if (!op) return base;
       return op.kind === 'put' ? op.value : null;
     },
-    hasPendingWrite: (id) => queue.snapshot().has(id),
+    hasPendingWrite: (id) => queue.has(id),
     saveObject: (obj, channel = 'props') => queue.enqueue(obj.id, { kind: 'put', value: obj }, channel),
     deleteObject: (id) => queue.enqueue(id, { kind: 'delete' }, 'props'),
     deleteObjectsByBoard: async (boardId) => {

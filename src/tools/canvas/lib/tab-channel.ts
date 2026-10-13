@@ -43,7 +43,11 @@ function isTabMessage(data: unknown): data is TabMessage {
     data.type === 'objects' &&
     'puts' in data &&
     'deletes' in data &&
-    Array.isArray(data.puts) &&
-    Array.isArray(data.deletes)
+    isStringArray(data.puts) &&
+    isStringArray(data.deletes)
   );
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((x) => typeof x === 'string');
 }

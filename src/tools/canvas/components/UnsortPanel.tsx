@@ -1,6 +1,7 @@
 import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Inbox, Loader2, X } from 'lucide-react';
+import { Inbox, X } from 'lucide-react';
+import { Skeleton } from '@/components/shared';
 import { useObjectsStore } from '../store/objects-store';
 import { useUnsortStore } from '../store/unsort-store';
 import { useInteractionStore } from '../store/interaction-store';
@@ -310,14 +311,15 @@ export function UnsortToggle({ boardId }: { boardId: string }) {
   );
 }
 
-/** Số item Unsort. Đang nạp board thì hiện vòng xoay thay vì "0" rồi nhảy sang số thật. */
+/** Số item Unsort. Đang nạp board thì hiện khối chờ thay vì "0" rồi nhảy sang số thật. */
 function UnsortCount({ count, loading }: { count: number; loading: boolean }) {
   const { t } = useI18n();
   if (!loading) return <>{count}</>;
+  // Skeleton đúng cỡ 1 chữ số (ui-patterns: badge số liệu không dùng vòng xoay).
   return (
-    <Loader2
+    <Skeleton
       role="img"
-      className="inline-block h-3 w-3 animate-spin align-[-2px]"
+      className="inline-block h-3 w-3 align-[-2px]"
       aria-label={t('COMMON.LOADING')}
     />
   );

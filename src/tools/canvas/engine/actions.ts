@@ -9,7 +9,8 @@
 //
 // Move/Resize khác: cần theo dõi initial state trong lúc drag → có helper
 // `commitMove` / `commitResize` gọi ở drag END với snapshot before/after.
-// Trong lúc drag, dùng `applyMoveDelta` / `applyResize` (không push history).
+// Trong lúc drag, dùng `applyMoveDelta` / `previewResize` (chỉ đổi store, không
+// ghi, không push history).
 // ============================================================
 
 import type { Board, BoardData, CanvasObject, Geometry } from '../types';
@@ -25,9 +26,9 @@ import { extractParagraphHtml, removeParagraphAt } from '../lib/note-clip';
 import { parseNoteData } from '../lib/note-data';
 
 /**
- * Update geometry của 1 object rồi persist snapshot mới ra repo. Gom pattern
- * lặp 6 chỗ trong undo/redo/applyResize/applyMoveDelta. Đọc snapshot LẠI sau
- * mutation (store.getState) để lấy object đã cập nhật, không phải closure cũ.
+ * Update geometry của 1 object rồi persist snapshot mới ra repo (undo/redo,
+ * resize đã chốt). Đọc snapshot LẠI sau mutation (store.getState) để lấy object
+ * đã cập nhật, không phải closure cũ.
  */
 function mutateGeometryAndPersist(id: string, geometry: Partial<Geometry>): void {
   mutateGeometry(id, geometry);

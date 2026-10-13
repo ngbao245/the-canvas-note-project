@@ -31,6 +31,12 @@ const held = new Map<string, () => void>();
 /** Đang xin hoặc đang nhả: vẫn là của tab này, refresh không được tính là tab khác. */
 const inFlight = new Set<string>();
 let warned = false;
+/** Khoá đang bật (giữa startEditLocks và hàm tắt). Tắt rồi thì lần xin trễ tự nhả. */
+let active = false;
+/** Hàm sync của lần bật hiện tại: gọi lại khi 1 khoá nhả xong (có thể cần xin lại). */
+let resync: (() => void) | null = null;
+/** Số lượt hỏi danh sách khoá. Kết quả của lượt cũ về sau thì bỏ. */
+let refreshSeq = 0;
 
 function locksApi(): LockManager | null {
   return typeof navigator !== 'undefined' && navigator.locks ? navigator.locks : null;
@@ -70,7 +76,12 @@ function acquire(id: string): Promise<boolean> {
       .finally(() => {
         // Đã có lần xin mới cho cùng id thì để lần đó tự quản `inFlight`.
         if (!held.has(id)) inFlight.delete(id);
-        if (got) postTabMessage({ type: 'locks' }); // báo đã nhả
+        if (!got) return;
+        postTabMessage({ type: 'locks' }); // báo đã nhả (tab này không nhận tin của chính nó)
+        void refreshRemoteLocks();
+        // Chọn lại trong lúc đang nhả: sync lúc đó bỏ qua vì id còn là "của mình".
+        // Nhả xong rồi thì xin lại nếu vẫn cần.
+        resync?.();
       });
   });
 }
@@ -86,7 +97,10 @@ function release(id: string): void {
 export async function refreshRemoteLocks(): Promise<void> {
   const locks = locksApi();
   if (!locks) return;
+  const my = ++refreshSeq;
   const state = await locks.query();
+  // Lượt hỏi mới hơn đã chạy: kết quả này cũ, bỏ (query song song về không theo thứ tự).
+  if (my !== refreshSeq) return;
   const next = new Set<string>();
   for (const l of state.held ?? []) {
     if (!l.name?.startsWith(PREFIX)) continue;
@@ -130,6 +144,11 @@ export function startEditLocks(): () => void {
     for (const id of wanted) {
       if (isOwn(id)) continue;
       void acquire(id).then((ok) => {
+        // Đã tắt khoá (rời canvas) trong lúc chờ: không giữ khoá kẹt tới khi đóng tab.
+        if (!active) {
+          if (ok) release(id);
+          return;
+        }
         const stillWanted = wantedIds().has(id);
         if (ok) {
           if (!stillWanted) release(id); // đã bỏ chọn trong lúc chờ khoá
@@ -163,10 +182,14 @@ export function startEditLocks(): () => void {
   const timer = setInterval(() => {
     if (document.visibilityState === 'visible') void refreshRemoteLocks();
   }, REFRESH_MS);
+  active = true;
+  resync = sync;
   sync();
   void refreshRemoteLocks();
 
   return () => {
+    active = false;
+    resync = null;
     unsubSel();
     unsubEditing();
     unsubTab();

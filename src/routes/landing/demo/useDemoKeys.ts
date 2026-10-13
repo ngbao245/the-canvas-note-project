@@ -11,8 +11,12 @@ export function useDemoKeys({ active, onRelease }: { active: boolean; onRelease:
       'demo.redo': { run: () => useDemoStore.getState().redo() },
       'demo.delete': { run: () => useDemoStore.getState().deleteSelected() },
       'demo.edit': {
-        // Enter trên nút đang focus (tile Note, Undo...) là bấm nút, không phải vào sửa.
-        when: () => !(document.activeElement instanceof HTMLButtonElement),
+        // Enter trên nút / link đang focus (tile Note, Undo, "Mở bản đầy đủ") là bấm
+        // nút / mở link, không phải vào sửa.
+        when: () => {
+          const el = document.activeElement;
+          return !(el instanceof HTMLButtonElement || el instanceof HTMLAnchorElement);
+        },
         run: () => {
           const { selectedId, startEdit } = useDemoStore.getState();
           if (!selectedId) return false;

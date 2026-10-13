@@ -1,4 +1,4 @@
-﻿import { ExternalLink, Redo2, RotateCcw, Undo2, type LucideIcon } from 'lucide-react';
+import { ExternalLink, Redo2, RotateCcw, Undo2, type LucideIcon } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { shortcutKeys, useKeyboardPlatform } from '@/lib/shortcuts';
 import { FOCUS_RING } from '@/lib/focus-ring';

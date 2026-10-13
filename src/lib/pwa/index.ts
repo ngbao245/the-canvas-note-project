@@ -50,7 +50,10 @@ export function applyUpdate(): void {
   void updateSW?.(true);
 }
 
-/** Ẩn thanh báo trong tab này. Bản mới vẫn chờ, lần mở app sau dùng bản mới. */
+/**
+ * Ẩn thanh báo trong tab này. Bản mới vẫn chờ: đóng hết tab app rồi mở lại mới
+ * dùng bản mới. F5 không kích hoạt bản chờ, thanh báo hiện lại.
+ */
 export function dismissUpdate(): void {
   usePwaStore.setState({ needRefresh: false });
 }

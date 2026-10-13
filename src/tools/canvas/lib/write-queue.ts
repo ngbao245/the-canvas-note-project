@@ -32,12 +32,16 @@ export interface WriteQueue<T> {
   flush(options?: { urgent?: boolean }): Promise<void>;
   /** Thao tác chưa chắc đã xuống đĩa (đang ghi + đang chờ, mới đè cũ). */
   snapshot(): Map<string, WriteOp<T>>;
+  /** Id này còn thao tác chưa chắc đã xuống đĩa không. Như `snapshot().has(id)`, không dựng Map. */
+  has(id: string): boolean;
 }
 
 interface Entry<T> {
   op: WriteOp<T>;
   channels: Set<WriteChannel>;
   waiters: Array<() => void>;
+  /** Số thứ tự lúc vào hàng. Lô lỗi chỉ đưa lại nếu vẫn là bản mới nhất của id. */
+  seq: number;
 }
 
 type Batch<T> = Map<string, Entry<T>>;
@@ -51,6 +55,9 @@ export function createWriteQueue<T>(
   const inflight: Array<Batch<T>> = [];
   let draining = false;
   let flushWaiters: Array<() => void> = [];
+  /** id → seq của bản mới nhất từng vào hàng. */
+  const latest = new Map<string, number>();
+  let seq = 0;
 
   function idle(): boolean {
     return inflight.length === 0 && pending.size === 0;
@@ -72,13 +79,21 @@ export function createWriteQueue<T>(
       await write(toBatch(batch));
     } catch (err) {
       ok = false;
+      // Lô gấp chạy song song có thể đã ghi bản mới hơn: chỉ đưa lại bản mới nhất,
+      // không thì lần ghi sau đè bản cũ lên đĩa.
       for (const [id, e] of batch) {
-        if (!pending.has(id)) pending.set(id, { op: e.op, channels: e.channels, waiters: [] });
+        if (latest.get(id) === e.seq && !pending.has(id)) {
+          pending.set(id, { ...e, waiters: [] });
+        }
       }
       onError?.(err);
     }
     inflight.splice(inflight.indexOf(batch), 1);
-    for (const e of batch.values()) for (const w of e.waiters) w();
+    for (const [id, e] of batch) {
+      for (const w of e.waiters) w();
+      // Đã xuống đĩa (hoặc bị bản mới thay): không giữ seq nữa cho map khỏi phình.
+      if (latest.get(id) === e.seq && !pending.has(id)) latest.delete(id);
+    }
     return ok;
   }
 
@@ -104,7 +119,9 @@ export function createWriteQueue<T>(
         channels.add(channel);
         const waiters = prev ? prev.waiters : [];
         waiters.push(resolve);
-        pending.set(id, { op, channels, waiters });
+        const entrySeq = ++seq;
+        latest.set(id, entrySeq);
+        pending.set(id, { op, channels, waiters, seq: entrySeq });
         kick();
       });
     },
@@ -129,6 +146,10 @@ export function createWriteQueue<T>(
       for (const batch of inflight) for (const [id, e] of batch) out.set(id, e.op);
       for (const [id, e] of pending) out.set(id, e.op);
       return out;
+    },
+
+    has(id) {
+      return pending.has(id) || inflight.some((batch) => batch.has(id));
     },
   };
 }
