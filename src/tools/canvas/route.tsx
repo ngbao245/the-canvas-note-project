@@ -8,6 +8,7 @@ import { useCurrentBoardStore } from './store/current-board-store';
 import { useCanvasBootstrap } from './hooks/useCanvasBootstrap';
 import { useCanvasKeys } from './hooks/useCanvasKeys';
 import { useBoardSync } from './hooks/useBoardSync';
+import { useCanvasPersistence } from './hooks/useCanvasPersistence';
 import { computeContentBounds } from './lib/content-bounds';
 import { getCameraEngine } from './engine/camera-engine';
 import { CanvasApp } from './components/CanvasApp';
@@ -68,6 +69,8 @@ export default function CanvasRoute() {
 
   // Sync objects + camera + persist theo currentBoardId đang xem.
   useBoardSync({ currentBoardId, rootBoard });
+  // Đẩy ghi khi ẩn / đóng tab, đồng bộ + khoá sửa giữa các tab.
+  useCanvasPersistence();
 
   // Resolve Board record đang xem để pass xuống Header.
   const currentBoard = useBoardsStore((s) =>

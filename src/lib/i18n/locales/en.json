@@ -11,7 +11,13 @@
     "RETRY": "Retry",
     "LOADING": "Loading…",
     "OR": "or",
-    "WITH_SHORTCUT": "{label} ({keys})"
+    "WITH_SHORTCUT": "{label} ({keys})",
+    "PWA": {
+      "UPDATE_READY": "A new version is available",
+      "RELOAD": "Reload",
+      "DISMISS": "Later",
+      "OFFLINE": "Offline"
+    }
   },
   "LOCALE": {
     "VI": "Tiếng Việt",
@@ -234,7 +240,8 @@
       "NUMBERED": "Numbered list",
       "QUOTE": "Quote",
       "CODE_BLOCK": "Code block",
-      "HR": "Divider"
+      "HR": "Divider",
+      "NEW_NOTE_BELOW": "Add a new note below the selected / edited note"
     }
   },
   "CANVAS": {
@@ -256,6 +263,12 @@
       },
       "EMPTY": "Nothing here yet",
       "HINT": "Drag an item onto the canvas to place it."
+    },
+    "NOTE_LOCK": {
+      "BUSY": "This note is being edited in another tab. Click × on the tag to take over.",
+      "OTHER_TAB": "You",
+      "TAKE_OVER": "Take over editing",
+      "TAKEN": "Another tab took over this note. Your text was saved."
     },
     "NOTE_COLOR": {
       "PICK": "Pick color",
@@ -332,6 +345,150 @@
         "DESCRIPTION": "This will delete {items}. You can undo with {undo}.",
         "CONFIRM": "Delete board"
       }
+    }
+  },
+  "LANDING": {
+    "NAV": {
+      "LABEL": "Main navigation",
+      "PROBLEM": "Problem",
+      "FEATURES": "Features",
+      "HOW": "How it works",
+      "ROADMAP": "Roadmap",
+      "OPEN": "Open bibo"
+    },
+    "HERO": {
+      "TITLE_1": "Collect sources.",
+      "TITLE_2": "Take notes.",
+      "TITLE_3": "Lay it on a canvas.",
+      "LEAD": "bibo is a visual workspace. Documents, notes and ideas share one surface, and every number traces back to the exact page it came from. Try it right below.",
+      "CTA_FEATURES": "See what it does",
+      "NOTE": "Early days, single user. The final name is not settled yet.",
+      "OPEN_FULL": "Open the full app"
+    },
+    "DEMO": {
+      "REGION_LABEL": "Try-out canvas: drag notes, Ctrl + scroll to zoom, drag empty space to pan",
+      "BRAND": "bibo · try-out",
+      "ACTIVATE": "Click to try",
+      "ACTIVATE_HINT": "drag notes, edit text, open a source",
+      "RELEASE_HINT": "Press Esc or click outside the frame to keep scrolling.",
+      "NARROW": "Open on a desktop to try the canvas.",
+      "STATIC_ALT": "Sketch of the sample board: a PDF, a few notes and a quote linked to its source",
+      "LOAD_ERROR": "Could not load the try-out canvas.",
+      "UNDO": "Undo",
+      "REDO": "Redo",
+      "RESET": "Back to sample board",
+      "ADD_NOTE_TITLE": "Drag onto the board or click to add a note",
+      "NEW_NOTE_TITLE": "New note",
+      "EMPTY": "Drag a note from the bar on the left",
+      "EDIT_TITLE": "Note title",
+      "EDIT_BODY": "Note content",
+      "SOURCE_LINE": "{file} · page {page} · table {table}",
+      "OPEN_SOURCE": "Open source",
+      "SOURCE_PANEL_TITLE": "Source viewer",
+      "SOURCE_LOCATION": "page {page} · table {table}",
+      "SOURCE_CLOSE": "Close",
+      "SOURCE_FIGURE": "Page {page} of {file}, the quoted cell in table {table} is highlighted",
+      "TABLE_LABEL": "Table {table}",
+      "SOURCE_HINT": "The yellow cell is where the number was quoted from."
+    },
+    "SKETCH": {
+      "CITED_FROM": "quoted from",
+      "ALL_IN_ONE": "everything in one place",
+      "PAGE": "Page: {page}",
+      "TABLE": "Table: {table}",
+      "CONFIDENCE": "Confidence",
+      "RELATIONS": { "one": "{count} relation", "other": "{count} relations" },
+      "COMPARE": "compare",
+      "CHANGE": "change +18%",
+      "AI_HINT": "AI suggests, you accept or dismiss"
+    },
+    "PROBLEM": {
+      "KICKER": "The problem",
+      "TITLE_A": "Information is",
+      "TITLE_MARK": "scattered",
+      "TITLE_B": "everywhere",
+      "LEAD": "Work with many documents at once and you run into this:",
+      "ITEM_1": "PDFs in one folder, notes in another app, conclusions in your head.",
+      "ITEM_2": "You write down a number, a week later you cannot remember which page it came from.",
+      "ITEM_3": "Spreadsheets and docs are rigid, visual tools cannot tie data to its source.",
+      "ILLU_ALT": "A person standing among scattered files, notes and question marks",
+      "ILLU_QUESTION": "where is this from?"
+    },
+    "PILLARS": {
+      "KICKER": "How bibo solves it",
+      "TITLE": "Three things, one surface",
+      "LEAD": "No extra app. bibo brings the three things you already use separately into one place.",
+      "SOURCE_TITLE": "Sources",
+      "SOURCE_BODY": "PDFs, images, web clips. The original documents, reopened at the exact page and passage.",
+      "NOTE_TITLE": "Notes",
+      "NOTE_BODY": "Write your own, or quote straight from a source. Quoted notes always remember where they came from.",
+      "CANVAS_TITLE": "Canvas",
+      "CANVAS_BODY": "An infinite surface. Drag, connect, nest boards inside boards, see the whole picture."
+    },
+    "FEATURES": {
+      "KICKER": "Features",
+      "TITLE": "A closer look",
+      "PROV_TAG": "the main difference",
+      "PROV_TITLE_A": "Every number has a",
+      "PROV_TITLE_MARK": "home address",
+      "PROV_BODY": "Each object on the canvas keeps its origin: which file, which page, which table. One click opens the exact passage.",
+      "PROV_1": "No more floating data of unknown origin.",
+      "PROV_2": "The Inspector shows source, confidence and relations of the selected object.",
+      "PROV_3": "Conclusions you can re-check, and others can trust.",
+      "PROV_ALT": "Note \"Q3 revenue +18%\" quoted from table 3 on page 12, with the Inspector showing its source",
+      "CANVAS_TAG": "already working",
+      "CANVAS_TITLE_A": "A canvas as smooth as",
+      "CANVAS_TITLE_MARK": "real paper",
+      "CANVAS_BODY": "Drag, zoom, undo. Tidy notes, with the toolbar right at hand.",
+      "CANVAS_1": "Zoom without drift: the point under your cursor stays put.",
+      "CANVAS_2": "Drag a note from the toolbar straight onto the board.",
+      "CANVAS_3": "Undo, redo, and a shortcut to see everything.",
+      "CANVAS_POINTER_TITLE": "You just tried it above",
+      "CANVAS_POINTER_BODY": "The canvas at the top is a trimmed try-out that runs right in your browser and saves nothing.",
+      "CANVAS_POINTER_LINK": "Go back up and try again",
+      "AI_TAG": "in progress",
+      "AI_TITLE_A": "AI sits beside you,",
+      "AI_TITLE_MARK": "not in your seat",
+      "AI_BODY": "Visual like a pinboard, with intelligence underneath. AI helps connect and analyse, you still make the call.",
+      "AI_1": "Compare two tables and point out what changed.",
+      "AI_2": "Extract tables from a PDF into objects, keeping the source.",
+      "AI_3": "Suggest links: \"quoted from\", \"compares to\", \"supports\".",
+      "AI_ALT": "Two tables Q2 and Q3, AI suggests a comparison link and circles the changed cell"
+    },
+    "STEPS": {
+      "KICKER": "How it works",
+      "TITLE": "Three steps, nothing to learn",
+      "LEAD": "Open a board, drop things in, start connecting. That is it.",
+      "S1_TITLE": "Drop sources in",
+      "S1_BODY": "Drag PDFs, images, links into Unsort. No need to arrange yet, just collect.",
+      "S2_TITLE": "Lay out the canvas",
+      "S2_BODY": "Drag from Unsort onto the board, write notes, group with nested boards.",
+      "S3_TITLE": "Connect and check",
+      "S3_BODY": "Draw links between objects. Doubt a number? Open its source and see."
+    },
+    "ROADMAP": {
+      "KICKER": "Roadmap",
+      "TITLE": "One step at a time, no rewrites",
+      "LEAD": "bibo is designed from day one to grow: from one person, to many people, to whole teams sharing a workspace.",
+      "STICKY_TITLE": "To be honest",
+      "STICKY_BODY": "bibo is at step 1 for now: the canvas and notes work. Other object types, AI and collaboration are on the way.",
+      "ALT": "Three steps: one person, an account per person, a shared collaborative workspace",
+      "STAGE_1": "1 · Now",
+      "STAGE_1_SUB": "one person, private data",
+      "STAGE_2": "2 · Next",
+      "STAGE_2_SUB": "an account per person",
+      "STAGE_3": "3 · Later",
+      "STAGE_3_SUB": "shared workspace, realtime"
+    },
+    "FINAL": {
+      "TITLE_A": "Open an empty board,",
+      "TITLE_MARK": "drop the first thing in",
+      "BODY": "bibo is being built stroke by stroke. The canvas works today, the rest is still being sketched.",
+      "CTA_TRY": "Try it again"
+    },
+    "FOOTER": {
+      "NAME": "bibo · working name, may become BiBaNote",
+      "DRAWN": "hand-drawn in SVG"
     }
   }
 }

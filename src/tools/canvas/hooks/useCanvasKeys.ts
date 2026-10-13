@@ -8,6 +8,7 @@ import { useCurrentBoardStore } from '../store/current-board-store';
 import {
   bringForward,
   bringToFront,
+  createNoteBelow,
   deleteObjects,
   duplicateObjects,
   pasteObjects,
@@ -109,6 +110,19 @@ export function useCanvasKeys({ onFit, onReset }: { onFit: () => void; onReset: 
         const ids = selectedIds();
         if (ids.length === 0) return false;
         duplicateObjects(ids);
+      },
+    },
+    // Ctrl+Enter khi 1 note đang chọn: tạo note bên dưới + vào sửa (như lúc đang sửa).
+    'canvas.new-note-below': {
+      run: () => {
+        const sel = useSelectionStore.getState().selectedIds;
+        if (sel.size !== 1) return false;
+        if (useInteractionStore.getState().editingId !== null) return false;
+        const [id] = sel;
+        if (useObjectsStore.getState().objects.get(id)?.type !== 'note') return false;
+        const next = createNoteBelow(id);
+        if (!next) return false;
+        useInteractionStore.getState().setEditingId(next.id, null);
       },
     },
     // Vào edit object đang chọn (như double-click). Không có editingClickPoint → caret cuối.

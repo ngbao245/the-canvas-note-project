@@ -7,8 +7,7 @@
 // object type của mình. Nhờ đó Phase B thêm loại object (note/text/image/link)
 // không đụng engine core.
 //
-// `boardId` luôn là id board thật, kể cả board gốc (Home). Bản cũ lưu `null`
-// cho object trên Home; bootstrap chuyển đổi 1 lần (`migrateRootObjects`).
+// `boardId` luôn là id board thật, kể cả board gốc (Home).
 // ============================================================
 
 import { z } from 'zod';
@@ -43,6 +42,12 @@ export const canvasObjectSchema = z.object({
    * Object cũ (không có field) → default null, giữ trên canvas như hiện tại.
    */
   unsortIndex: z.number().int().min(0).nullable().default(null),
+  /**
+   * Tăng 1 mỗi lần object được ghi xuống (hàng đợi ghi tự đóng dấu, caller không
+   * tự tăng). Bây giờ chỉ ghi lại; `canvas-sync`
+   * dùng để phát hiện xung đột.
+   */
+  version: z.number().int().min(0).default(0),
   createdAt: z.string(), // ISO
   updatedAt: z.string(), // ISO
 });

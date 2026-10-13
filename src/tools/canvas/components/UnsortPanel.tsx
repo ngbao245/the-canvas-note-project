@@ -1,6 +1,6 @@
 import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Inbox, X } from 'lucide-react';
+import { Inbox, Loader2, X } from 'lucide-react';
 import { useObjectsStore } from '../store/objects-store';
 import { useUnsortStore } from '../store/unsort-store';
 import { useInteractionStore } from '../store/interaction-store';
@@ -97,6 +97,7 @@ export function UnsortPanel({ boardId }: { boardId: string }) {
   const { t } = useI18n();
   const setOpen = useUnsortStore((s) => s.setOpen);
   const objectsMap = useObjectsStore((s) => s.objects);
+  const loading = useObjectsStore((s) => s.loadedBoardId !== boardId);
   const hoveredDropTarget = useHoveredUnsortDropTarget();
 
   const items = useMemo(() => {
@@ -172,7 +173,7 @@ export function UnsortPanel({ boardId }: { boardId: string }) {
         <Inbox className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm font-semibold text-foreground">{t('CANVAS.UNSORT.TITLE')}</span>
         <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-bold text-warning">
-          {items.length}
+          <UnsortCount count={items.length} loading={loading} />
         </span>
         <div className="flex-1" />
         <button
@@ -189,8 +190,10 @@ export function UnsortPanel({ boardId }: { boardId: string }) {
       {/* Floating preview khi drag item ra ngoài panel */}
       <UnsortDragPreview items={items} />
 
-      {/* Description khi rỗng */}
-      {items.length === 0 ? (
+      {/* Description khi rỗng. Đang tải thì để trống, không báo "chưa có gì" rồi mới hiện item. */}
+      {loading ? (
+        <div className="flex-1" />
+      ) : items.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
           <div className="grid h-12 w-12 place-items-center rounded-full bg-muted text-muted-foreground">
             <Inbox className="h-5 w-5" />
@@ -269,6 +272,7 @@ export function UnsortToggle({ boardId }: { boardId: string }) {
   const open = useUnsortStore((s) => s.panelOpen);
   const toggle = useUnsortStore((s) => s.toggle);
   const objectsMap = useObjectsStore((s) => s.objects);
+  const loading = useObjectsStore((s) => s.loadedBoardId !== boardId);
   const hoveredDropTarget = useHoveredUnsortDropTarget();
 
   const count = useMemo(() => {
@@ -297,8 +301,24 @@ export function UnsortToggle({ boardId }: { boardId: string }) {
       <span className="h-1.5 w-1.5 rounded-full bg-warning" />
       <Inbox className="h-3.5 w-3.5" />
       <span>
-        {t('CANVAS.UNSORT.TITLE')} · <span className="font-semibold text-foreground">{count}</span>
+        {t('CANVAS.UNSORT.TITLE')} ·{' '}
+        <span className="font-semibold text-foreground">
+          <UnsortCount count={count} loading={loading} />
+        </span>
       </span>
     </button>
+  );
+}
+
+/** Số item Unsort. Đang nạp board thì hiện vòng xoay thay vì "0" rồi nhảy sang số thật. */
+function UnsortCount({ count, loading }: { count: number; loading: boolean }) {
+  const { t } = useI18n();
+  if (!loading) return <>{count}</>;
+  return (
+    <Loader2
+      role="img"
+      className="inline-block h-3 w-3 animate-spin align-[-2px]"
+      aria-label={t('COMMON.LOADING')}
+    />
   );
 }

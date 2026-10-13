@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { getCanvasRepository } from '../api';
 import { makeDefaultBoard, type Board } from '../types';
 import { useBoardsStore } from '../store/boards-store';
-import { migrateRootObjects, normalizeBoards } from '../lib/board-tree';
 
 type BootstrapState =
   | { phase: 'loading' }
@@ -26,21 +25,16 @@ export function useCanvasBootstrap(): { state: BootstrapState } {
     (async () => {
       try {
         const repo = getCanvasRepository();
-        const normalized = normalizeBoards(await repo.loadBoards());
-        let boards = normalized.boards;
-        let rootBoard = normalized.root ?? undefined;
-        // Lưu lại board vừa sửa parentId/tên để lần sau không phải sửa nữa.
-        await Promise.all(normalized.changed.map((b) => repo.saveBoard(b)));
-
-        if (!rootBoard) {
-          rootBoard = makeDefaultBoard();
-          await repo.saveBoard(rootBoard);
-          boards = [rootBoard];
-        }
-
-        // Object bản cũ trên Home lưu boardId null → đổi sang id thật của Home.
-        const migrated = migrateRootObjects(await repo.loadLegacyRootObjects(), rootBoard.id);
-        await Promise.all(migrated.map((o) => repo.saveObject(o)));
+        // Đọc + tạo Home trong khoá chung giữa tab (và giữa 2 lần chạy của StrictMode):
+        // lần chạy sau chờ lần trước xong, thấy Home đã có, không tạo thêm.
+        const { boards, rootBoard } = await withBootstrapLock(async () => {
+          const loaded = await repo.loadBoards();
+          const found = findRoot(loaded);
+          if (found) return { boards: loaded, rootBoard: found };
+          const created = makeDefaultBoard();
+          await repo.saveBoard(created);
+          return { boards: [...loaded, created], rootBoard: created };
+        });
 
         if (cancelled) return;
         useBoardsStore.getState().hydrate(boards);
@@ -60,4 +54,22 @@ export function useCanvasBootstrap(): { state: BootstrapState } {
   }, []);
 
   return { state };
+}
+
+const BOOTSTRAP_LOCK = 'bibo-canvas-bootstrap';
+
+/**
+ * Chạy `fn` trong Web Lock độc quyền. Tab đóng giữa chừng thì trình duyệt tự nhả.
+ * Không có Web Lock thì chạy thẳng (chấp nhận rủi ro 2 Home, xem design.md).
+ */
+function withBootstrapLock<T>(fn: () => Promise<T>): Promise<T> {
+  if (!navigator.locks) return fn();
+  return navigator.locks.request(BOOTSTRAP_LOCK, fn) as Promise<T>;
+}
+
+/** Home = board không có cha. Lỡ có nhiều (2 tab cùng tạo) thì lấy cái tạo sớm nhất. */
+function findRoot(boards: Board[]): Board | undefined {
+  return boards
+    .filter((b) => b.parentId === null)
+    .reduce<Board | undefined>((a, b) => (!a || b.createdAt < a.createdAt ? b : a), undefined);
 }

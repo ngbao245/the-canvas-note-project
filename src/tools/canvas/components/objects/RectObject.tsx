@@ -1,10 +1,11 @@
-import { registerObjectType, type ObjectRendererProps } from '../../hooks/useObjectRegistry';
+import type { ObjectRendererProps } from '../../hooks/useObjectRegistry';
 
 /**
  * Rect debug object (Phase A). Giữ lại để tương thích data cũ trong IndexedDB —
  * board đã tạo từ Phase A vẫn còn object type='rect'. Không hiện trên toolbar.
+ * Định nghĩa loại ở `rect-type.ts`.
  */
-function RectRenderer({ isSelected }: ObjectRendererProps) {
+export function RectRenderer({ isSelected }: ObjectRendererProps) {
   return (
     <div
       className="h-full w-full rounded-md"
@@ -15,12 +16,3 @@ function RectRenderer({ isSelected }: ObjectRendererProps) {
     />
   );
 }
-
-registerObjectType({
-  type: 'rect',
-  renderer: RectRenderer,
-  defaultGeometry: { width: 200, height: 120, rotation: 0, zIndex: 0 },
-  defaultData: () => ({}),
-  label: 'Rect',
-  showInToolbar: false,
-});

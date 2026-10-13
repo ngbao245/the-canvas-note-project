@@ -10,6 +10,16 @@ const config: Config = {
   darkMode: ['selector', '[data-theme="dark"]'],
   theme: {
     extend: {
+      // Vòng sáng lan ra quanh nhãn "đang sửa ở tab khác" (Milanote ElementUserTag `pulse`).
+      keyframes: {
+        'presence-pulse': {
+          '0%': { boxShadow: '0 0 0 0 color-mix(in srgb, var(--warning) 80%, transparent)' },
+          '100%': { boxShadow: '0 0 0 16px transparent' },
+        },
+      },
+      animation: {
+        'presence-pulse': 'presence-pulse 1.5s var(--easing-standard) infinite',
+      },
       colors: {
         border: 'var(--border)',
         'border-strong': 'var(--border-strong)',

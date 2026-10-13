@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { registerObjectType, type ObjectRendererProps } from '../../hooks/useObjectRegistry';
-import { boardDataSchema, type BoardData } from '../../types';
+import type { ObjectRendererProps } from '../../hooks/useObjectRegistry';
+import { boardDataSchema } from '../../types';
 import { useBoardsStore } from '../../store/boards-store';
 import { useObjectsStore } from '../../store/objects-store';
 import { useInteractionStore } from '../../store/interaction-store';
@@ -21,7 +21,7 @@ import { editKeyHandler } from '@/lib/dom';
  *   - Double-click icon → navigate `/canvas/:linkedBoardId` (URL chỉ id).
  *   - Hover khi drop cross-board: ring primary + count preview +1.
  */
-function BoardRenderer({ object, isSelected, isEditing, onEditEnd }: ObjectRendererProps) {
+export function BoardRenderer({ object, isSelected, isEditing, onEditEnd }: ObjectRendererProps) {
   const navigate = useNavigate();
   const parsed = boardDataSchema.safeParse(object.data);
   const linkedBoardId = parsed.success ? parsed.data.linkedBoardId : '';
@@ -139,17 +139,3 @@ function BoardTitleEditor({
     </div>
   );
 }
-
-registerObjectType({
-  type: 'board',
-  renderer: BoardRenderer,
-  // Milanote parity 98x139 (đo từ DOM Milanote thật): 72px icon + gap + title 2
-  // dòng + secondary count.
-  defaultGeometry: { width: 98, height: 139, rotation: 0, zIndex: 0 },
-  // Placeholder linkedBoardId — createBoardAt override với id Board thực.
-  defaultData: (): BoardData => ({ linkedBoardId: '' }),
-  label: 'Board',
-  showInToolbar: true,
-  // Viền chọn chỉ bọc khối vuông (renderer tự đặt SelectionBox trong icon).
-  ownSelectionFrame: true,
-});

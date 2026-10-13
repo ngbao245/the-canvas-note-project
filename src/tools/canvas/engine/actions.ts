@@ -30,10 +30,19 @@ import { parseNoteData } from '../lib/note-data';
  * mutation (store.getState) để lấy object đã cập nhật, không phải closure cũ.
  */
 function mutateGeometryAndPersist(id: string, geometry: Partial<Geometry>): void {
+  mutateGeometry(id, geometry);
+  persistObject(id);
+}
+
+/** Chỉ đổi store, không ghi. Dùng lúc đang kéo / resize: thả tay mới ghi. */
+function mutateGeometry(id: string, geometry: Partial<Geometry>): void {
   const s = useObjectsStore.getState();
   if (!s.objects.get(id)) return;
   s.updateGeometry(id, geometry);
-  const upd = s.objects.get(id);
+}
+
+function persistObject(id: string): void {
+  const upd = useObjectsStore.getState().objects.get(id);
   if (upd) void getCanvasRepository().saveObject(upd);
 }
 
@@ -98,6 +107,7 @@ export function createObjectAt(
     },
     data: dataOverride !== undefined ? dataOverride : def.defaultData(),
     unsortIndex: null,
+    version: 0,
     createdAt: now,
     updatedAt: now,
   };
@@ -178,6 +188,7 @@ export function createBoardAt(
     },
     data: { linkedBoardId: board.id } satisfies BoardData,
     unsortIndex: null,
+    version: 0,
     createdAt: now,
     updatedAt: now,
   };
@@ -732,17 +743,73 @@ export function updateObjectData(id: string, nextData: unknown): void {
   });
 }
 
+// --- Note tự lưu (spec canvas-note-autosave) ---
+
+/**
+ * Ghi chữ note vào store + hàng đợi (kênh `text`), KHÔNG thêm bước undo. Gọi mỗi
+ * lần editor đổi nội dung. Gộp vào data hiện tại → giữ màu / heightMode đã đổi
+ * trong lúc sửa (VD kéo góc).
+ */
+export function setNoteBodySilently(id: string, body: string): void {
+  const s = useObjectsStore.getState();
+  const cur = s.objects.get(id);
+  if (!cur) return;
+  const data = parseNoteData(cur.data);
+  if (data.body === body) return;
+  s.updateData(id, { ...data, body });
+  const updated = useObjectsStore.getState().objects.get(id);
+  if (updated) void getCanvasRepository().saveObject(updated, 'text');
+}
+
+/**
+ * Kết thúc 1 lần sửa note: đúng 1 bước undo từ chữ lúc vào sửa → chữ cuối.
+ * Không đổi gì thì không ghi bước nào. Undo / redo chỉ đổi chữ, không đụng màu.
+ */
+export function commitNoteBodyEdit(id: string, before: string, after: string): void {
+  if (before === after) return;
+  if (!useObjectsStore.getState().objects.has(id)) return;
+  setNoteBodySilently(id, after);
+  useHistoryStore.getState().push({
+    label: 'Edit note',
+    undo: () => setNoteBodySilently(id, before),
+    redo: () => setNoteBodySilently(id, after),
+  });
+}
+
+/** Khoảng cách note mới khi Ctrl+Enter (canvas-space). Có thể chỉnh sau khi dùng thử. */
+const NOTE_BELOW_GAP = 16;
+
+/**
+ * Ctrl+Enter: tạo note mới ngay dưới note `id`, cùng cạnh trái, cách cạnh dưới
+ * NOTE_BELOW_GAP. Kích thước / màu mặc định như note từ toolbar. 1 bước undo
+ * (createObjectAt). Trả note mới để caller cho vào sửa.
+ */
+export function createNoteBelow(id: string): CanvasObject | null {
+  const cur = useObjectsStore.getState().objects.get(id);
+  const def = getObjectTypeDefinition('note');
+  if (!cur || !def || cur.unsortIndex !== null) return null;
+  const { width, height } = def.defaultGeometry;
+  // createObjectAt nhận TÂM object.
+  const cx = cur.geometry.x + width / 2;
+  const cy = cur.geometry.y + cur.geometry.height + NOTE_BELOW_GAP + height / 2;
+  return createObjectAt('note', cx, cy, cur.boardId);
+}
+
 // --- Move (live during drag) ---
-/** Apply delta trong drag, không push history. Gọi mỗi pointermove. */
+/**
+ * Apply delta trong drag: CHỈ đổi store, không ghi, không push history. Gọi mỗi
+ * pointermove. Ghi xuống máy lúc thả (`commitMove`); F5 / đóng tab giữa lúc kéo
+ * thì object giữ vị trí cũ.
+ */
 export function applyMoveDelta(ids: string[], dx: number, dy: number): void {
   for (const id of ids) {
     const cur = useObjectsStore.getState().objects.get(id);
     if (!cur) continue;
-    mutateGeometryAndPersist(id, { x: cur.geometry.x + dx, y: cur.geometry.y + dy });
+    mutateGeometry(id, { x: cur.geometry.x + dx, y: cur.geometry.y + dy });
   }
 }
 
-/** Commit move sau drag end: push MoveCommand với snapshot before/after. */
+/** Commit move sau drag end: ghi vị trí mới + push MoveCommand với snapshot before/after. */
 export function commitMove(
   before: Map<string, { x: number; y: number }>,
   after: Map<string, { x: number; y: number }>,
@@ -758,6 +825,7 @@ export function commitMove(
     }
   }
   if (!moved) return;
+  for (const id of after.keys()) persistObject(id);
 
   useHistoryStore.getState().push({
     label: 'Move objects',
@@ -771,17 +839,28 @@ export function commitMove(
 }
 
 // --- Resize (live during drag) ---
-/** Apply resize trong drag, không push history. Gọi mỗi pointermove. */
-export function applyResize(id: string, geometry: Partial<Geometry>): void {
+function clampedGeometry(id: string, geometry: Partial<Geometry>): Geometry | null {
   const cur = useObjectsStore.getState().objects.get(id);
-  if (!cur) return;
+  if (!cur) return null;
   const next = { ...cur.geometry, ...geometry };
   if (next.width < MIN_OBJECT_SIZE) next.width = MIN_OBJECT_SIZE;
   if (next.height < MIN_OBJECT_SIZE) next.height = MIN_OBJECT_SIZE;
-  mutateGeometryAndPersist(id, next);
+  return next;
 }
 
-/** Commit resize sau drag end: push ResizeCommand. */
+/** Đổi kích thước + ghi ngay, không push history (VD note tự cao theo chữ). */
+export function applyResize(id: string, geometry: Partial<Geometry>): void {
+  const next = clampedGeometry(id, geometry);
+  if (next) mutateGeometryAndPersist(id, next);
+}
+
+/** Đổi kích thước lúc đang kéo góc: CHỈ đổi store. Thả tay → `commitResize` ghi. */
+export function previewResize(id: string, geometry: Partial<Geometry>): void {
+  const next = clampedGeometry(id, geometry);
+  if (next) mutateGeometry(id, next);
+}
+
+/** Commit resize sau drag end: ghi kích thước mới + push ResizeCommand. */
 export function commitResize(id: string, before: Geometry, after: Geometry): void {
   if (
     before.x === after.x &&
@@ -791,6 +870,7 @@ export function commitResize(id: string, before: Geometry, after: Geometry): voi
   ) {
     return;
   }
+  persistObject(id);
   useHistoryStore.getState().push({
     label: 'Resize object',
     undo: () => mutateGeometryAndPersist(id, before),
@@ -842,6 +922,7 @@ function insertObjectsComposite(
     geometry: { ...t.geometry, zIndex: baseZ + i },
     data: t.data,
     unsortIndex: null,
+    version: 0,
     createdAt: now,
     updatedAt: now,
   }));
@@ -1094,6 +1175,7 @@ export function clipParagraphToNewNote(
     },
     data: { body: paragraphHtml, color: parsedData.color },
     unsortIndex: null,
+    version: 0,
     createdAt: now,
     updatedAt: now,
   };

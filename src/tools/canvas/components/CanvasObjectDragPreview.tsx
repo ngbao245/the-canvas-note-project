@@ -15,10 +15,9 @@ import { FloatingObjectPreview } from './FloatingObjectPreview';
  */
 export function CanvasObjectDragPreview() {
   const drag = useCanvasDragStore((s) => s.drag);
-  const objects = useObjectsStore((s) => s.objects);
-  if (!drag) return null;
-  const object = objects.get(drag.primaryId);
-  if (!object) return null;
+  // Chỉ theo dõi object đang kéo, không theo cả Map (gõ note khác không render lại).
+  const object = useObjectsStore((s) => (drag ? s.objects.get(drag.primaryId) : undefined));
+  if (!drag || !object) return null;
 
   return (
     <FloatingObjectPreview

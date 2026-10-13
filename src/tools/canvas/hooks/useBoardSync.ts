@@ -43,11 +43,14 @@ export function useBoardSync({
     let cancelled = false;
     (async () => {
       try {
+        // Đẩy hết phần đang chờ của board cũ trước khi nạp board mới.
+        await repo.flush();
+        if (cancelled) return;
         const objects = await repo.loadObjects(currentBoardId);
         if (cancelled) return;
-        useObjectsStore.getState().hydrate(objects);
+        useObjectsStore.getState().hydrate(objects, currentBoardId);
       } catch {
-        if (!cancelled) useObjectsStore.getState().hydrate([]);
+        if (!cancelled) useObjectsStore.getState().hydrate([], currentBoardId);
       }
     })();
 

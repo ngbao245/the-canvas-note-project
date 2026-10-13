@@ -62,7 +62,10 @@ export function usePointerInteraction(ref: RefObject<HTMLElement | null>) {
       // commitAndClose commit body + setEditingId(null). Đây là path đã proven
       // (giống click header thoát edit). Skip marquee/pan cho pointerdown này —
       // user chỉ "click ngoài để thoát". Muốn marquee thì release rồi kéo lại.
+      // Click vùng trống = về canvas hẳn (Milanote): thoát sửa VÀ bỏ chọn. Khác Esc /
+      // nút Dismiss (thoát 2 tầng: sửa → chọn → bỏ chọn).
       if (useInteractionStore.getState().editingId) {
+        useSelectionStore.getState().clear();
         return;
       }
 

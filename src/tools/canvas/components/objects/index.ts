@@ -1,5 +1,12 @@
-// Barrel — import side-effect để register mọi object type vào registry.
-// Import file này 1 lần ở CanvasSurface mount để đảm bảo registry đầy đủ trước render.
-import './RectObject';
-import './NoteObject';
-import './BoardObject';
+import { registerObjectType } from '../../hooks/useObjectRegistry';
+import { rectType } from './rect-type';
+import { noteType } from './note-type';
+import { boardType } from './board-type';
+
+// Danh sách mọi loại object trên canvas. Thêm loại mới: viết renderer
+// `XxxObject.tsx` + định nghĩa `xxx-type.ts(x)`, rồi thêm vào mảng này.
+// Thứ tự = thứ tự hiện trên toolbar palette.
+// CanvasSurface import file này 1 lần để registry đầy đủ trước khi render.
+const OBJECT_TYPES = [rectType, noteType, boardType];
+
+for (const def of OBJECT_TYPES) registerObjectType(def);

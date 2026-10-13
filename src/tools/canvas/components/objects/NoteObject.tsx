@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import Placeholder from '@tiptap/extension-placeholder';
-import { registerObjectType, type ObjectRendererProps } from '../../hooks/useObjectRegistry';
+import type { ObjectRendererProps } from '../../hooks/useObjectRegistry';
 import type { NoteData } from '../../types';
-import { applyResize, updateObjectData } from '../../engine/actions';
+import {
+  applyResize,
+  commitNoteBodyEdit,
+  createNoteBelow,
+  setNoteBodySilently,
+} from '../../engine/actions';
+import { getCanvasRepository } from '../../api';
+import { useRemoteLockStore } from '../../store/remote-lock-store';
 import { useObjectsStore } from '../../store/objects-store';
 import { useCurrentBoardStore } from '../../store/current-board-store';
 import { useInteractionStore } from '../../store/interaction-store';
@@ -13,8 +20,7 @@ import { NOTE_SCHEMA_EXTENSIONS, sanitizeNoteHtml } from '../../lib/note-schema'
 import { useCardClipper } from '../../hooks/useCardClipper';
 import { CardClipperButton } from '../CardClipperButton';
 import { ObjectShell } from './ObjectShell';
-import { NoteElementActions, NoteEditingActions } from './NoteToolbar';
-import { isImeComposing } from '@/lib/dom';
+import { NoteCommitKeys } from '../../lib/note-commit-keys';
 
 /** Padding dọc py-6 (24 trên + 24 dưới), xem NOTE_WRAPPER_CLASS.
  *  Empty note 68 = 1 dòng text-sm ~20 + padding dọc 48.
@@ -81,6 +87,8 @@ function useNoteAutoGrow(
     ro.observe(el);
     measure(); // initial
     return () => ro.disconnect();
+    // Bỏ contentRef: là ref object ổn định, `.current` đổi không làm re-run.
+    // Lúc ref trỏ sang DOM mới (editor mount) thì extraDep báo để chạy lại.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objectId, heightMode, extraDep]);
 }
@@ -106,6 +114,7 @@ function useContentOverflow(
     ro.observe(cont);
     check();
     return () => ro.disconnect();
+    // Bỏ wrapperRef / contentRef: ref object ổn định, extraDep báo khi DOM đổi.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [extraDep]);
   return overflow;
@@ -138,12 +147,13 @@ function FadeOverlay() {
  *   - Data: `body: string` chứa HTML (Tiptap `.getHTML()`). Migration từ shape
  *     cũ (title + plain text body) qua `lib/note-data.ts::parseNoteData`.
  *
- * Edit flow: double-click → editingId set → editor focus, commit khi blur /
- * Escape / Ctrl+Enter (undo-able qua updateObjectData).
+ * Edit flow: double-click → editingId set → editor focus. Mỗi lần gõ tự lưu
+ * (store + hàng đợi, không undo). Thoát sửa (blur / Esc) ghi đúng 1 bước undo.
+ * Ctrl+Enter: thoát sửa + tạo note mới bên dưới rồi sửa note đó.
  *
  * Placeholder styling ở `src/styles/index.css` (`.tiptap p.is-editor-empty…`).
  */
-function NoteRenderer({ object, isSelected, isEditing, onEditEnd }: ObjectRendererProps) {
+export function NoteRenderer({ object, isSelected, isEditing, onEditEnd }: ObjectRendererProps) {
   const data = parseNoteData(object.data);
 
   return (
@@ -202,6 +212,8 @@ function NoteView({ data, objectId }: { data: NoteData; objectId: string }) {
   const boardId = useCurrentBoardStore((s) => s.currentBoardId);
   const isFixed = data.heightMode === 'fixed';
   const overflow = useContentOverflow(innerRef, contentRef, data.body);
+  // Tab khác đang sửa note này: không cho tách đoạn (sẽ ghi đè chữ của tab kia).
+  const lockedElsewhere = useRemoteLockStore((s) => s.ids.has(objectId));
   // Lọc HTML trước khi nhét vào DOM: body có thể đến từ clipboard hoặc data cũ
   // trong IndexedDB, không tin được. Editor mode không cần — Tiptap tự parse
   // qua cùng schema.
@@ -219,7 +231,7 @@ function NoteView({ data, objectId }: { data: NoteData; objectId: string }) {
         />
         {isFixed && overflow ? <FadeOverlay /> : null}
       </div>
-      {clipper ? (
+      {clipper && !lockedElsewhere ? (
         <CardClipperButton
           sourceId={objectId}
           paragraphIndex={clipper.index}
@@ -251,16 +263,28 @@ function NoteEditor({
   const clipper = useCardClipper(wrapperRef, contentRootRef);
   const boardId = useCurrentBoardStore((s) => s.currentBoardId);
 
+  // `initial` đổi theo store mỗi lần tự lưu → chụp chữ lúc vào sửa 1 lần để làm
+  // "trước" của bước undo.
+  const startBodyRef = useRef(initial.body);
   const latestBodyRef = useRef(initial.body);
+  // Đã ghi bước undo của lần sửa này (Esc rồi blur lúc unmount không ghi 2 lần).
+  const committedRef = useRef(false);
   // Bỏ qua blur ngay sau mount: chuỗi double-click phát pointer event làm editor
   // chớp mất focus khi vừa mount → không được coi là "đóng".
   const readyRef = useRef(false);
+  // Gán sau khi commitAndClose được khai báo (bên dưới). Extension chỉ gọi lúc bấm phím.
+  const commitRef = useRef<() => void>(() => {});
+  const commitAndNewRef = useRef<() => void>(() => {});
 
   const editor = useEditor({
-    // Schema chung với bộ lọc HTML (lib/note-schema.ts). Placeholder chỉ là UI,
-    // không đổi schema nên thêm riêng ở đây.
+    // Schema chung với bộ lọc HTML (lib/note-schema.ts). Placeholder + phím lưu
+    // chỉ là UI, không đổi schema nên thêm riêng ở đây.
     extensions: [
       ...NOTE_SCHEMA_EXTENSIONS,
+      NoteCommitKeys.configure({
+        onCommit: () => commitRef.current(),
+        onCommitAndNew: () => commitAndNewRef.current(),
+      }),
       Placeholder.configure({
         placeholder: 'Bắt đầu gõ...',
         // Chỉ show placeholder khi editor rỗng hoàn toàn (không phải khi paragraph
@@ -285,12 +309,17 @@ function NoteEditor({
     },
     onUpdate: ({ editor: ed }) => {
       latestBodyRef.current = ed.getHTML();
+      // Tự lưu ngay (hàng đợi gom, không debounce), không thêm bước undo.
+      setNoteBodySilently(objectId, latestBodyRef.current);
       // Sync state → CardClipperButton nhận sourceBody hiện tại (paragraph mới
       // gõ có thể clip ngay, không cần chờ commit).
       setCurrentBody(latestBodyRef.current);
     },
     onBlur: ({ event }) => {
       if (!readyRef.current) return;
+      // Đổi tab / cửa sổ khác cũng làm editor blur. Đó không phải "click ra
+      // ngoài": giữ chế độ sửa (và khoá giữa tab). Chữ vẫn tự lưu, ẩn tab thì đẩy gấp.
+      if (!document.hasFocus()) return;
       // Milanote parity: mọi thao tác trong toolbar hoặc popup phụ trợ (Link
       // input, TextStyle dropdown) là "vùng đặc biệt" — click vào đây KHÔNG
       // được coi là thoát edit. Guard bằng data-canvas-overlay: Toolbar +
@@ -314,39 +343,40 @@ function NoteEditor({
     return () => clearTimeout(t);
   }, []);
 
+  // Ghi bước undo của lần sửa này (nếu có đổi) + đẩy hàng đợi. Chữ đã nằm trong
+  // store nhờ tự lưu. Không đóng editor.
+  const commitEdit = () => {
+    if (committedRef.current) return;
+    committedRef.current = true;
+    commitNoteBodyEdit(objectId, startBodyRef.current, latestBodyRef.current || '<p></p>');
+    void getCanvasRepository().flush();
+  };
+
   const commitAndClose = () => {
-    // Nếu editor bị destroy (unmount race), fallback initial body.
-    // Giữ heightMode + color từ initial snapshot (chỉ body thay đổi trong edit).
-    updateObjectData(objectId, {
-      body: latestBodyRef.current || '<p></p>',
-      color: initial.color,
-      heightMode: initial.heightMode,
-    });
+    commitEdit();
     onEditEnd();
   };
 
-  // Keyboard: Escape / Ctrl+Enter commit + đóng. Enter thường để Tiptap tạo
-  // paragraph mới (default StarterKit behavior).
-  // Capture phase: chạy TRƯỚC keydown của ProseMirror. Tiptap HardBreak gắn sẵn
-  // Mod-Enter = xuống dòng mềm; nếu để bubble thì `<br>` đã chèn trước khi commit.
-  // preventDefault ở đây → ProseMirror thấy defaultPrevented nên bỏ qua phím.
-  useEffect(() => {
-    if (!editor) return;
-    const dom = editor.view.dom;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (isImeComposing(e)) return;
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        commitAndClose();
-      } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        commitAndClose();
-      }
-    };
-    dom.addEventListener('keydown', onKeyDown, true);
-    return () => dom.removeEventListener('keydown', onKeyDown, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor]);
+  const commitAndNew = () => {
+    commitAndClose();
+    const next = createNoteBelow(objectId);
+    if (next) useInteractionStore.getState().setEditingId(next.id, null);
+  };
+
+  // NoteCommitKeys gọi bản mới nhất qua ref.
+  commitRef.current = commitAndClose;
+  commitAndNewRef.current = commitAndNew;
+
+  // Editor bị gỡ mà chưa thoát sửa đàng hoàng (đổi board, note bị xoá, tab khác
+  // giành khoá): vẫn ghi bước undo nếu có đổi. Không set committedRef ở đây: React
+  // StrictMode chạy cleanup giả lúc mount, lúc đó chữ chưa đổi nên không ghi gì.
+  useEffect(
+    () => () => {
+      if (committedRef.current) return;
+      commitNoteBodyEdit(objectId, startBodyRef.current, latestBodyRef.current || '<p></p>');
+    },
+    [objectId],
+  );
 
   // Bridge editor instance ra note-editor-store để NoteEditingActions (toolbar
   // screen-space overlay) subscribe được. Set khi mount, clear khi unmount.
@@ -412,36 +442,3 @@ function NoteEditor({
   );
 }
 
-registerObjectType({
-  type: 'note',
-  renderer: NoteRenderer,
-  // Milanote parity: width 338, height 68 (đo từ DOM Milanote `contain-intrinsic-size:
-  // 338px 68px` cho note rỗng). Height auto-grow theo content qua RO trong renderer.
-  defaultGeometry: { width: 338, height: 68, rotation: 0, zIndex: 0 },
-  defaultData: (): NoteData => ({ body: '<p></p>', color: null, heightMode: 'auto' }),
-  label: 'Note',
-  showInToolbar: true,
-  // Kéo corner đổi cả width + height. Note mới heightMode='auto' → RO grow
-  // theo content. Sau khi user kéo corner → chuyển 'fixed', RO ngừng grow,
-  // content vượt geometry → clip + fade overlay.
-  // Data từ clipboard: chuẩn hoá shape qua parseNoteData rồi lọc body HTML.
-  sanitizePastedData: (data) => {
-    const parsed = parseNoteData(data);
-    return { ...parsed, body: sanitizeNoteHtml(parsed.body) };
-  },
-  onResizeCommit: (objectId) => {
-    // User kéo corner Note (bất kỳ dim) → lock heightMode='fixed'. Milanote
-    // parity: sau explicit resize, note giữ user set, không auto grow lại.
-    // Đọc data hiện tại qua parseNoteData để giữ body/color/... trong shape
-    // chuẩn Zod (schema có default cover trường thiếu).
-    const cur = useObjectsStore.getState().objects.get(objectId);
-    if (!cur) return;
-    const parsed = parseNoteData(cur.data);
-    if (parsed.heightMode === 'fixed') return; // đã fixed, skip
-    updateObjectData(objectId, { ...parsed, heightMode: 'fixed' });
-  },
-  // Per-type toolbar tree (Milanote parity): Note có cây chức năng riêng khác
-  // Task/Link/Image. Toolbar generic lookup registry, không hard-code Note.
-  renderElementActions: (object) => <NoteElementActions object={object} />,
-  renderEditingActions: () => <NoteEditingActions />,
-});

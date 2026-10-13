@@ -3,7 +3,7 @@ import { useObjectsStore } from '../store/objects-store';
 import { useSelectionStore } from '../store/selection-store';
 import { useCameraStore } from '../store/camera-store';
 import { useInteractionStore, type ResizeHandle } from '../store/interaction-store';
-import { applyResize, commitResize } from '../engine/actions';
+import { commitResize, previewResize } from '../engine/actions';
 import { getObjectTypeDefinition } from '../hooks/useObjectRegistry';
 import { MIN_OBJECT_SIZE } from '../types';
 
@@ -162,7 +162,7 @@ function CornerResizeHandle({
       const dy = (ev.clientY - startClientY) / zoom;
       const w = Math.max(MIN_OBJECT_SIZE, g0.width + dx);
       const h = Math.max(MIN_OBJECT_SIZE, g0.height + dy);
-      applyResize(objectId, { x: g0.x, y: g0.y, width: w, height: h });
+      previewResize(objectId, { x: g0.x, y: g0.y, width: w, height: h });
     };
     const onUp = (ev: PointerEvent) => {
       target.releasePointerCapture(ev.pointerId);

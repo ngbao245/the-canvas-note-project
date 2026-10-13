@@ -11,7 +11,13 @@
     "RETRY": "Thử lại",
     "LOADING": "Đang tải…",
     "OR": "hoặc",
-    "WITH_SHORTCUT": "{label} ({keys})"
+    "WITH_SHORTCUT": "{label} ({keys})",
+    "PWA": {
+      "UPDATE_READY": "Có bản mới",
+      "RELOAD": "Tải lại",
+      "DISMISS": "Để sau",
+      "OFFLINE": "Đang offline"
+    }
   },
   "LOCALE": {
     "VI": "Tiếng Việt",
@@ -234,7 +240,8 @@
       "NUMBERED": "Danh sách số",
       "QUOTE": "Trích dẫn",
       "CODE_BLOCK": "Khối code",
-      "HR": "Đường kẻ ngang"
+      "HR": "Đường kẻ ngang",
+      "NEW_NOTE_BELOW": "Tạo note mới bên dưới note đang chọn / đang sửa"
     }
   },
   "CANVAS": {
@@ -253,6 +260,12 @@
       },
       "EMPTY": "Chưa có mục nào",
       "HINT": "Kéo một mục ra canvas để đặt lên."
+    },
+    "NOTE_LOCK": {
+      "BUSY": "Note này đang được sửa ở tab khác. Bấm × trên nhãn để lấy quyền sửa.",
+      "OTHER_TAB": "Bạn",
+      "TAKE_OVER": "Lấy quyền sửa",
+      "TAKEN": "Tab khác đã lấy quyền sửa note này. Chữ của bạn đã được lưu."
     },
     "NOTE_COLOR": {
       "PICK": "Chọn màu",
@@ -328,6 +341,150 @@
         "DESCRIPTION": "Sẽ xoá {items}. Có thể hoàn tác ({undo}).",
         "CONFIRM": "Xoá cả board"
       }
+    }
+  },
+  "LANDING": {
+    "NAV": {
+      "LABEL": "Điều hướng chính",
+      "PROBLEM": "Vấn đề",
+      "FEATURES": "Tính năng",
+      "HOW": "Cách dùng",
+      "ROADMAP": "Lộ trình",
+      "OPEN": "Mở bibo"
+    },
+    "HERO": {
+      "TITLE_1": "Gom nguồn.",
+      "TITLE_2": "Ghi chú.",
+      "TITLE_3": "Xếp lên canvas.",
+      "LEAD": "bibo là không gian làm việc trực quan. Tài liệu, ghi chú và ý tưởng nằm chung một mặt phẳng, và con số nào cũng truy được về đúng trang nó đến từ. Thử ngay bên dưới.",
+      "CTA_FEATURES": "Xem nó làm gì",
+      "NOTE": "Đang trong giai đoạn đầu, một người dùng. Tên chính thức chưa chốt.",
+      "OPEN_FULL": "Mở bản đầy đủ"
+    },
+    "DEMO": {
+      "REGION_LABEL": "Canvas thử: kéo note, lăn chuột kèm Ctrl để phóng to, kéo vùng trống để di chuyển",
+      "BRAND": "bibo · bản thử",
+      "ACTIVATE": "Bấm để thử",
+      "ACTIVATE_HINT": "kéo note, sửa chữ, mở nguồn",
+      "RELEASE_HINT": "Nhấn Esc hoặc bấm ra ngoài khung để cuộn trang tiếp.",
+      "NARROW": "Mở trên máy tính để thử canvas.",
+      "STATIC_ALT": "Phác thảo board mẫu: một file PDF, các note và một trích dẫn nối về nguồn",
+      "LOAD_ERROR": "Không tải được canvas thử.",
+      "UNDO": "Hoàn tác",
+      "REDO": "Làm lại",
+      "RESET": "Về board mẫu",
+      "ADD_NOTE_TITLE": "Kéo ra board hoặc bấm để thêm note",
+      "NEW_NOTE_TITLE": "Note mới",
+      "EMPTY": "Kéo note từ thanh bên trái",
+      "EDIT_TITLE": "Tiêu đề note",
+      "EDIT_BODY": "Nội dung note",
+      "SOURCE_LINE": "{file} · trang {page} · bảng {table}",
+      "OPEN_SOURCE": "Mở nguồn",
+      "SOURCE_PANEL_TITLE": "Xem nguồn",
+      "SOURCE_LOCATION": "trang {page} · bảng {table}",
+      "SOURCE_CLOSE": "Đóng",
+      "SOURCE_FIGURE": "Trang {page} của {file}, ô được trích trong bảng {table} được tô sáng",
+      "TABLE_LABEL": "Bảng {table}",
+      "SOURCE_HINT": "Ô tô vàng là chỗ con số được trích ra."
+    },
+    "SKETCH": {
+      "CITED_FROM": "trích từ",
+      "ALL_IN_ONE": "mọi thứ một chỗ",
+      "PAGE": "Trang: {page}",
+      "TABLE": "Bảng: {table}",
+      "CONFIDENCE": "Độ tin cậy",
+      "RELATIONS": { "other": "Quan hệ: {count}" },
+      "COMPARE": "so sánh",
+      "CHANGE": "biến động +18%",
+      "AI_HINT": "AI gợi ý, bạn bấm nhận hoặc bỏ"
+    },
+    "PROBLEM": {
+      "KICKER": "Vấn đề",
+      "TITLE_A": "Thông tin đang",
+      "TITLE_MARK": "rơi vãi",
+      "TITLE_B": "khắp nơi",
+      "LEAD": "Làm việc với nhiều tài liệu một lúc, ai cũng gặp mấy chuyện này:",
+      "ITEM_1": "PDF ở một thư mục, ghi chú ở một app khác, kết luận nằm trong đầu.",
+      "ITEM_2": "Viết ra một con số, tuần sau không nhớ nó lấy từ trang nào.",
+      "ITEM_3": "Bảng tính và tài liệu thì cứng, công cụ trực quan thì không gắn được dữ liệu với nguồn.",
+      "ILLU_ALT": "Một người đứng giữa nhiều file, ghi chú và dấu hỏi rải rác",
+      "ILLU_QUESTION": "số này ở đâu?"
+    },
+    "PILLARS": {
+      "KICKER": "Cách bibo giải",
+      "TITLE": "Ba thứ, một mặt phẳng",
+      "LEAD": "Không thêm app nào nữa. bibo gom đúng ba thứ bạn đang dùng rời rạc vào một chỗ.",
+      "SOURCE_TITLE": "Nguồn",
+      "SOURCE_BODY": "PDF, ảnh, web clip. Kho tài liệu gốc, mở lại được đúng trang, đúng đoạn.",
+      "NOTE_TITLE": "Ghi chú",
+      "NOTE_BODY": "Bạn tự viết, hoặc trích thẳng từ nguồn. Ghi chú trích ra luôn nhớ mình đến từ đâu.",
+      "CANVAS_TITLE": "Canvas",
+      "CANVAS_BODY": "Mặt phẳng vô hạn. Kéo thả, nối quan hệ, lồng board trong board, nhìn được toàn cảnh."
+    },
+    "FEATURES": {
+      "KICKER": "Tính năng",
+      "TITLE": "Nhìn gần hơn",
+      "PROV_TAG": "điểm khác biệt chính",
+      "PROV_TITLE_A": "Con số nào cũng có",
+      "PROV_TITLE_MARK": "địa chỉ nhà",
+      "PROV_BODY": "Mỗi object trên canvas giữ nguồn gốc của nó: file nào, trang nào, bảng nào. Bấm một cái là mở đúng đoạn nguồn.",
+      "PROV_1": "Không còn dữ liệu trôi nổi không rõ từ đâu.",
+      "PROV_2": "Inspector hiện nguồn, độ tin cậy và quan hệ của object đang chọn.",
+      "PROV_3": "Kết luận kiểm lại được, chia sẻ ai cũng tin được.",
+      "PROV_ALT": "Note \"Doanh thu Q3 +18%\" trích từ bảng 3 trang 12, kèm Inspector hiển thị nguồn",
+      "CANVAS_TAG": "đã chạy được",
+      "CANVAS_TITLE_A": "Canvas mượt như",
+      "CANVAS_TITLE_MARK": "giấy thật",
+      "CANVAS_BODY": "Kéo thả, phóng to thu nhỏ, hoàn tác. Note gọn gàng, thanh công cụ nằm ngay cạnh tay.",
+      "CANVAS_1": "Zoom không trôi: điểm dưới con trỏ đứng yên khi phóng.",
+      "CANVAS_2": "Kéo note từ thanh công cụ thả thẳng lên board.",
+      "CANVAS_3": "Hoàn tác, làm lại, phím tắt để nhìn toàn cảnh.",
+      "CANVAS_POINTER_TITLE": "Bạn vừa thử ở trên",
+      "CANVAS_POINTER_BODY": "Khung canvas đầu trang là bản thử thu gọn, chạy ngay trong trình duyệt, không lưu gì.",
+      "CANVAS_POINTER_LINK": "Quay lên thử lại",
+      "AI_TAG": "đang xây",
+      "AI_TITLE_A": "AI ngồi cạnh,",
+      "AI_TITLE_MARK": "không ngồi thay",
+      "AI_BODY": "Trực quan như bảng ghim ý tưởng, nhưng có trí tuệ bên dưới. AI giúp nối quan hệ và phân tích, còn bạn vẫn là người quyết.",
+      "AI_1": "So sánh hai bảng, chỉ ra chỗ biến động.",
+      "AI_2": "Trích bảng từ PDF thành object, giữ nguyên nguồn.",
+      "AI_3": "Gợi ý đường nối: \"trích từ\", \"so sánh\", \"chứng minh cho\".",
+      "AI_ALT": "Hai bảng Q2 và Q3, AI gợi ý một đường nối so sánh và khoanh ô biến động"
+    },
+    "STEPS": {
+      "KICKER": "Cách dùng",
+      "TITLE": "Ba bước, không cần học",
+      "LEAD": "Mở board, thả đồ vào, bắt đầu nối. Chỉ vậy thôi.",
+      "S1_TITLE": "Thả nguồn vào",
+      "S1_BODY": "Kéo PDF, ảnh, link vào Khay chờ. Chưa cần xếp, cứ gom trước.",
+      "S2_TITLE": "Xếp lên canvas",
+      "S2_BODY": "Kéo từ Khay chờ ra board, viết note, gom nhóm bằng board lồng nhau.",
+      "S3_TITLE": "Nối và kiểm lại",
+      "S3_BODY": "Vẽ đường nối giữa các object. Nghi ngờ con số nào, bấm mở nguồn là thấy."
+    },
+    "ROADMAP": {
+      "KICKER": "Lộ trình",
+      "TITLE": "Đi từng nấc, không đập đi làm lại",
+      "LEAD": "bibo được thiết kế từ đầu để lớn lên: từ một người, tới nhiều người, tới cả nhóm cùng làm trên một workspace.",
+      "STICKY_TITLE": "Thật lòng mà nói",
+      "STICKY_BODY": "Hiện bibo mới ở nấc 1: canvas và note đã chạy. Các loại object khác, AI và cộng tác đang trên đường.",
+      "ALT": "Ba nấc: một người, mỗi người một tài khoản, chung workspace cộng tác",
+      "STAGE_1": "1 · Nay",
+      "STAGE_1_SUB": "một người, dữ liệu riêng",
+      "STAGE_2": "2 · Kế tiếp",
+      "STAGE_2_SUB": "mỗi người một tài khoản",
+      "STAGE_3": "3 · Xa hơn",
+      "STAGE_3_SUB": "chung workspace, realtime"
+    },
+    "FINAL": {
+      "TITLE_A": "Mở một board trống,",
+      "TITLE_MARK": "thả thứ đầu tiên vào",
+      "BODY": "bibo đang được xây từng nét. Canvas đã dùng được, phần còn lại đang phác.",
+      "CTA_TRY": "Thử lại bản thử"
+    },
+    "FOOTER": {
+      "NAME": "bibo · tên tạm, có thể thành BiBaNote",
+      "DRAWN": "vẽ tay bằng SVG"
     }
   }
 }

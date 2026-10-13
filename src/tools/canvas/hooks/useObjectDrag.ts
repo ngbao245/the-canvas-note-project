@@ -4,6 +4,8 @@ import { useSelectionStore } from '../store/selection-store';
 import { useCameraStore } from '../store/camera-store';
 import { useInteractionStore } from '../store/interaction-store';
 import { useCanvasDragStore } from '../store/canvas-drag-store';
+import { isLockedElsewhere } from '../store/remote-lock-store';
+import { showNotice } from '../store/notice-store';
 import { getCameraEngine } from '../engine/camera-engine';
 import { aabbIntersect, clientToCanvas, visibleCanvasBounds, type Bounds } from '../engine/coord';
 import { computeSnapDelta, SNAP_THRESHOLD_PX, type SnapDelta } from '../engine/alignment';
@@ -21,6 +23,7 @@ import { boardDataSchema, type CanvasObject } from '../types';
 import { createEdgePanLoop } from './useEdgePan';
 import { isMacSecondaryClick, isPrimaryModifier } from '@/lib/shortcuts';
 import { setCursorOverride } from '@/lib/cursor-override';
+import { readCssToken } from '@/lib/css-token';
 
 /**
  * Drag object trên canvas — Milanote pattern, unified visualize với toolbar/unsort:
@@ -321,6 +324,7 @@ export function useObjectDrag(objectId: string) {
 
     // Drop trên trash → xoá.
     if (hoverTrashRef.current) {
+      revertToBefore(); // undo xoá khôi phục đúng chỗ cũ
       finishDrag();
       deleteObjects(ids);
       return;
@@ -375,6 +379,8 @@ export function useObjectDrag(objectId: string) {
   };
 
   const onCancel = () => {
+    // Kéo bị huỷ (pointercancel): store đã dời nhưng chưa ghi → trả về chỗ cũ.
+    if (draggingRef.current) revertToBefore();
     finishDrag();
   };
 
@@ -424,6 +430,13 @@ export function useObjectDrag(objectId: string) {
       }
 
       e.stopPropagation();
+
+      // Tab khác đang sửa object này: không chọn, không kéo (bản ở tab này có thể
+      // mang chữ cũ, ghi xuống sẽ đè). Giữ vùng chọn hiện tại.
+      if (isLockedElsewhere(objectId)) {
+        showNotice('CANVAS.NOTE_LOCK.BUSY');
+        return;
+      }
 
       const sel = useSelectionStore.getState();
       // Chọn object: shift toggle, else replace nếu chưa select.
@@ -498,9 +511,6 @@ function computeGroupSnap(ids: string[]): SnapDelta {
 
 /** Thời gian card trượt vào chỗ khớp sau khi thả. Ngắn để không thấy trễ. */
 const SETTLE_MS = 120;
-// = --easing-standard trong index.css. Element.animate không đọc được var(),
-// nên phải ghi giá trị trực tiếp; đổi token thì đổi cả chỗ này.
-const SETTLE_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)';
 
 /**
  * Hiệu ứng trượt vào chỗ khớp sau khi thả. Store đã giữ vị trí khớp; đây chỉ
@@ -517,10 +527,12 @@ function settleIntoPlace(els: HTMLElement[], dx: number, dy: number): void {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
   const from = `${-dx}px ${-dy}px`;
+  // el.animate không nhận var() → đọc token lúc chạy (1 lần mỗi lần thả).
+  const easing = readCssToken('--easing-standard', 'ease');
   for (const el of els) {
     el.animate([{ translate: from }, { translate: '0px 0px' }], {
       duration: SETTLE_MS,
-      easing: SETTLE_EASING,
+      easing,
     });
   }
 }

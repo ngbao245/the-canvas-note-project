@@ -3,7 +3,9 @@ import type { CanvasObject, Geometry } from '../types';
 
 interface ObjectsState {
   objects: Map<string, CanvasObject>;
-  hydrate: (list: CanvasObject[]) => void;
+  /** Board đã nạp xong vào `objects`. Khác board đang mở = đang tải (vừa vào board / F5). */
+  loadedBoardId: string | null;
+  hydrate: (list: CanvasObject[], boardId: string) => void;
   add: (obj: CanvasObject) => void;
   updateGeometry: (id: string, geometry: Partial<Geometry>) => void;
   updateData: (id: string, data: unknown) => void;
@@ -16,11 +18,12 @@ interface ObjectsState {
 
 export const useObjectsStore = create<ObjectsState>((set, get) => ({
   objects: new Map(),
+  loadedBoardId: null,
 
-  hydrate: (list) => {
+  hydrate: (list, boardId) => {
     const map = new Map<string, CanvasObject>();
     for (const o of list) map.set(o.id, o);
-    set({ objects: map });
+    set({ objects: map, loadedBoardId: boardId });
   },
 
   add: (obj) =>

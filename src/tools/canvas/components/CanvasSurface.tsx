@@ -5,6 +5,7 @@ import { useInteractionStore } from '../store/interaction-store';
 import { useSelectionStore } from '../store/selection-store';
 import { useUnsortStore } from '../store/unsort-store';
 import { SCROLL_SPEED_FACTOR, useCanvasSettingsStore } from '@/stores/canvas-settings-store';
+import { isZoomWheel } from '@/lib/shortcuts';
 import { useInterfaceStore } from '@/stores/interface-store';
 import { getCameraEngine } from '../engine/camera-engine';
 import { screenToCanvas } from '../engine/coord';
@@ -21,6 +22,7 @@ import { ContextMenu } from './ContextMenu';
 import { Toolbar } from './Toolbar';
 import { UnsortToggle } from './UnsortPanel';
 import { CanvasObjectDragPreview } from './CanvasObjectDragPreview';
+import { CanvasNotice } from './CanvasNotice';
 import './objects'; // side-effect: register mọi object type vào registry
 
 /**
@@ -63,7 +65,6 @@ export function CanvasSurface({ boardId }: { boardId: string }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const gridDenseRef = useRef<HTMLDivElement>(null);
   const gridSparseRef = useRef<HTMLDivElement>(null);
-  const objectsMap = useObjectsStore((s) => s.objects);
   const showGrid = useCanvasSettingsStore((s) => s.showGrid);
   const gridVisibilityCls = showGrid ? '' : 'hidden';
   const [menu, setMenu] = useState<{
@@ -129,12 +130,22 @@ export function CanvasSurface({ boardId }: { boardId: string }) {
     engine.setPanBounds(computePanBounds(bounds));
   };
 
+  // Objects đổi (kéo từng frame, gõ chữ) → tính lại qua subscribe, không render lại
+  // cả CanvasSurface (và ObjectsLayer, Toolbar bên trong) mỗi phím.
+  useEffect(
+    () =>
+      useObjectsStore.subscribe((s, prev) => {
+        if (s.objects !== prev.objects) recomputeDynamicZoomMin();
+      }),
+    // Không cần deps: recompute chỉ đọc getState(), không giữ giá trị render.
+    [],
+  );
+
   useEffect(() => {
     recomputeDynamicZoomMin();
-    // Cả 2 deps: objectsMap thay đổi khi drag (frame-by-frame),
-    // mode thay đổi khi vào/thoát drag → recompute sau drop để pan bounds
-    // ôm lại vị trí mới của item vừa move.
-  }, [objectsMap, mode, interfaceSize]);
+    // mode đổi khi vào/thoát drag → recompute sau drop để pan bounds ôm lại vị
+    // trí mới của item vừa move.
+  }, [mode, interfaceSize]);
 
   // --- Wheel handler: pan mặc định, Ctrl+wheel zoom ---
   useEffect(() => {
@@ -149,7 +160,7 @@ export function CanvasSurface({ boardId }: { boardId: string }) {
 
       // Ctrl+wheel (hoặc pinch trackpad Mac = ctrlKey=true) → zoom around cursor.
       // Momentum: mỗi notch bơm impulse, engine tự glide liên tục.
-      if (e.ctrlKey || e.metaKey) {
+      if (isZoomWheel(e)) {
         e.preventDefault();
         engine.zoomImpulse(pointer, rawDy);
         return;
@@ -254,6 +265,7 @@ export function CanvasSurface({ boardId }: { boardId: string }) {
       <MarqueeOverlay />
       <Toolbar boardId={boardId} />
       <UnsortToggle boardId={boardId} />
+      <CanvasNotice />
       {/* Floating preview cho canvas object drag — portal body via subscribe store */}
       <CanvasObjectDragPreview />
 
