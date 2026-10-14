@@ -10,7 +10,6 @@ import { clientToCanvas } from '../engine/coord';
 import { hitZone, isInvalidZone } from '../lib/hit-test';
 import { reorderInUnsort, moveFromUnsortToCanvas, moveObjectsToUnsort } from '../engine/actions';
 import { boardDataSchema } from '../types';
-import { getInterfaceScale } from '@/stores/interface-store';
 import { isMacSecondaryClick } from '@/lib/shortcuts';
 import { setCursorOverride } from '@/lib/cursor-override';
 
@@ -26,11 +25,38 @@ import { setCursorOverride } from '@/lib/cursor-override';
  * Threshold: 4px trước khi bắt đầu drag để không bị nhầm với click.
  */
 const DRAG_THRESHOLD = 4;
-// Số đo layout panel ở tỉ lệ 1 (px bên trong panel, chưa scale).
-// Item aspect-ratio version: h cap MAX_H=140, margin-bottom 8 → stride 148.
-const ITEM_HEIGHT = 148;
-// Khoảng từ mép trên panel tới hàng đầu (header + description).
-const LIST_OFFSET_TOP = 88;
+// Nửa khe giữa 2 item (margin-bottom 8 trong UnsortItem): vạch nằm giữa khe.
+const HALF_GAP = 4;
+
+/**
+ * Tìm chỗ chèn theo vị trí thật của từng item (item cao 60–140, không đều nhau).
+ * slot k = chèn trước item k (k = n là sau item cuối). Đổi sang chỉ số sau khi
+ * rút item nguồn ra: slot nằm sau nguồn thì lùi 1.
+ * Vạch đặt theo offsetTop (px layout, không bị tỉ lệ giao diện làm lệch).
+ */
+function measureDropSlot(
+  panelEl: HTMLElement,
+  clientY: number,
+  sourceIndex: number,
+): { targetIndex: number; indicatorTop: number | null } {
+  const els = Array.from(panelEl.querySelectorAll<HTMLElement>('[data-unsort-item-id]'));
+  if (els.length === 0) return { targetIndex: sourceIndex, indicatorTop: null };
+  let slot = els.length;
+  for (let i = 0; i < els.length; i++) {
+    const r = els[i].getBoundingClientRect();
+    if (clientY < r.top + r.height / 2) {
+      slot = i;
+      break;
+    }
+  }
+  const targetIndex = slot > sourceIndex ? slot - 1 : slot;
+  if (targetIndex === sourceIndex) return { targetIndex, indicatorTop: null };
+  const indicatorTop =
+    slot < els.length
+      ? els[slot].offsetTop - HALF_GAP
+      : els[els.length - 1].offsetTop + els[els.length - 1].offsetHeight + HALF_GAP;
+  return { targetIndex, indicatorTop };
+}
 
 export function useUnsortDrag(getListItems: () => CanvasObject[]) {
   const startRef = useRef<{
@@ -38,6 +64,7 @@ export function useUnsortDrag(getListItems: () => CanvasObject[]) {
     clientY: number;
     sourceIndex: number;
     started: boolean;
+    panelEl: HTMLElement | null;
     panelRect: DOMRect | null;
     grabOffsetX: number;
     grabOffsetY: number;
@@ -52,7 +79,8 @@ export function useUnsortDrag(getListItems: () => CanvasObject[]) {
       if (isMacSecondaryClick(e)) return;
 
       const panelEl = (e.currentTarget as HTMLElement).closest('[data-unsort-panel="true"]');
-      const panelRect = panelEl instanceof HTMLElement ? panelEl.getBoundingClientRect() : null;
+      const panel = panelEl instanceof HTMLElement ? panelEl : null;
+      const panelRect = panel ? panel.getBoundingClientRect() : null;
 
       // Capture grab offset trong item bounding rect. Preview position sẽ dùng
       // offset này (scaled theo preview/source ratio) để giữ điểm nắm dưới cursor.
@@ -65,6 +93,7 @@ export function useUnsortDrag(getListItems: () => CanvasObject[]) {
         clientY: e.clientY,
         sourceIndex: index,
         started: false,
+        panelEl: panel,
         panelRect,
         grabOffsetX,
         grabOffsetY,
@@ -100,17 +129,10 @@ export function useUnsortDrag(getListItems: () => CanvasObject[]) {
         const invalid = outside && isInvalidZone(hitZone(ev.clientX, ev.clientY));
         setCursorOverride(invalid ? 'not-allowed' : null);
 
-        // Compute targetIndex trong panel (dựa vào cursor Y relative to panel content).
         let targetIndex = s.sourceIndex;
-        if (!outside && s.panelRect) {
-          // Panel bị scale theo Kích thước giao diện → số đo layout (px panel) × tỉ lệ = px màn hình.
-          const scale = getInterfaceScale();
-          const listTop = s.panelRect.top + LIST_OFFSET_TOP * scale;
-          const offsetY = ev.clientY - listTop;
-          targetIndex = Math.max(
-            0,
-            Math.min(getListItems().length - 1, Math.round(offsetY / (ITEM_HEIGHT * scale))),
-          );
+        let indicatorTop: number | null = null;
+        if (!outside && s.panelEl) {
+          ({ targetIndex, indicatorTop } = measureDropSlot(s.panelEl, ev.clientY, s.sourceIndex));
         }
 
         useUnsortStore.getState().setDrag({
@@ -123,6 +145,7 @@ export function useUnsortDrag(getListItems: () => CanvasObject[]) {
           grabOffsetY: s.grabOffsetY,
           sourceWidth: s.sourceWidth,
           sourceHeight: s.sourceHeight,
+          indicatorTop,
         });
       };
 

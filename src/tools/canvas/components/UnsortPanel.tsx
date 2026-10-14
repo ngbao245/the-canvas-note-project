@@ -33,12 +33,9 @@ function useHoveredUnsortDropTarget(): boolean {
  */
 function DropIndicatorLine() {
   const drag = useUnsortStore((s) => s.drag);
-  if (!drag || drag.outsidePanel || drag.targetIndex === drag.sourceIndex) return null;
-  // Với UnsortItem aspect ratio version, height cap MAX_H=140 → mọi item ~140 tall.
-  // Stride = 140 height + 8 margin-bottom = 148. Panel list p-3 = 12px padding top.
-  const ITEM_STRIDE = 148;
-  const LIST_PADDING_TOP = 12;
-  const top = LIST_PADDING_TOP + drag.targetIndex * ITEM_STRIDE - 4;
+  // Vị trí vạch do useUnsortDrag đo từ item thật (item cao không đều).
+  if (!drag || drag.outsidePanel || drag.indicatorTop === null) return null;
+  const top = drag.indicatorTop;
   return (
     <div
       className="pointer-events-none absolute left-3 right-3 h-0.5 rounded-full bg-primary shadow-[0_0_6px_var(--primary)]"

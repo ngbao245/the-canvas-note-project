@@ -26,6 +26,9 @@ interface UnsortDragState {
    *  scale offset theo previewSize / sourceSize để giữ tỷ lệ vị trí. */
   sourceWidth: number;
   sourceHeight: number;
+  /** Vị trí vạch chèn (px layout trong list, tính cả padding + phần đã cuộn).
+   *  null = không hiện vạch (ngoài panel, hoặc thả lại đúng chỗ cũ). */
+  indicatorTop: number | null;
 }
 
 interface UnsortState {
