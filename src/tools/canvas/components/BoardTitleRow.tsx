@@ -5,11 +5,13 @@ import { editKeyHandler } from '@/lib/dom';
 import { renameBoard } from '../engine/actions';
 import { ExportMenu, ViewMenu } from './HeaderPopups';
 import { useSaveStatusStore, type SavePhase } from '../store/save-status-store';
+import { useSyncStatusStore, type SyncStatusPhase } from '../store/sync-status-store';
 import { isRootBoard, type Board } from '../types';
 
 /**
  * BoardTitleRow — hàng 2 của header canvas (Milanote `CurrentBoardHeader`):
- *   - Trái: trạng thái lưu (Đang lưu… / Đã lưu / Lưu lỗi), ẩn khi không có gì.
+ *   - Trái: trạng thái lưu (Đang lưu… / Đã lưu / Lưu lỗi), ẩn khi không có gì. Khi outbox
+ *     chạy: trạng thái đồng bộ (Đã lưu trên máy / Đã đồng bộ / Chưa đồng bộ).
  *   - Giữa: tên board. Double-click để đổi tên (Home không đổi tên được).
  *   - Phải: nút Chia sẻ (chưa có tính năng) + Xuất (mở popup, chưa xuất được) +
  *     % zoom (mở popup View).
@@ -52,20 +54,32 @@ const SAVE_TEXT_KEY = {
   error: 'CANVAS.HEADER.SAVE_ERROR',
 } as const satisfies Record<SavePhase, MessageKey | null>;
 
+const SYNC_TEXT_KEY = {
+  idle: null,
+  local: 'CANVAS.HEADER.SYNC_LOCAL',
+  synced: 'CANVAS.HEADER.SYNC_DONE',
+  unsynced: 'CANVAS.HEADER.SYNC_PENDING',
+} as const satisfies Record<SyncStatusPhase, MessageKey | null>;
+
 function SaveStatus() {
   const phase = useSaveStatusStore((s) => s.phase);
+  // Đồng bộ server chỉ có khi outbox chạy (dev); bản build luôn idle → như cũ.
+  const syncPhase = useSyncStatusStore((s) => s.phase);
   const { t } = useI18n();
-  const key = SAVE_TEXT_KEY[phase];
+  // Ưu tiên: ghi máy lỗi > trạng thái đồng bộ > trạng thái lưu máy.
+  const key =
+    phase === 'error' ? SAVE_TEXT_KEY.error : (SYNC_TEXT_KEY[syncPhase] ?? SAVE_TEXT_KEY[phase]);
   const text = key ? t(key) : '';
+  const tone =
+    phase === 'error'
+      ? 'text-destructive'
+      : syncPhase === 'unsynced'
+        ? 'text-warning'
+        : 'text-muted-foreground';
   // aria-live: trình đọc màn hình đọc khi trạng thái đổi. Span luôn có mặt
   // (rỗng khi idle) để vùng live không bị mount/unmount.
   return (
-    <span
-      aria-live="polite"
-      className={`whitespace-nowrap text-xs ${
-        phase === 'error' ? 'text-destructive' : 'text-muted-foreground'
-      }`}
-    >
+    <span aria-live="polite" className={`whitespace-nowrap text-xs ${tone}`}>
       {text}
     </span>
   );

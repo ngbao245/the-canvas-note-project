@@ -14,6 +14,8 @@
 //   thứ tự tạo, nên lô gấp vẫn xuống sau lô trước → thứ tự đúng.
 // - Kênh (`text` / `props`) chỉ là nhãn đi kèm. Bây giờ ghi vẫn là cả object;
 //   sau này `canvas-sync` / Yjs dùng kênh để biết phần nào cần gửi.
+// - `tracer` (tuỳ chọn): báo sự kiện cho bảng đo lúc dev (`src/dev/`). Không truyền
+//   thì hàng đợi chạy như cũ. Tracer không được ném lỗi vào luồng ghi.
 // ============================================================
 
 export type WriteChannel = 'text' | 'props';
@@ -36,6 +38,13 @@ export interface WriteQueue<T> {
   has(id: string): boolean;
 }
 
+/** Theo dõi hàng đợi để đo (chỉ dùng lúc dev). `batchId` nối lô bắt đầu với lô xong. */
+export interface WriteQueueTracer {
+  onEnqueue(channel: WriteChannel, kind: WriteOp<unknown>['kind']): void;
+  onBatchStart(batchId: number, size: number, urgent: boolean): void;
+  onBatchEnd(batchId: number, ok: boolean): void;
+}
+
 interface Entry<T> {
   op: WriteOp<T>;
   channels: Set<WriteChannel>;
@@ -49,8 +58,10 @@ type Batch<T> = Map<string, Entry<T>>;
 export function createWriteQueue<T>(
   write: (batch: WriteBatch<T>) => Promise<void>,
   onError?: (err: unknown) => void,
+  tracer?: WriteQueueTracer,
 ): WriteQueue<T> {
   let pending: Batch<T> = new Map();
+  let batchSeq = 0;
   /** Lô đang ghi, theo thứ tự bắt đầu (lô thường + lô gấp). */
   const inflight: Array<Batch<T>> = [];
   let draining = false;
@@ -72,8 +83,10 @@ export function createWriteQueue<T>(
   }
 
   /** Ghi 1 lô. Trả false nếu lỗi (dữ liệu đã đưa lại vào "đang chờ"). */
-  async function run(batch: Batch<T>): Promise<boolean> {
+  async function run(batch: Batch<T>, urgent = false): Promise<boolean> {
     inflight.push(batch);
+    const batchId = ++batchSeq;
+    tracer?.onBatchStart(batchId, batch.size, urgent);
     let ok = true;
     try {
       await write(toBatch(batch));
@@ -88,6 +101,7 @@ export function createWriteQueue<T>(
       }
       onError?.(err);
     }
+    tracer?.onBatchEnd(batchId, ok);
     inflight.splice(inflight.indexOf(batch), 1);
     for (const [id, e] of batch) {
       for (const w of e.waiters) w();
@@ -122,6 +136,7 @@ export function createWriteQueue<T>(
         const entrySeq = ++seq;
         latest.set(id, entrySeq);
         pending.set(id, { op, channels, waiters, seq: entrySeq });
+        tracer?.onEnqueue(channel, op.kind);
         kick();
       });
     },
@@ -133,7 +148,7 @@ export function createWriteQueue<T>(
         if (options?.urgent && draining && pending.size > 0) {
           const batch = pending;
           pending = new Map();
-          void run(batch).then(notifyIfIdle);
+          void run(batch, true).then(notifyIfIdle);
         } else {
           kick();
           if (!draining) notifyIfIdle();

@@ -11,14 +11,12 @@ import { GLOBAL_SHORTCUTS, useShortcutDispatcher, useShortcutLayer } from '@/lib
 import { registerPwa } from '@/lib/pwa';
 import { OfflineBadge, UpdateBanner } from '@/components/shared';
 
-// Trang thử nghiệm drawably (phong cách vẽ tay) — lazy load, tách bundle.
-const LandingDraw = lazy(() => import('@/experiments/drawably/LandingDraw'));
-const CanvasDraw = lazy(() => import('@/experiments/drawably/CanvasDraw'));
-const StyleDemo = lazy(() => import('@/routes/StyleDemo'));
+// Trang thử `/thu/*` (src/experiments/, src/routes/StyleDemo.tsx) đã gỡ khỏi router 2026-10-13,
+// file giữ nguyên chờ đánh giá. Xem `.kiro/notes/backlog.md`.
 const Canvas = lazy(() => import('@/tools/canvas/route'));
-// Nút đổi nhanh ngôn ngữ + kiểu bàn phím cho dev. Ở bản build, DEV = false → nhánh bị bỏ,
-// file không vào bundle.
-const DevQuickSwitch = import.meta.env.DEV ? lazy(() => import('@/dev/DevQuickSwitch')) : null;
+// Bảng công cụ dev (đổi ngôn ngữ, kiểu bàn phím, đo hàng đợi ghi). Ở bản build, DEV = false
+// → nhánh bị bỏ, file không vào bundle. Xem `docs/system/01-core.md` mục "Công cụ chỉ có ở dev".
+const DevPanel = import.meta.env.DEV ? lazy(() => import('@/dev/DevPanel')) : null;
 
 export default function App() {
   // Đồng bộ phong cách hiển thị lên <html data-ui-style> khi mount và mỗi lần đổi.
@@ -75,9 +73,6 @@ export default function App() {
         <Routes>
           {/* Landing ở domain riêng (landing.html + vite.landing.config.ts). App mở thẳng canvas. */}
           <Route path="/" element={<Navigate to="/canvas" replace />} />
-          <Route path="/thu/drawably-landing" element={<LandingDraw />} />
-          <Route path="/thu/drawably-canvas" element={<CanvasDraw />} />
-          <Route path="/thu/style-demo" element={<StyleDemo />} />
           <Route path="/canvas" element={<Canvas />} />
           <Route path="/canvas/:boardId" element={<Canvas />} />
           <Route path="/canvas/:boardId/:slug" element={<Canvas />} />
@@ -92,9 +87,9 @@ export default function App() {
       <UpdateBanner />
       {/* TẠM: gỡ khi `canvas-sync` xử lý ngầm. */}
       <OfflineBadge />
-      {DevQuickSwitch && (
+      {DevPanel && (
         <Suspense fallback={null}>
-          <DevQuickSwitch />
+          <DevPanel />
         </Suspense>
       )}
     </BrowserRouter>

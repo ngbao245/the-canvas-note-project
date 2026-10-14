@@ -3,7 +3,8 @@
 // ============================================================
 //
 // Interface tách khỏi implement. UI/store chỉ gọi interface.
-// TODO canvas-sync: thêm outbox vào cùng database, ghi cùng transaction với object.
+// Outbox (spec `canvas-outbox`): khi bật, mỗi lô ghi object ghi kèm mục outbox CÙNG
+// transaction. Lớp gửi (sync/outbox-runtime.ts) đọc / xác nhận qua `getOutboxStore()`.
 // ============================================================
 
 import { deleteDatabaseInBackground, openDatabase, requestToPromise, transactionDone } from './lib/idb';
@@ -14,8 +15,21 @@ import {
   type WriteBatch,
   type WriteChannel,
   type WriteOp,
+  type WriteQueueTracer,
 } from './lib/write-queue';
 import { postTabMessage } from './lib/tab-channel';
+import { OUTBOX_ENABLED } from './sync/outbox-config';
+import {
+  markEntryNew,
+  mergeOutboxEntry,
+  newSyncId,
+  parseOutboxEntry,
+  toSyncOp,
+  type OutboxChange,
+} from './sync/outbox-entry';
+import { diffObjectFields } from './sync/object-fields';
+import { signalOutbox } from './sync/outbox-signal';
+import type { ApplyResponse, SyncOp } from './sync/protocol';
 
 // --- Interface ---
 export interface CanvasRepository {
@@ -44,8 +58,23 @@ export interface CanvasRepository {
   /**
    * Chờ phần object đang chờ ghi xuống xong (kể cả lỗi thì vẫn resolve).
    * `urgent` (ẩn / đóng tab): ghi ngay song song, không chờ lô đang chạy.
+   * Outbox bật: ghi xong thì báo lớp gửi gửi ngay (không chờ cửa sổ gom).
    */
   flush(options?: { urgent?: boolean }): Promise<void>;
+}
+
+/** Outbox trên máy, cho lớp gửi + bảng dev. Không dùng từ UI / store. */
+export interface OutboxStore {
+  /** Mọi mục kèm nội dung object, đọc cùng 1 transaction. */
+  loadOps(): Promise<SyncOp<CanvasObject>[]>;
+  /**
+   * Xoá mục có mã gửi được nhận (mục đã sửa tiếp thì mã khác → giữ). Mục server báo thiếu
+   * object → chuyển sang gửi nguyên object. Trả số mục còn lại.
+   */
+  ack(res: ApplyResponse): Promise<number>;
+  count(): Promise<number>;
+  /** Mọi object + id đang có mục chờ (bảng dev so với server). */
+  snapshot(): Promise<{ objects: CanvasObject[]; pendingIds: string[] }>;
 }
 
 // --- IndexedDB adapter ---
@@ -55,12 +84,16 @@ export interface CanvasRepository {
 //   cameras (keyPath boardId)             → camera từng board (UI state, ghi liên tục khi pan)
 // Camera tách riêng để lưu board (đổi tên, màu) và lưu camera không đè nhau.
 //
+//   outbox  (keyPath objectId)            → mục chờ gửi server, mỗi object tối đa 1 mục
+//                                           (phiên bản 3, spec `canvas-outbox`)
+//
 // Phiên bản 2 (không phải 1): bản rất cũ có thể đã tạo "bibo-canvas" phiên bản 1
 // với store khác. Nâng từ < 2 thì xoá hết store cũ, tạo lại. Dữ liệu cũ bỏ (bạn chốt
-// 2026-10-11), 2 database idb-keyval cũ cũng xoá.
+// 2026-10-11), 2 database idb-keyval cũ cũng xoá. Nâng 2 → 3 chỉ thêm store outbox.
 
 const DB_NAME = 'bibo-canvas';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
+const OUTBOX = 'outbox';
 const LEGACY_DB_NAMES = ['bibo-canvas-boards', 'bibo-canvas-objects'];
 const BOARDS = 'boards';
 const OBJECTS = 'objects';
@@ -80,12 +113,16 @@ function upgradeCanvasDb(db: IDBDatabase, oldVersion: number): void {
     objects.createIndex(BY_BOARD, 'boardId', { unique: false });
     db.createObjectStore(CAMERAS, { keyPath: 'boardId' });
   }
+  if (oldVersion < 3) db.createObjectStore(OUTBOX, { keyPath: 'objectId' });
+}
+
+function readVersion(value: unknown): number | null {
+  if (typeof value !== 'object' || value === null || !('version' in value)) return null;
+  return typeof value.version === 'number' ? value.version : null;
 }
 
 // Adapter thô: ghi thẳng IndexedDB, không hàng đợi. Chỉ dùng qua `withWriteQueue`.
 class IndexedDbCanvasRepository {
-  /** Version đã ghi gần nhất theo id, để version tăng đều kể cả khi store giữ bản cũ (undo). */
-  private writtenVersions = new Map<string, number>();
   private dbPromise: Promise<IDBDatabase> | null = null;
 
   private db(): Promise<IDBDatabase> {
@@ -136,20 +173,120 @@ class IndexedDbCanvasRepository {
     );
   }
 
-  /** Ghi cả lô trong 1 transaction: hoặc xuống hết, hoặc không gì. Đóng dấu version lúc ghi. */
-  async writeObjects(batch: WriteBatch<CanvasObject>): Promise<void> {
-    // Ghi nhận version lúc đóng dấu (trước khi xuống đĩa) để lô gấp chạy song song
-    // không đóng trùng số. Lô lỗi thì bỏ qua 1 số, vẫn tăng đều.
-    const stamped = batch.puts.map(({ id, value }) => {
-      const next = Math.max(value.version, this.writtenVersions.get(id) ?? 0) + 1;
-      this.writtenVersions.set(id, next);
-      return { ...value, version: next };
-    });
-    const tx = (await this.db()).transaction(OBJECTS, 'readwrite');
+  /**
+   * Ghi cả lô trong 1 transaction: hoặc xuống hết, hoặc không gì. Đóng dấu version lúc ghi.
+   * `withOutbox`: ghi / gộp mục outbox trong CÙNG transaction (object xuống thì mục xuống).
+   */
+  async writeObjects(batch: WriteBatch<CanvasObject>, withOutbox: boolean): Promise<void> {
+    const tx = (await this.db()).transaction(withOutbox ? [OBJECTS, OUTBOX] : [OBJECTS], 'readwrite');
     const store = tx.objectStore(OBJECTS);
-    for (const o of stamped) store.put(o);
-    for (const id of batch.deletes) store.delete(id);
+    const outbox = withOutbox ? tx.objectStore(OUTBOX) : null;
+    const groupId = withOutbox ? newSyncId() : '';
+    const now = Date.now();
+    // Đọc mục cũ rồi gộp, ngay trong callback để transaction còn mở.
+    const addChange = (change: Omit<OutboxChange, 'groupId' | 'now'>) => {
+      if (!outbox) return;
+      const prev = outbox.get(change.objectId);
+      prev.onsuccess = () => {
+        outbox.put(mergeOutboxEntry(parseOutboxEntry(prev.result), { ...change, groupId, now }, newSyncId));
+      };
+    };
+    for (const { id, value, channels } of batch.puts) {
+      // Đóng dấu version theo bản TRÊN ĐĨA, đọc trong chính transaction này: transaction ghi
+      // cùng store chạy lần lượt, nên tab khác / lô gấp song song đã ghi xong trước thì ở đây
+      // thấy số mới nhất. Bản ghi mang số cũ (undo, tab khác) vẫn ra số lớn hơn → không lùi, không trùng.
+      const before = store.get(id);
+      before.onsuccess = () => {
+        const prev: unknown = before.result;
+        const prevVersion = readVersion(prev);
+        const o: CanvasObject = { ...value, version: Math.max(value.version, prevVersion ?? 0) + 1 };
+        // Bản cũ cũng cho biết trường nào đổi để gửi patch.
+        addChange({
+          objectId: id,
+          kind: 'put',
+          isNew: prev === undefined,
+          fields: prev === undefined ? [] : diffObjectFields(prev, o),
+          channels,
+          baseVersion: prevVersion ?? o.version - 1,
+        });
+        store.put(o);
+      };
+    }
+    for (const id of batch.deletes) {
+      if (outbox) {
+        // Đọc version trước khi xoá (request chạy theo thứ tự) làm phiên bản gốc của mục xoá.
+        const before = store.get(id);
+        before.onsuccess = () => {
+          const baseVersion = readVersion(before.result) ?? 0;
+          addChange({ objectId: id, kind: 'delete', isNew: false, fields: [], channels: ['props'], baseVersion });
+        };
+      }
+      store.delete(id);
+    }
     await transactionDone(tx);
+  }
+
+  async loadOutboxOps(): Promise<SyncOp<CanvasObject>[]> {
+    const tx = (await this.db()).transaction([OUTBOX, OBJECTS], 'readonly');
+    const objects = tx.objectStore(OBJECTS);
+    const ops: SyncOp<CanvasObject>[] = [];
+    const all = tx.objectStore(OUTBOX).getAll();
+    all.onsuccess = () => {
+      for (const raw of all.result) {
+        const entry = parseOutboxEntry(raw);
+        if (!entry) continue;
+        if (entry.kind === 'delete') {
+          ops.push(toSyncOp<CanvasObject>(entry, null));
+          continue;
+        }
+        const obj = objects.get(entry.objectId);
+        obj.onsuccess = () => {
+          ops.push(toSyncOp(entry, (obj.result as CanvasObject | undefined) ?? null));
+        };
+      }
+    };
+    await transactionDone(tx);
+    return ops;
+  }
+
+  /**
+   * Xoá mục có mã khớp (đã sửa tiếp thì mã khác → giữ). Mục server báo thiếu object →
+   * chuyển sang create, lượt sau gửi nguyên object.
+   */
+  async ackOutbox(acceptedOpIds: readonly string[], missingObjectIds: readonly string[]): Promise<number> {
+    const accepted = new Set(acceptedOpIds);
+    const missing = new Set(missingObjectIds);
+    const tx = (await this.db()).transaction(OUTBOX, 'readwrite');
+    const store = tx.objectStore(OUTBOX);
+    let left = 0;
+    const all = store.getAll();
+    all.onsuccess = () => {
+      for (const raw of all.result) {
+        const entry = parseOutboxEntry(raw);
+        if (entry && accepted.has(entry.opId)) {
+          store.delete(entry.objectId);
+          continue;
+        }
+        if (entry && missing.has(entry.objectId) && !entry.isNew) store.put(markEntryNew(entry));
+        left++;
+      }
+    };
+    await transactionDone(tx);
+    return left;
+  }
+
+  async countOutbox(): Promise<number> {
+    const tx = (await this.db()).transaction(OUTBOX, 'readonly');
+    return requestToPromise(tx.objectStore(OUTBOX).count());
+  }
+
+  async syncSnapshot(): Promise<{ objects: CanvasObject[]; pendingIds: string[] }> {
+    const tx = (await this.db()).transaction([OBJECTS, OUTBOX], 'readonly');
+    const [objects, keys] = await Promise.all([
+      requestToPromise<CanvasObject[]>(tx.objectStore(OBJECTS).getAll()),
+      requestToPromise(tx.objectStore(OUTBOX).getAllKeys()),
+    ]);
+    return { objects, pendingIds: keys.filter((k): k is string => typeof k === 'string') };
   }
 
   async loadObject(id: string): Promise<CanvasObject | null> {
@@ -178,8 +315,8 @@ class IndexedDbCanvasRepository {
 
 // --- Hàng đợi ghi + trạng thái lưu ---
 // Mọi lệnh ghi / xoá object đi qua 1 hàng đợi (lib/write-queue.ts): 1 lô đang ghi,
-// phần mới gom chờ, cùng object giữ bản mới nhất. Kéo object ghi mỗi pointermove
-// giờ tự gộp còn vài lô.
+// phần mới gom chờ, cùng object giữ bản mới nhất. Kéo object chỉ ghi lúc thả
+// (`commitMove`), nên gom chỉ có tác dụng khi thay đổi dồn dập (gõ note, kéo nhiều item).
 // Đọc object phải tính cả phần chưa xuống đĩa (`overlay`), không thì vừa ghi xong
 // đọc lại ra bản cũ (VD moveObjectsToUnsort ghi rồi loadObjects ngay).
 // Trạng thái lưu ("Đang lưu… / Đã lưu / Lưu lỗi") đo theo từng lô ghi. Board vẫn
@@ -189,12 +326,15 @@ class IndexedDbCanvasRepository {
 function withWriteQueue(inner: IndexedDbCanvasRepository): CanvasRepository {
   const queue = createWriteQueue<CanvasObject>(
     async (batch) => {
-      await trackSave(inner.writeObjects(batch));
+      await trackSave(inner.writeObjects(batch, OUTBOX_ENABLED));
       postTabMessage({ type: 'objects', puts: batch.puts.map((p) => p.id), deletes: batch.deletes });
+      if (OUTBOX_ENABLED) signalOutbox(false);
     },
     (err) => {
       console.warn('[canvas] ghi IndexedDB lỗi, giữ lại để thử lại', err);
     },
+    // Bản build: DEV = false → không truyền gì, hàng đợi không báo sự kiện.
+    import.meta.env.DEV ? devTracer : undefined,
   );
 
   async function loadObjects(boardId: string): Promise<CanvasObject[]> {
@@ -230,7 +370,11 @@ function withWriteQueue(inner: IndexedDbCanvasRepository): CanvasRepository {
       await queue.flush();
       return inner.countAll();
     },
-    flush: (options) => queue.flush(options),
+    flush: async (options) => {
+      await queue.flush(options);
+      // Thoát sửa note, đổi board, ẩn tab: gửi ngay, không chờ hết cửa sổ gom.
+      if (OUTBOX_ENABLED) signalOutbox(true);
+    },
   };
 }
 
@@ -247,10 +391,43 @@ function overlay(
   return [...byId.values()];
 }
 
+// --- Đo hàng đợi (chỉ dev) ---
+// Bảng dev (`src/dev/`) gắn bộ thu vào đây. Hàng đợi tạo sớm hơn bảng nên chuyển tiếp
+// qua biến, bảng gắn lúc nào cũng nhận được từ lúc đó.
+let attachedTracer: WriteQueueTracer | null = null;
+
+const devTracer: WriteQueueTracer = {
+  onEnqueue: (channel, kind) => attachedTracer?.onEnqueue(channel, kind),
+  onBatchStart: (batchId, size, urgent) => attachedTracer?.onBatchStart(batchId, size, urgent),
+  onBatchEnd: (batchId, ok) => attachedTracer?.onBatchEnd(batchId, ok),
+};
+
+/** Chỉ bảng dev gọi. Truyền null để gỡ. */
+export function attachWriteQueueTracer(tracer: WriteQueueTracer | null): void {
+  attachedTracer = tracer;
+}
+
 // --- Singleton ---
+// Repository và outbox dùng chung 1 adapter (chung kết nối database).
+let rawRepo: IndexedDbCanvasRepository | null = null;
 let repo: CanvasRepository | null = null;
 
+function getInner(): IndexedDbCanvasRepository {
+  if (!rawRepo) rawRepo = new IndexedDbCanvasRepository();
+  return rawRepo;
+}
+
 export function getCanvasRepository(): CanvasRepository {
-  if (!repo) repo = withWriteQueue(new IndexedDbCanvasRepository());
+  if (!repo) repo = withWriteQueue(getInner());
   return repo;
+}
+
+export function getOutboxStore(): OutboxStore {
+  const db = getInner();
+  return {
+    loadOps: () => db.loadOutboxOps(),
+    ack: (res) => db.ackOutbox(res.acceptedOpIds, res.missingObjectIds),
+    count: () => db.countOutbox(),
+    snapshot: () => db.syncSnapshot(),
+  };
 }

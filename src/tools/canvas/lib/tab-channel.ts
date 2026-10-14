@@ -8,7 +8,13 @@ export type TabMessage =
   /** Có tab vừa giữ / nhả khoá sửa. Tab khác hỏi lại danh sách khoá. */
   | { type: 'locks' }
   /** Tab khác bấm "×" trên badge: tab đang sửa object `id` phải thoát sửa + nhả khoá. */
-  | { type: 'release'; id: string };
+  | { type: 'release'; id: string }
+  /** Tab không gửi outbox vừa ghi mục mới. Tab gửi gom / gửi (`urgent`: gửi ngay). */
+  | { type: 'outbox'; urgent: boolean }
+  /** Tab gửi outbox báo trạng thái đồng bộ cho tab khác hiện. */
+  | { type: 'sync-status'; phase: SyncStatusPhase };
+
+type SyncStatusPhase = 'local' | 'synced' | 'unsynced';
 
 const CHANNEL_NAME = 'bibo-canvas';
 
@@ -39,6 +45,10 @@ function isTabMessage(data: unknown): data is TabMessage {
   if (typeof data !== 'object' || data === null || !('type' in data)) return false;
   if (data.type === 'locks') return true;
   if (data.type === 'release') return 'id' in data && typeof data.id === 'string';
+  if (data.type === 'outbox') return 'urgent' in data && typeof data.urgent === 'boolean';
+  if (data.type === 'sync-status') {
+    return 'phase' in data && (data.phase === 'local' || data.phase === 'synced' || data.phase === 'unsynced');
+  }
   return (
     data.type === 'objects' &&
     'puts' in data &&

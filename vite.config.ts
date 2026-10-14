@@ -2,10 +2,13 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 import { VitePWA } from 'vite-plugin-pwa';
+import { fakeApiPlugin } from './dev/fake-api/plugin';
 
 export default defineConfig({
   plugins: [
     react(),
+    // Server giả cho outbox (spec `canvas-outbox`). Chỉ chạy ở `npm run dev`.
+    fakeApiPlugin(),
     // Service worker để mở app khi offline (spec `app-offline`). Chỉ bản build app:
     // dev không bật (devOptions mặc định tắt), landing build bằng config khác.
     VitePWA({

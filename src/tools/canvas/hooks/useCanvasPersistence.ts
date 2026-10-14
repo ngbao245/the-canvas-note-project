@@ -13,6 +13,7 @@ import { startEditLocks } from '../lib/edit-locks';
  *     bước undo, không ghi lại. Bỏ qua object tab này còn thay đổi chưa ghi
  *     (bản trong store mới hơn) và object đang sửa.
  *   - Khoá sửa giữa tab (lib/edit-locks.ts).
+ *   - Chỉ dev: outbox gửi server giả (spec canvas-outbox, sync/outbox-runtime.ts).
  */
 export function useCanvasPersistence(): void {
   useEffect(() => {
@@ -36,12 +37,25 @@ export function useCanvasPersistence(): void {
 
     const stopLocks = startEditLocks();
 
+    // Outbox + server giả (spec canvas-outbox): chỉ dev. Viết thẳng `import.meta.env.DEV`
+    // (không qua hằng số) để bản build chắc chắn bỏ nhánh, không kéo theo lớp gửi.
+    let disposed = false;
+    let stopOutbox: (() => void) | null = null;
+    if (import.meta.env.DEV) {
+      void import('../sync/outbox-runtime').then((m) => {
+        if (!disposed) stopOutbox = m.startOutbox();
+      });
+    }
+
     return () => {
+      disposed = true;
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pagehide', flushNow);
       unsubTab();
       stopLocks();
       flushNow();
+      // Mục chưa gửi nằm lại trong outbox, lần khởi động sau gửi tiếp.
+      stopOutbox?.();
     };
   }, []);
 }
