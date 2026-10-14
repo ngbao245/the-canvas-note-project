@@ -2,7 +2,7 @@
 
 Tài liệu này cho agent (Kiro) và người mới nắm được bibo là gì, giải quyết vấn đề gì, và các khái niệm cốt lõi. Đọc file này trước khi làm tính năng lớn, để không hiểu sai ý đồ sản phẩm.
 
-Rule cứng và convention code nằm ở `.kiro/steering/core.md`, `docs/architecture.md`, `docs/conventions.md`. File này chỉ nói về "tại sao" và "cái gì", không nói "code thế nào".
+Rule cứng và convention code nằm ở `.kiro/steering/core.md`, `.kiro/steering/coding-style.md`, `docs/system/`. File này chỉ nói về "tại sao" và "cái gì", không nói "code thế nào".
 
 ## Tên
 

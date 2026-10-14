@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 /**
- * Kiểu bàn phím (Cài đặt → Ngôn ngữ và vùng). Spec `.kiro/specs/shortcuts/` US-9.
+ * Kiểu bàn phím (Cài đặt → Ngôn ngữ và vùng). Spec `docs/legacy/specs/shortcuts/` US-9.
  * Lưu lựa chọn của user, không lưu kết quả detect: chọn `auto` thì máy nào cũng tự nhận lại.
  * Chỉ lưu localStorage máy này ('bibo-keyboard-platform'), không đồng bộ sang máy khác.
  *

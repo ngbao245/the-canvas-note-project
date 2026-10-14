@@ -28,7 +28,7 @@
 
 1. Cách làm dịch? → **Đã chốt B** (xem mục "Đã chốt"). Phân tích cũ giữ lại bên dưới để tra.
    A) Thư viện `react-i18next` + `i18next`: chuẩn, có sẵn số nhiều / nội suy / tách file theo tool. Thêm ~20 KB gzip
-      và 2 dependency (phải pin version, ghi vào spec `bibo-foundation` vì là đổi stack).
+      và 2 dependency (phải pin version, ghi vào bảng Stack `docs/system/01-core.md` vì là đổi stack).
    B) Tự viết module nhỏ: bộ chữ là object TypeScript, hook đọc từ Zustand store, `Intl.PluralRules` cho số nhiều.
       Không thêm dependency, TypeScript bắt được key sai / thiếu lúc build. Phải tự lo nội suy + số nhiều.
    C) `@lingui` / `react-intl`: mạnh nhưng cần bước build tách chữ, nặng cho app cỡ này.

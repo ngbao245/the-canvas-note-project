@@ -1,4 +1,4 @@
----
+﻿---
 inclusion: fileMatch
 fileMatchPattern: 'src/{lib/shortcuts/**/*,**/*[sS]hortcut*}'
 ---
@@ -7,7 +7,7 @@ fileMatchPattern: 'src/{lib/shortcuts/**/*,**/*[sS]hortcut*}'
 
 Tự nạp khi Kiro đọc file trong `src/lib/shortcuts/` hoặc file tên có "shortcut" (`shortcuts.ts` của tool, `ShortcutsModal`, `ShortcutKeys`...). Sửa component thường mà đụng phím thì Kiro phải chủ động đọc file này (xem mục Phím tắt trong `coding-style.md`).
 
-Luật cấm chung (keydown, `<Kbd>` tự viết, phím giữ khi click, Esc cho popup) nằm ở `coding-style.md`, không chép lại ở đây. Spec: `.kiro/specs/shortcuts/`, `.kiro/specs/shortcuts-modal/`.
+Luật cấm chung (keydown, `<Kbd>` tự viết, phím giữ khi click, Esc cho popup) nằm ở `coding-style.md`, không chép lại ở đây. Spec: `docs/legacy/specs/shortcuts/`, `docs/legacy/specs/shortcuts-modal/`.
 
 ## Khai báo phím của tool
 

@@ -1,7 +1,7 @@
 import { getKeyboardPlatform } from './platform';
 
 /**
- * Phím giữ khi click / kéo, theo Kiểu bàn phím. Spec `.kiro/specs/shortcuts/` US-7.
+ * Phím giữ khi click / kéo, theo Kiểu bàn phím. Spec `docs/legacy/specs/shortcuts/` US-7.
  *   macOS: Cmd + click = chọn thêm, Cmd + kéo = kéo màn hình. Ctrl + click là chuột phải
  *          (macOS tự đổi), nên các handler chọn / kéo phải bỏ qua để menu tự mở.
  *   Windows / Linux: Ctrl + click / Ctrl + kéo như cũ.

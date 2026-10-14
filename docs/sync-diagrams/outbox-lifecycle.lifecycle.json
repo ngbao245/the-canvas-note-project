@@ -72,7 +72,7 @@
       "id": "sending",
       "type": "active",
       "label": "Đang gửi",
-      "sublabel": "apply_ops, throttle 2s",
+      "sublabel": "apply_ops, cửa sổ 1s",
       "lane": "main",
       "col": 1,
       "step": "02",
@@ -182,7 +182,7 @@
       "title": "Đường chính",
       "items": [
         "Gõ 100 phím vẫn chỉ 1 mục (gộp theo object + trường)",
-        "Mục chỉ xoá khi server ack đúng localRev",
+        "Mục chỉ xoá khi server nhận đúng opId (đổi mỗi lần gộp)",
         "Thao tác nhiều object đi chung 1 nhóm"
       ]
     },

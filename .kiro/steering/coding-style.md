@@ -166,6 +166,10 @@ Nguồn chuẩn: `--duration-fast` (60ms), `--duration-normal` (200ms), `--easin
 - Cấm số cứng (`duration-200`, `duration-[60ms]`, `transition: ... 60ms`). Cần mức mới thì thêm token vào `index.css` + `tailwind.config.ts`, không viết số lẻ.
 - Web Animations API (`el.animate`) không nhận `var()`: đọc token lúc chạy bằng `readCssToken('--easing-standard', 'ease')` từ `@/lib/css-token`, không chép giá trị sang TS.
 
+## Icon
+
+Chỉ dùng `lucide-react`. Không dùng emoji làm icon, không trộn bộ icon khác. (Chuyển từ `docs/legacy/conventions.md` 2026-10-13.)
+
 ## Console
 
 - Không `console.log` trong commit.

@@ -1,0 +1,68 @@
+{
+  "user": {
+    "what": "Bạn, dùng bibo trên trình duyệt (Chrome, Edge, Firefox, Safari).",
+    "example": "Bạn mở domain gốc để đọc giới thiệu, rồi bấm \"Mở\" sang domain app. để dùng canvas.",
+    "why": "Landing và app nằm ở 2 domain, trình duyệt coi là 2 trang riêng (2 origin).",
+    "code": []
+  },
+  "landing": {
+    "what": "Trang giới thiệu. Bản build riêng: entry riêng, config riêng, folder output riêng (dist-landing).",
+    "example": "Khách vào domain gốc, thử canvas mini ngay trên trang, rồi bấm sang app.",
+    "why": "Khác origin nên không đọc được IndexedDB của app. Canvas mini (routes/landing/demo) là bản riêng, cấm import src/tools/ (INV-CORE-01). Không router, không TanStack Query, không service worker, luôn theme sáng.",
+    "code": ["landing.html", "vite.landing.config.ts", "src/routes/landing/"]
+  },
+  "app": {
+    "what": "Khung ngoài của app. Chạy trước mọi tool, quyết định URL nào hiện gì.",
+    "example": "Bạn vào domain app.: App.tsx import register-tools trước, gắn theme / ngôn ngữ lên <html>, bật bộ điều phối phím, rồi chuyển / sang /canvas. Code canvas chỉ tải khi vào route (lazy).",
+    "why": "Giữ lần tải đầu nhẹ, mọi tool dùng chung 1 bộ khởi động (router, phím, thanh bản mới, modal Cài đặt).",
+    "code": ["src/main.tsx", "src/App.tsx", "src/register-tools.ts"]
+  },
+  "sw": {
+    "what": "Script chạy nền giữa trang và mạng, giúp mở app khi không có mạng. Chỉ có ở bản build app.",
+    "example": "Lần đầu mở app, nó tải trước mọi file build vào cache. Lần sau offline, nó trả file từ cache nên app vẫn mở, kể cả link board sâu. Có bản mới thì hiện thanh \"Tải lại\", không tự tải lại.",
+    "why": "Mở offline. Chỉ chứa file app, không đụng IndexedDB (INV-CORE-05). npm run dev và landing không có.",
+    "code": ["vite.config.ts", "src/lib/pwa/index.ts", "src/components/shared/UpdateBanner.tsx"]
+  },
+  "canvas": {
+    "what": "Tool chính: mặt canvas vô hạn, đặt note và board (board lồng nhau), pan, zoom, kéo, resize, undo, Unsort.",
+    "example": "Bạn kéo 1 note. Màn hình cập nhật ngay trong store (Zustand), ghi 1 bước undo, lúc thả mới đưa vị trí mới cho hàng đợi ghi.",
+    "why": "UI trước, lưu sau: màn hình không chờ đĩa. Hiện chỉ có 2 loại object: note và board (rect đã gỡ).",
+    "code": ["src/tools/canvas/route.tsx", "src/tools/canvas/engine/actions.ts", "src/tools/canvas/components/objects/index.ts"]
+  },
+  "shared": {
+    "what": "Code dùng chung không thuộc tool nào: bộ điều phối phím, bộ dịch vi / en, theme, khối UI chung, Cài đặt.",
+    "example": "Bạn bấm Ctrl+Z. Bộ điều phối phím chọn lớp nào xử lý (modal đang mở, editor note hay canvas). Modal phím tắt đọc bảng phím canvas qua sổ đăng ký, không import code canvas.",
+    "why": "Luật dùng chung ở 1 chỗ. Lint cấm src/lib, src/components import src/tools (INV-CORE-02).",
+    "code": ["src/lib/shortcuts/", "src/lib/i18n/", "src/components/shared/"]
+  },
+  "queue": {
+    "what": "Hàng chờ giữa canvas và IndexedDB. Mọi ghi / xoá object đi qua đây, gom lại rồi ghi theo lô.",
+    "example": "Bạn gõ 20 chữ vào note: màn hình cập nhật từng chữ, hàng đợi chỉ giữ bản mới nhất của note đó. Ẩn hoặc đóng tab thì ghi gấp. Ghi lỗi thì giữ lại, tiêu đề hiện \"Lưu lỗi\".",
+    "why": "Ít lần ghi, không mất chữ, đọc luôn tính cả phần chưa xuống máy. Không debounce. Board và camera ghi thẳng, không qua hàng đợi.",
+    "code": ["src/tools/canvas/lib/write-queue.ts", "src/tools/canvas/api.ts", "src/tools/canvas/hooks/useCanvasPersistence.ts"]
+  },
+  "idb": {
+    "what": "Database có sẵn trong trình duyệt. Database bibo-canvas (bản 3) có 4 store: boards, objects, cameras, outbox.",
+    "example": "Đóng trình duyệt, mai mở lại: board vẫn còn, nạp từ bibo-canvas. Xoá dữ liệu trang trong trình duyệt là mất.",
+    "why": "Chạy offline, nhanh. Chưa có server nên đây là nơi duy nhất giữ dữ liệu. 1 lô = 1 transaction; khi outbox bật thì object và mục outbox cùng transaction. version đóng dấu lúc ghi, chỉ tăng.",
+    "code": ["src/tools/canvas/lib/idb.ts", "src/tools/canvas/api.ts", "src/tools/canvas/types.ts"]
+  },
+  "tabs": {
+    "what": "Giữ các tab bibo cùng trình duyệt không giẫm lên nhau. Chỉ trong 1 máy; máy khác là việc của canvas-sync.",
+    "example": "1) BroadcastChannel bibo-canvas: tab A ghi xong 1 lô thì báo, tab B đọc lại object đó từ IndexedDB.\n2) Web Locks: chọn note ở tab A thì tab B thấy nhãn \"đang sửa ở tab khác\", bấm x để giành. Khoá bibo-canvas-bootstrap chặn 2 tab cùng tạo Home. Khoá bibo-canvas-outbox chọn đúng 1 tab gửi.",
+    "why": "Các tab dùng chung 1 IndexedDB. Thiếu phần này, tab B thấy vị trí cũ và 2 tab sửa 1 note đè nhau.",
+    "code": ["src/tools/canvas/lib/tab-channel.ts", "src/tools/canvas/lib/edit-locks.ts", "src/tools/canvas/sync/outbox-runtime.ts"]
+  },
+  "sender": {
+    "what": "Chỉ chạy ở npm run dev. Đọc store outbox rồi gửi lên server (hiện là server giả, sau là Supabase). Bản build không có.",
+    "example": "Bạn gõ liên tục: mục đầu vào outbox mở cửa sổ 1s (không gia hạn), hết 1s đọc hết outbox gửi 1 request, chỉ mang trường đã đổi. Lỗi thì chờ 1s, 2s, 4s... tối đa 30s. Đóng tab thì gửi keepalive.",
+    "why": "Thử trước đường gửi lên server khi chưa có Supabase. Chỉ tab giữ Web Lock gửi; server bỏ trùng theo opId nên gửi lại an toàn.",
+    "code": ["src/tools/canvas/sync/outbox-sender.ts", "src/tools/canvas/sync/outbox-runtime.ts", "src/tools/canvas/sync/protocol.ts"]
+  },
+  "server": {
+    "what": "Đích gửi của outbox. Hiện là server giả trong npm run dev (/__fake-api, dữ liệu trong bộ nhớ, tắt dev là mất), đứng thay Supabase. canvas-sync đổi sang Supabase thật (Auth + Postgres + Realtime).",
+    "example": "POST /apply nhận gói create / patch / delete, áp theo trường, trả opId đã nhận và object thiếu. Supabase sẽ nhận đúng dạng gói này qua RPC apply_ops: lớp gửi chỉ đổi đích, không đổi cách gom. Bảng dev chỉnh độ trễ, tỉ lệ lỗi, offline giả.",
+    "why": "Thử và đo outbox trước khi có backend. Server giả không có đăng nhập, không lọt vào bản build (INV-CORE-04). @supabase/supabase-js chưa cài.",
+    "code": ["dev/fake-api/plugin.ts", "dev/fake-api/server-core.ts", "src/tools/canvas/sync/protocol.ts"]
+  }
+}

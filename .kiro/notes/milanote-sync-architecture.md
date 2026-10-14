@@ -103,7 +103,7 @@
 
 - Server là nguồn chuẩn. Mở board lấy từ server.
 - Kênh realtime theo board (con trỏ, khoá, người đang xem, xem trước chữ). Khác Milanote: ghi bền vững qua RPC HTTP, không qua WebSocket (mục 2.8).
-- Gói ghi theo trường (`changes`), có `clientId` + số thứ tự tăng dần + mã gói để server bỏ trùng.
+- Gói ghi theo trường (`changes`). (SỬA 2026-10-13 theo code: bibo bỏ trùng chỉ bằng `opId` đổi mỗi lần gộp, không dùng số thứ tự; `clientId` có trong request nhưng server chưa dùng. Nguồn chuẩn: `docs/system/21-server-sync.md`.)
 - Note: gửi cả nội dung (HTML / ProseMirror JSON), không OT / CRDT ở giai đoạn 1.
 - Thoát sửa / rời trang → đẩy gấp ngay.
 - Khoá note theo người chọn, nhãn tên + nút "×" giành quyền.
@@ -117,7 +117,7 @@
 | Không có hàng chờ gửi riêng, chụp cả state | Outbox trong IndexedDB: chỉ phần chưa gửi, mỗi mục có mã riêng, gửi lại khi có mạng, chờ lâu dần khi lỗi |
 | Header "Saved" khi đang offline | Phân biệt 3 trạng thái: "Đã lưu trên máy" / "Đã đồng bộ" / "Chưa đồng bộ (mất mạng)" |
 | Offline không mở được app | Service worker phục vụ cả trang app + dữ liệu board đã có trên máy → mở được, sửa được (ĐÃ LÀM 2026-10-12, spec `app-offline`) |
-| Khoảng chờ gửi khi đang gõ không cố định (3-8s), gõ liên tục thì không gửi | Tách 2 tầng (chốt 2026-10-09): IndexedDB ghi ngay (rẻ, trên máy). Server: giới hạn tần suất (throttle ~2s, gửi ít nhất 1 lần mỗi ~2s khi đang gõ, không chờ ngừng gõ) + đẩy ngay khi thoát sửa / ẩn tab / rời trang. Không gửi mỗi phím → server nhẹ |
+| Khoảng chờ gửi khi đang gõ không cố định (3-8s), gõ liên tục thì không gửi | Tách 2 tầng (chốt 2026-10-09): IndexedDB ghi ngay (rẻ, trên máy). Server: outbox gom cửa sổ 1s có trần (gửi muộn nhất 1s sau thay đổi đầu, gõ liên tục vẫn gửi mỗi ~1s, không chờ ngừng gõ), gửi theo trường, + đẩy ngay khi thoát sửa / ẩn tab / rời trang. Không gửi mỗi phím → server nhẹ. (SỬA 2026-10-13: 1s thay throttle ~2s, áp cho cả chữ lẫn thuộc tính; đã code ở dev, spec `canvas-outbox`) |
 | (Đã sửa 2026-10-09: Milanote CÓ khoá giữa tab / thiết bị cùng tài khoản, không phải chỗ yếu) | Giữ khoá giữa tab (Web Locks + BroadcastChannel, đã có). Tab / thiết bị khác cùng tài khoản xử y như người khác: cùng nhãn, cùng "×", cùng 2 mốc 30s / 5 phút (chốt 2026-10-09, mục 2.4a) |
 | Xung đột khi sửa offline: chưa rõ, có thể đè | Không đè: bản thua thành note "bản xung đột" đưa vào Unsort của board (mục 2.6). So bằng `version` (đã có trường) |
 | Khoá có thể treo khi tab đơ / mất mạng | Khoá có hạn: tab giữ khoá báo "còn giữ" định kỳ, hết hạn tự nhả |
@@ -130,13 +130,14 @@ Code hiện có (spec `canvas-note-autosave`, đã xong):
 - `types.ts`: trường `version`.
 - `hooks/useCanvasPersistence.ts`: đẩy gấp khi `pagehide` / ẩn tab.
 - `lib/tab-channel.ts` + `lib/edit-locks.ts`: đồng bộ + khoá giữa tab.
+- (2026-10-13, chỉ dev) `sync/`: outbox gửi theo trường, lớp gửi cửa sổ 1s, server giả `dev/fake-api/`. Chi tiết `.kiro/specs/canvas-outbox/design.md`.
 
-Khi có backend (`canvas-sync`):
-1. Gộp 2 database idb-keyval (`bibo-canvas-boards`, `bibo-canvas-objects`) thành 1 database nhiều store, để outbox ghi CÙNG transaction với object.
-2. Thêm store `outbox`. Hàng đợi ghi IndexedDB như cũ, đồng thời thêm mục outbox. Lớp gửi đọc outbox → RPC `apply_ops` → server xác nhận → xoá mục.
-3. IndexedDB đổi vai: từ nguồn chuẩn thành bản trên máy. Mở board: hiện bản máy ngay, rồi nhận bản server, gộp theo `version`.
-4. Gói gửi theo trường (dùng kênh `text` / `props` đang có, sau tách nhỏ hơn).
-5. Đẩy gấp lúc rời trang: `fetch(..., { keepalive: true })` gọi RPC. Chỉ là cố gắng, an toàn nằm ở outbox.
+Khi có backend (trạng thái 2026-10-13 ghi trong ngoặc):
+1. (XONG, `canvas-storage-v2`) Gộp 2 database idb-keyval thành 1 database `bibo-canvas` nhiều store, để outbox ghi CÙNG transaction với object.
+2. (XONG ở dev, `canvas-outbox`) Store `outbox` (phiên bản 3). Hàng đợi ghi IndexedDB như cũ, cùng transaction ghi mục outbox. Lớp gửi đọc outbox → server giả `/__fake-api/apply` → xác nhận → xoá mục. `canvas-sync` thay server giả bằng RPC `apply_ops`.
+3. (CHƯA, `canvas-sync`) IndexedDB đổi vai: từ nguồn chuẩn thành bản trên máy. Mở board: hiện bản máy ngay, rồi nhận bản server, gộp theo `version`.
+4. (XONG ở dev, `canvas-outbox` Task 7) Gói gửi theo trường: create / patch / delete. Trường = `geometry`, từng khoá `data`, `type`, `boardId`, `unsortIndex`. Kênh `text` / `props` chỉ còn là nhãn.
+5. (XONG ở dev) Đẩy gấp lúc rời trang: `fetch(..., { keepalive: true })`. Chỉ là cố gắng, an toàn nằm ở outbox.
 6. BroadcastChannel giữa tab giữ lại (rẻ hơn đi vòng qua server), khoá giữa người dùng làm qua phòng board.
 7. Giai đoạn 2 (chỉ khi cần gõ chung 1 note): thay riêng kênh `text` bằng Yjs, phần còn lại giữ nguyên.
 
@@ -163,7 +164,7 @@ Cải tiến (Milanote cho ai cũng "×" bất cứ lúc nào → dễ đẩy ng
   - Vì sao Milanote chụp cả state: bản trên máy của họ chỉ là cache (server là nguồn chuẩn, mất cache không sao), dùng 1 bộ lưu chung kiểu redux-persist cho mọi thứ, mở app chỉ đọc 1 key. Rẻ để làm, đủ cho cache.
   - Bibo lưu từng object vì bản trên máy phải giữ thay đổi chưa gửi (outbox), board lớn, ghi 1 phần, lỗi 1 object không hỏng cả bản. UI state (camera, panel) có thể chụp gộp.
 - Outbox: ĐÃ CHỐT làm (2026-10-09).
-- Gửi server: ĐÃ CHỐT, xem mục 2.7 (3 luồng: máy / bền vững throttle 2s / xem trước realtime).
+- Gửi server: ĐÃ CHỐT, xem mục 2.7 (3 luồng: máy / bền vững gom 1s / xem trước realtime; 2s cũ đổi thành 1s ngày 2026-10-13).
 - Xung đột: ĐÃ CHỐT, bản của mình vào Unsort (mục 2.6). Tự gộp để nâng cấp sau.
 - CÒN MỞ, bàn khi viết `canvas-sharing`:
   - (ĐÃ CHỐT 2026-10-09) Offline + board đang chia sẻ: 30s → nhãn "mất kết nối", khoá giữ; B bấm "×" nếu muốn; 5 phút → tự nhả (mục 2.4a).
@@ -178,12 +179,15 @@ Cải tiến (Milanote cho ai cũng "×" bất cứ lúc nào → dễ đẩy ng
 | B. Outbox | IndexedDB, cùng database với A | Ghi CÙNG transaction với object. Xoá mục chỉ khi server xác nhận |
 | C. UI state | Chụp gộp, có thể debounce | Camera, zoom, panel. Không chứa dữ liệu chưa đồng bộ |
 
-Quy tắc outbox:
-- Mục outbox = `{ opId, objectId, fields, baseVersion, localRev }` (`localRev` xem mục 2.7). Payload đọc từ object store lúc gửi (cùng transaction nên luôn khớp), không chép nội dung 2 lần.
-- Gộp theo (object, trường): gõ 100 phím vẫn chỉ 1 mục, `baseVersion` giữ version lúc bắt đầu sửa (dùng phát hiện xung đột).
-- `opId` để server bỏ gói trùng khi gửi lại.
-- Thao tác nhiều object (dán, nhân bản, xoá board có con, kéo nhiều object) = 1 nhóm mục, server áp cả nhóm hoặc không gì.
-- Tiền đề: gộp 2 database idb-keyval hiện tại thành 1 (transaction không chạy qua 2 database).
+Quy tắc outbox (cập nhật 2026-10-13 theo code `canvas-outbox`, file `src/tools/canvas/sync/`):
+- Mục outbox = `{ objectId, kind, isNew, fields, channels, baseVersion, rev, opId, groupId, createdAt }`, mỗi object tối đa 1 mục. Payload đọc từ object store lúc gửi (cùng transaction nên luôn khớp), không chép nội dung 2 lần.
+- Trường đổi tính lúc ghi: so bản mới với bản cũ đọc trong cùng transaction (`object-fields.ts`). Trường = `geometry` (cả khối), từng khoá `data`, `type`, `boardId`, `unsortIndex`.
+- Gộp theo object, hợp các trường: gõ 100 phím vẫn chỉ 1 mục với `fields = ['data.body']`. `baseVersion` giữ version lúc bắt đầu sửa (dùng phát hiện xung đột).
+- Gói gửi: `create` (server chưa có: nguyên object) / `patch` (`set` trường đã đổi + `unset` khoá data đã xoá) / `delete` (chỉ id). `null` là giá trị, không phải "xoá khoá".
+- `opId` đổi mỗi lần gộp (thay `localRev` cũ): server bỏ gói trùng theo `opId`; client chỉ xoá mục có `opId` khớp → sửa tiếp trong lúc gửi không bị xoá nhầm.
+- Patch tới object server không có → server trả `missingObjectIds`, client chuyển mục sang `create`.
+- Thao tác nhiều object (dán, nhân bản, xoá board có con, kéo nhiều object) ghi cùng 1 lô hàng đợi → chung `groupId`, nằm chung 1 request. Server giả kiểm dạng cả request trước khi áp (sai 1 mục → không áp gì); patch thiếu object bị bỏ riêng lẻ. RPC thật ở `canvas-sync` phải áp cả nhóm hoặc không gì.
+- Tiền đề: 1 database (đã xong, `canvas-storage-v2`).
 
 ### 2.6 Xung đột (chốt 2026-10-09)
 
@@ -197,34 +201,36 @@ Giai đoạn 1 — bản phục hồi vào Unsort (bạn đề xuất, Kiro duy�
 
 Nâng cấp sau (ghi để nhớ) — tự gộp:
 - Gộp các thay đổi không chồng nhau, chỉ hỏi khi 2 người sửa cùng phần.
-- Đơn vị gộp hợp lý: từng đoạn (paragraph). Milanote gắn `attrs.key` ngẫu nhiên cho mỗi paragraph → gộp theo đoạn được. Chuẩn bị rẻ: thêm id ổn định cho paragraph trong schema Tiptap khi làm `canvas-sync`.
+- Đơn vị gộp hợp lý: từng đoạn (paragraph). Milanote gắn `attrs.key` ngẫu nhiên cho mỗi paragraph → gộp theo đoạn được. ĐÃ LÀM 2026-10-13 (spec `canvas-note-block-keys`): mỗi khối cấp ngoài cùng có `data-key` 8 ký tự qua `@tiptap/extension-unique-id`, note cũ được cấp lúc mở sửa. Chưa gửi theo đoạn: `data.body` vẫn là 1 trường khi gửi patch.
 - Khó: rich text lồng nhau, list, checklist, ảnh. Gộp mức ký tự thì dùng Yjs (giai đoạn 2), không tự viết.
 
-### 2.7 Nhịp gửi + realtime (ĐÃ CHỐT 2026-10-09, sửa cùng ngày sau phản biện)
+### 2.7 Nhịp gửi + realtime (ĐÃ CHỐT 2026-10-09, sửa 2026-10-13: luồng 2 dùng 1 cửa sổ 1s cho cả chữ lẫn thuộc tính)
 
 3 luồng tách nhau, khác nhịp (luồng 2 qua RPC HTTP, luồng 3 qua kênh realtime WebSocket của Supabase, xem 2.8):
 1. Lưu trên máy: IndexedDB ngay mỗi thay đổi + outbox (bảo vệ bản nháp).
-2. Đồng bộ bền vững (server ghi DB): throttle ~2s, CỐ ĐỊNH, không đổi theo người xem.
+2. Đồng bộ bền vững (server ghi DB): gom cửa sổ 1s có trần, CỐ ĐỊNH, không đổi theo người xem. Đã code ở dev (`canvas-outbox`).
 3. Xem trước realtime (server chỉ chuyển tiếp, KHÔNG ghi DB): chỉ khi có người khác đang xem board, ~300-500ms. Mất gói không sao.
 
 | Dữ liệu | Lưu trên máy | Gửi server | Nhịp |
 |---|---|---|---|
-| Nội dung note đang gõ (bền vững) | IndexedDB ngay (hàng đợi, đã có) | Outbox | Throttle ~2s, có lần gửi cuối (trailing) khi ngừng gõ |
+| Nội dung note đang gõ (bền vững) | IndexedDB ngay (hàng đợi, đã có) | Outbox, patch `data.body` | Cửa sổ 1s (muộn nhất 1s sau thay đổi đầu), lần gửi cuối tự có khi hết cửa sổ |
 | Nội dung note đang gõ (xem trước) | Không | Kênh phòng board | ~300-500ms, chỉ khi có người xem. Người xem hiện bản xem trước; khi người gõ nhả khoá thì nạp lại bản bền vững từ server |
-| Vị trí / kích thước / màu sau khi thả, tạo, xoá | IndexedDB ngay | Outbox | Gửi ngay (1 lần mỗi thao tác) |
-| Thoát sửa, ẩn tab, rời trang, đổi board | — | Đẩy gấp phần còn chờ | Ngay, không chờ throttle |
+| Vị trí / kích thước / màu sau khi thả, tạo, xoá | IndexedDB ngay | Outbox, patch trường đã đổi (tạo: create, xoá: delete) | Cùng cửa sổ 1s (SỬA 2026-10-13, trước là "gửi ngay": kéo lẻ từng item ra 1 request mỗi lần) |
+| Thoát sửa, ẩn tab, rời trang, đổi board | — | Đẩy gấp phần còn chờ | Ngay, không chờ hết cửa sổ (rời trang: keepalive) |
 | Con trỏ, vị trí lúc ĐANG kéo | Không lưu | Kênh phòng board (tạm thời) | Throttle ~50-100ms, bỏ gói cũ nếu chưa kịp gửi |
 | Chọn / khoá / nhả khoá / "còn giữ" | Không lưu | Kênh phòng board | Chọn, khoá, nhả: ngay. "Còn giữ": ~10s. 30s im → "mất kết nối". 5 phút im → tự nhả |
 
 Quy tắc:
-- Không debounce chờ ngừng gõ. Throttle = gửi tối đa 1 lần / khoảng, lấy bản mới nhất.
+- Không debounce chờ ngừng gõ. Cửa sổ có trần: thay đổi đầu mở cửa sổ 1s, hết cửa sổ thì gửi mọi mục đang chờ (mọi object) trong 1 request. Thay đổi mới không gia hạn cửa sổ.
+- Mỗi lúc 1 request bay; lỗi thì giữ mục, thử lại sau 1s, 2s, 4s… tối đa 30s.
 - Dữ liệu tạm thời KHÔNG qua outbox, mất cũng không sao (gói sau thay gói trước).
-- Gõ liên tục 1 phút: ~30 lần ghi DB (luôn vậy) + ~120-200 gói xem trước chỉ chuyển tiếp (chỉ khi có người xem).
-- Throttle bắt buộc có trailing: ngừng gõ thì bản mới nhất vẫn gửi (lô cuối không bị rơi ngoài cửa sổ).
-- Xác nhận theo revision: mỗi mục outbox có `localRev` tăng mỗi lần sửa. Server xác nhận `localRev` nào thì chỉ xoá mục nếu chưa có sửa mới hơn; có sửa mới trong lúc gửi thì mục giữ lại, chờ lượt sau (giống `write-queue.ts` đang làm với IndexedDB).
+- Gõ liên tục 1 phút: ~60 request ghi DB + ~120-200 gói xem trước chỉ chuyển tiếp (chỉ khi có người xem). Đo dev 2026-10-13: gõ 10s → 10 request.
+- Không cần trailing riêng: thay đổi cuối luôn nằm trong 1 cửa sổ đã mở, hết cửa sổ là gửi.
+- Xác nhận theo mã gửi: mỗi lần gộp đổi `opId`. Server trả `opId` đã nhận; client chỉ xoá mục có `opId` khớp. Có sửa mới trong lúc gửi thì `opId` đã khác → mục giữ lại, chờ lượt sau (thay `localRev` cũ, cùng mục đích).
+- Chỉ 1 tab gửi (Web Lock `bibo-canvas-outbox`), tab khác báo qua BroadcastChannel.
 - Không trông vào `beforeunload` / `pagehide`: đẩy gấp chỉ là cố gắng, an toàn thật nằm ở outbox.
 - Debounce vs throttle KHÔNG khác nhau về giữ bản nháp trên máy (cả 2 đều có IndexedDB). Khác ở: server tụt sau bao lâu, và người xem thấy chữ lúc nào. Bản nháp chỉ mất nếu máy hỏng / xoá dữ liệu trình duyệt trước khi đồng bộ.
-- Các số (2s, 300-500ms, 50-100ms, 10s) là mặc định ban đầu, chỉnh theo đo thực tế khi có backend.
+- Các số (1s, 300-500ms, 50-100ms, 10s) là mặc định ban đầu, chỉnh theo đo thực tế khi có backend.
 
 ### 2.8 Backend: Supabase (bạn chọn 2026-10-09, chưa ghi vào `bibo-foundation`)
 
@@ -235,7 +241,7 @@ Quy tắc:
 | Con trỏ, vị trí lúc kéo, bản xem trước chữ | Realtime **Broadcast**, mỗi board 1 kênh, không ghi DB |
 | Ai đang xem board, nhãn ai đang giữ note | Realtime **Presence** (mất kết nối tự biến mất) |
 | Nhận thay đổi người khác đã lưu | Realtime **Postgres Changes** |
-| Ghi bền vững (outbox) | HTTP gọi RPC theo lô, VD `apply_ops(ops[])`: kiểm `baseVersion`, bỏ `opId` trùng, áp cả nhóm hoặc không gì. Không ghi qua WebSocket như Milanote; nhịp 2s nên HTTP đủ |
+| Ghi bền vững (outbox) | HTTP gọi RPC theo lô `apply_ops(ops[])`, dạng gói create / patch / delete ở `src/tools/canvas/sync/protocol.ts`: kiểm `baseVersion`, bỏ `opId` trùng, áp theo trường, áp cả nhóm hoặc không gì, trả `acceptedOpIds` + `missingObjectIds`. Không ghi qua WebSocket như Milanote; nhịp 1s nên HTTP đủ |
 | Rời trang | `fetch(..., { keepalive: true })` gọi RPC. Chỉ là cố gắng, an toàn nằm ở outbox |
 
 Lưu ý:
@@ -251,6 +257,7 @@ Cần có trước khi làm phần server: project Supabase, auth (đăng nhập
 - `bibo-foundation` đã ghi Supabase + `bibo-auth` vào stack, chỉ ghi, chưa cài thư viện. Khung client + biến môi trường làm ở Task 1 `canvas-sync`.
 - Auth: chờ `bibo-auth`. Thứ tự đổi thành `bibo-foundation` → `bibo-auth` → `canvas-sync` → `canvas-sharing`.
 - SỬA 2026-10-13 (bạn chốt, thay 2 dòng trên và dòng "Phase 1 `bibo-auth`" bên dưới): đăng nhập nằm ngay trong app canvas (Supabase Auth), không có service SSO riêng. Sản phẩm chỉ có landing + app. Thứ tự: đăng nhập trong app → `canvas-sync` → `canvas-sharing`.
+- SỬA 2026-10-13 (bạn chọn, thay thứ tự dòng trên): làm outbox + server giả trong máy TRƯỚC đăng nhập, để test cơ chế gom request sớm (spec `canvas-outbox`). Thứ tự: `canvas-outbox` → đăng nhập trong app → nối Supabase thật (`canvas-sync`) → `canvas-sharing`. Đánh đổi: lúc nối Supabase phải gắn thêm người dùng / token vào lớp gửi.
 - Project dữ liệu: tạo MỚI. Bạn dùng nhiều project Supabase để tăng dung lượng. Các project tin token của project auth nhờ nhập chung 1 khoá ký JWT (`docs/supabase-setup.md`).
 - ĐÃ CHỐT 2026-10-13: chia project theo hướng A (board ở 1 project chính, chỉ file chia nhiều project), chuẩn bị sẵn cho hướng C (gán mỗi người vào 1 project). `canvas-sync` bắt buộc: cột chủ sở hữu mọi dòng, bảng "board → project" từ đầu, client lấy kết nối theo board. Chi tiết `docs/supabase-setup.md` mục "Chia nhiều project".
 - ĐÃ CHỐT 2026-10-13: project auth = project MỚI (không dùng project auth của donor). Phase 1 `bibo-auth` chỉ cần đăng nhập + `/authorize` + `/token` + làm mới + đăng xuất chạy thật, cộng kiểm token chéo (spec `bibo-auth` Phase 7). Nối bibo vào `bibo-auth` (callback, giữ token) làm trong `canvas-sync`.
@@ -261,7 +268,7 @@ Cần có trước khi làm phần server: project Supabase, auth (đăng nhập
 Rẻ, không lo: hàng đợi ghi (gom lô, 1 transaction), khoá giữa tab (hỏi 3s/lần khi tab hiện), BroadcastChannel (chỉ gửi id), outbox (gộp theo object + trường).
 
 Rủi ro thật trong code hiện tại (đọc code thấy, chưa đo):
-1. Mỗi phím gõ làm cả canvas render lại: `setNoteBodySilently` đổi store mỗi phím, `ObjectsLayer` theo dõi cả Map object → mọi card render lại + sắp xếp lại. Kéo object cũng bị từ trước. Sửa: `ObjectsLayer` chỉ theo dõi danh sách id, `ObjectView` tự đọc object theo id.
+1. ĐÃ SỬA (kiểm code 2026-10-13): `ObjectsLayer` chỉ theo dõi danh sách id (`useShallow`), `ObjectView` memo tự đọc theo id → gõ 1 note không render lại card khác. Còn lại chi phí O(N) mỗi lần store đổi (mỗi phím): clone Map trong `updateData`, `canvasObjectIds` lọc + sắp xếp cả board, N selector `objects.get(id)`. Nhỏ ở board vài trăm object, tăng theo N.
 2. Mở board quét cả database: `loadObjects` đọc mọi key mọi board rồi `get` tuần tự. Sửa: store có chỉ mục `boardId` (gộp database, mục 2.3 bước 1). Bản nhanh: `entries()` 1 lần.
 3. `getHTML()` mỗi phím: tốn theo độ dài note. Sửa nếu cần: chỉ gọi khi hàng đợi sắp ghi.
 4. Chưa làm: service worker (cache sai làm tải lần đầu chậm), gộp bản máy với bản server lúc mở board (board lớn phải làm theo lô).
@@ -271,6 +278,52 @@ Ngân sách đề xuất (đo bằng DevTools trên board giả lập 500 note):
 - Kéo object: 60fps.
 - Mở board 500 object: < 500ms.
 - Ghi IndexedDB: vài lô / giây khi gõ hoặc kéo liên tục.
+
+Kế hoạch đo (2026-10-13): dùng bảng dev (`src/dev/`, spec `dev-panel`), chế độ Phiên, 5 kịch bản:
+A kéo 1 item lặp ~10 lần, B kéo ~20 item cùng lúc, C gõ ~200 ký tự thường, D gõ nhanh, E gõ trên board ~300 object.
+Mỗi phiên cho: số đưa vào (text / props), số lô, object / lô, % gom, thời gian ghi, long task, và mô phỏng gom 300ms / 1s / 2s.
+Quyết theo số: ghi máy < ~5ms / lô và không long task → không gom ở lớp máy; long task khi gõ → sửa render (mục 1) trước;
+cửa sổ gom cho lớp gửi Supabase chọn ở `canvas-sync` theo bảng mô phỏng.
+
+Số đo (Chrome, Windows, board 5 object):
+- A kéo lẻ, 51s: 52 lần đưa vào (toàn props), 52 lô, 1 object / lô, gom 0%. Ghi tb 11ms, max 19ms. Long task 0.
+  Mô phỏng: 300ms=48, 1s=22, 2s=13. 1 cú kéo item không ở trên cùng = 2 lần ghi cùng object
+  (`bringToFront` lúc bắt đầu kéo + `commitMove` lúc thả, `useObjectDrag.ts`).
+- B kéo nhiều item, 7.4s, board 19 object: 247 đưa vào, 26 lô, tb 9.5 / max 18 object mỗi lô → transaction giảm ~89%
+  (gộp khác id), gộp cùng id 0%. Ghi tb 16ms, max 25ms. Long task 0. Mô phỏng: 300ms=12, 1s=4, 2s=3.
+  Max 18 khi chọn 19: vòng ghi đồng bộ của `commitMove` bị tách 1 + N-1 lô vì đưa vào đầu tiên kick ghi ngay (đọc code).
+- C gõ thường, 25s: 133 đưa vào (132 text, 1 props), 116 lô, 1 object / lô → transaction giảm 13%. Ghi tb 7ms, max 29ms.
+  Long task 0 (board 6 object, chưa thấy chi phí render). Mô phỏng: 300ms=42, 1s=17, 2s=9.
+- D gõ nhanh, 11.6s: 435 text, 204 lô → transaction giảm 53%. Ghi tb 6.9ms, max 19ms. Long task 0.
+  Mô phỏng: 300ms=18, 1s=7, 2s=4. Hàng đợi tự giới hạn tốc độ ghi khi gõ nhanh.
+- E lần 1, 10.7s, board 1856 object: ĐO LẪN. 897 props (1 lô 895 object, có vẻ là 1 thao tác hàng loạt như duplicate / paste
+  trong lúc đo) + chỉ 46 text. Ghi tb 46ms, max 521ms (lô 895). Long task 3, max 454ms — chưa tách được do render 1856
+  object, do clone 895 object lúc `put`, hay do gõ. Cần đo lại E: bấm Bắt đầu sau khi board đứng yên, chỉ gõ. Bảng dev bản đầu ghi "gom được" = chỉ gộp cùng id, đọc dễ hiểu sai; đã tách 2 dòng
+  "transaction giảm" + "gộp cùng id" (2026-10-13).
+
+Kết luận lớp máy (ĐÃ CHỐT 2026-10-13): ghi IndexedDB đủ rẻ, KHÔNG đo thêm, KHÔNG thêm debounce ở lớp máy. Đo E lại không cần.
+
+Yêu cầu cho outbox gửi Supabase (ghi 2026-10-13, làm ở `canvas-sync`, CHƯA test được vì chưa có outbox):
+- Vấn đề cần tránh: 1 thao tác = 1 request (kéo 1 item gửi 1 request, mỗi phím gõ gửi 1 request). Mỗi request tốn 1 chuyến mạng
+  + kiểm quyền + RLS, nặng hơn ghi máy nhiều lần.
+- Cái cần đo là SỐ REQUEST gửi đi, không phải thời gian ghi IndexedDB.
+- Hướng: outbox gom theo cửa sổ thời gian có trần (gửi muộn nhất W ms sau thay đổi đầu, không chờ ngừng gõ). Gom mọi object
+  thay đổi trong cửa sổ vào 1 request. Cùng object chỉ gửi bản mới nhất. Gửi ngay (bỏ cửa sổ) khi ẩn / đóng tab.
+- Số tham khảo từ mô phỏng (đếm lần thay đổi, chưa phải request thật): kéo lẻ 52 lần trong 51s → gom 1s còn 22, 2s còn 13;
+  gõ nhanh 204 lần trong 11.6s → 300ms còn 18, 1s còn 7. ĐÃ CHỐT 2026-10-13: W = 1s cố định.
+- ĐÃ CHỐT 2026-10-13 (spec `canvas-outbox`): server giả = đường dẫn `/__fake-api/` trong `npm run dev` (request thật, mất khi
+  tắt dev); chỉ chiều gửi đi, chiều nhận về để `canvas-sync`. ĐÃ CHỐT (bạn duyệt spec 2026-10-13): 1 cửa sổ 1s cho CẢ
+  chữ lẫn thuộc tính, thay dòng "Vị trí / kích thước / màu ... gửi ngay" và "throttle ~2s" ở bảng mục 2.7. Đã code xong.
+- 2026-10-13: bản đầu `canvas-outbox` gửi NGUYÊN object (lệch mục 2.1 / 2.5). Đã sửa sang gửi theo trường như đã chốt:
+  create / patch (`set` + `unset`) / delete, trường = `geometry` + từng khoá `data` + `type` / `boardId` / `unsortIndex`.
+  Mục outbox có `fields` + `isNew` (thay cho `localRev`, dùng `rev` + `opId`). Đo: note ~8KB chỉ kéo → 410B / request.
+  RPC `apply_ops` của `canvas-sync` nhận đúng dạng gói này (`src/tools/canvas/sync/protocol.ts`).
+- Lúc làm `canvas-sync`: thêm mục "Outbox" vào bảng dev (số request, object / request, thời gian request, lỗi, thử lại,
+  đang chờ) + server giả trong máy (chỉnh độ trễ, tỉ lệ lỗi, offline) để test gom trước khi nối Supabase thật.
+- Phải test: gộp giữ đúng bản mới nhất; sửa chữ + kéo cùng lúc không mất phần nào; lỗi thì giữ lại + thử lại; offline / đóng
+  tab giữa chừng thì lần mở sau gửi tiếp; không gửi trùng.
+- Giảm request tận gốc (làm được trước outbox): 1 cú kéo đang ghi 2 lần (`bringToFront` lúc bắt đầu + `commitMove` lúc thả);
+  thả nhiều item tách 2 lô (lô đầu 1 object). Sửa 2 chỗ này thì outbox cũng nhận ít thay đổi hơn.
 
 ### 2.10 Thứ tự làm (đề xuất 2026-10-09)
 

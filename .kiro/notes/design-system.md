@@ -1,11 +1,11 @@
-# Note: Design System nhất quán xuyên dự án
+﻿# Note: Design System nhất quán xuyên dự án
 
 **Trạng thái**: ĐÃ CHỐT + ĐÃ SHIP (spec `design-system` Task 1-8, Task 9 deferred).
 **Ghi lúc**: 2026-08-28. **Cập nhật**: 2026-09-17 sau khi ship.
 
 ## Kết quả đã chốt
 
-Spec `design-system` (`.kiro/specs/design-system/`) đã implement xong Task 1-8. Các điểm từng cần bàn giờ đã quyết:
+Spec `design-system` (`docs/legacy/specs/design-system/`) đã implement xong Task 1-8. Các điểm từng cần bàn giờ đã quyết:
 
 1. **Nguồn token duy nhất**: app `src/styles/index.css` là nguồn chuẩn. Mỗi theme 1 khối `[data-theme='...']` ngang hàng (dark mặc định + light). Thêm theme mới = copy khối, đổi màu.
 2. **Palette**: primary xanh `#007acc` (VS Code blue) là brand color chính thức. Token dạng HEX/rgba, `tailwind.config.ts` đọc qua `var()` trực tiếp (không HSL wrapper).

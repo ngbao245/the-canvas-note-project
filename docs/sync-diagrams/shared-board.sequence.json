@@ -128,7 +128,7 @@
       "from": "a",
       "to": "db",
       "y": 420,
-      "label": "outbox ~2s + gia hạn khoá ~10s",
+      "label": "outbox 1s + gia hạn khoá ~10s",
       "variant": "emphasis"
     },
     {
@@ -220,7 +220,7 @@
       "title": "Người xem thấy chữ chạy",
       "items": [
         "Bản xem trước chỉ chuyển tiếp, không ghi DB",
-        "Ghi DB vẫn ~2s, không đổi theo người xem",
+        "Ghi DB vẫn 1s, không đổi theo người xem",
         "Nhả khoá thì người xem nạp lại bản bền vững"
       ]
     },

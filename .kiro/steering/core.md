@@ -1,4 +1,4 @@
----
+﻿---
 inclusion: always
 ---
 
@@ -28,7 +28,7 @@ Gọi bạn là "bạn". Kiro xưng "Kiro". Không dùng "anh/em/mình/tớ/chú
 - Auth: đăng nhập ngay trong app (Supabase Auth). Không có service SSO riêng (bạn chốt 2026-10-13, thay hướng `bibo-auth`). Sản phẩm chỉ có 2 phần: landing + app canvas
 - Deploy: chưa quyết
 
-Muốn đổi stack thì sửa spec `bibo-foundation` trước, không tự đổi trong code.
+Muốn đổi stack thì sửa bảng Stack trong `docs/system/01-core.md` trước (`INV-CORE-08`), không tự đổi trong code.
 
 ## Rule ghi file
 
@@ -75,10 +75,14 @@ Kiro thông báo trước khi chuyển mode, dạng: `[mode: planner] Bắt đ�
 
 Trước khi làm việc với một tool đã có handoff, Kiro tự đọc file handoff của tool đó để nắm ngữ cảnh, không chờ bạn đính kèm:
 
-- Canvas (`src/tools/canvas/`) → đọc `.kiro/notes/canvas-session-handoff.md` (state đã ship, kiến trúc, gotcha) + `.kiro/notes/canvas-backlog.md` (feature chưa làm).
+- Canvas (`src/tools/canvas/`) → đọc `.kiro/notes/canvas-session-handoff.md` (việc đang dở, chờ test, câu chờ chốt) + `.kiro/notes/canvas-backlog.md` (feature chưa làm).
 - Backend / lưu / đồng bộ (spec `canvas-sync`, `canvas-sharing`) → đọc `.kiro/notes/milanote-sync-architecture.md` trước. Không đo lại Milanote bằng MCP trừ câu ở mục "Chưa đo".
 
-Handoff là nguồn chuẩn cho trạng thái tool. Nếu handoff lệch với code thực tế thì tin code, rồi báo bạn để cập nhật handoff.
+Bạn nhắc 1 chủ đề → tra `docs/system/00-map.md` trước, chỉ mở file của dòng đó. Tên file luôn tiếng Anh.
+
+Doc hệ thống `docs/system/` là nguồn chuẩn mô tả app. Đổi hành vi → sửa doc phần đó trong cùng task. Quyết định đã chốt + lý do: `docs/system/decisions.md` (không hỏi lại). Doc trong `docs/legacy/` không dùng làm luật.
+
+Handoff là nguồn chuẩn cho việc đang dở, KHÔNG mô tả kiến trúc (cái đó ở `docs/system/`). Chỉ ghi việc dở / chờ test / chỗ hở; xong thì xoá dòng, không ghi nhật ký. Lệch code thì tin code, sửa handoff. Bản cũ đầy đủ: `docs/legacy/canvas-session-handoff-2026-10-13.md`.
 
 ## Cách bạn làm việc (rút từ các session trước)
 
@@ -111,13 +115,11 @@ Chưa có skill nào — khi bạn import bộ skill vào folder này thì Kiro 
 
 ## Trạng thái hiện tại
 
-Cập nhật 2026-10-12.
+Cập nhật 2026-10-13.
 
-- Foundation xong (`bibo-foundation`). Build + lint pass, 0 error (1 warning react-refresh ở `ui/button.tsx`, giữ theo bản gốc shadcn, không cần sửa).
-- Đã `git init`. Chưa commit lần nào.
-- Tool đang làm: **Canvas** (`src/tools/canvas/`). Chi tiết state + kiến trúc ở `.kiro/notes/canvas-session-handoff.md`.
-- Spec gần nhất xong: `canvas-note-autosave` (note tự lưu, hàng đợi ghi, khoá giữa tab theo người chọn, badge, Ctrl+Enter), test tay pass 2026-10-11.
-- 2026-10-13: đã ghi Supabase + `bibo-auth` vào `bibo-foundation`. Thứ tự mới: `bibo-auth` → `canvas-sync` → `canvas-sharing`. Hướng dẫn dựng project: `docs/supabase-setup.md` (board ở 1 project chính, file chia nhiều project, đã chốt).
-- `canvas-storage-v2` xong 2026-10-12. `app-offline` xong 2026-10-12 (service worker, bạn test pass). Mở session mới bằng `.kiro/notes/next-session-prompt.md`.
-- Landing tách bản build riêng (domain gốc), app ở domain `app.`: `npm run dev:landing` / `build:landing`, chi tiết `docs/architecture.md` mục "2 bản build". App `/` chuyển thẳng vào `/canvas`.
-- Landing (spec `canvas-landing-demo`, 2026-10-10): canvas mini thử ngay trên trang + phần ký họa. Canvas mini nằm ở `src/routes/landing/demo/`, độc lập hẳn canvas thật: không import `src/tools/canvas/`, không lưu dữ liệu. Canvas thật đổi giao diện thì demo không tự theo.
+- Build + lint + test pass (1 cảnh báo shadcn `ui/button.tsx`, giữ nguyên). Đã `git init`, chưa commit lần nào.
+- Tool đang làm: **Canvas** (`src/tools/canvas/`). Kiến trúc ở `docs/system/` (tra `00-map.md`), việc đang dở + chờ test ở `.kiro/notes/canvas-session-handoff.md`, tính năng chưa làm ở `canvas-backlog.md` / `backlog.md`.
+- Spec đã ship nằm ở `docs/legacy/specs/` (lịch sử). `.kiro/specs/` chỉ còn spec đang dùng.
+- Bộ doc hệ thống `docs/system/` xong đủ 13 phần 2026-10-13. Còn: bạn chốt câu mở (handoff mục "Câu chờ bạn chốt trong doc"), vẽ lại sơ đồ kiến trúc. VIỆC KẾ: đăng nhập trong app (Supabase Auth) → `canvas-sync` → `canvas-sharing`. Dựng Supabase: `docs/supabase-setup.md`. Mở session mới bằng `.kiro/notes/next-session-prompt.md`.
+- `canvas-outbox` (chỉ dev, server giả `dev/fake-api/`) chờ bạn test tay O2 + O5.
+- Landing là bản build riêng (domain gốc), app ở domain `app.`, chi tiết `docs/system/01-core.md`. Canvas mini trên landing (`src/routes/landing/demo/`) độc lập canvas thật, không import `src/tools/canvas/`.

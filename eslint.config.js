@@ -27,7 +27,7 @@ export default tseslint.config(
       'no-console': ['warn', { allow: ['warn', 'error'] }],
     },
   },
-  // Ranh giới giữ sẵn cho lúc tách monorepo (docs/architecture.md mục "2 bản build").
+  // Ranh giới giữ sẵn cho lúc tách monorepo (docs/system/01-core.md, INV-CORE-01 + 02).
   // `(^|/)tools/` bắt cả alias `@/tools/...` lẫn đường dẫn tương đối `../../tools/...`.
   // no-restricted-imports không xét import() động, nên thêm no-restricted-syntax cho ImportExpression.
   {

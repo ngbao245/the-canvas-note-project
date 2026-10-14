@@ -1,5 +1,5 @@
 /**
- * Quản lý phím tắt tập trung. Spec: `.kiro/specs/shortcuts/` + `.kiro/specs/shortcuts-modal/`.
+ * Quản lý phím tắt tập trung. Spec: `docs/legacy/specs/shortcuts/` + `docs/legacy/specs/shortcuts-modal/`.
  *
  * Thêm phím: khai báo trong bảng của nơi sở hữu (defs thuần dữ liệu + handlers),
  * ghép bằng `bindShortcuts`, đăng ký bằng `useShortcutLayer(kind, shortcuts)`.

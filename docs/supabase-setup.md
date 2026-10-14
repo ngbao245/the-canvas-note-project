@@ -2,7 +2,7 @@
 
 **Trạng thái**: Nháp, viết 2026-10-13. Cách chia project đã chốt. Bước 6 chưa ai thử, phải kiểm khi `bibo-auth` có đăng nhập.
 
-Liên quan: `.kiro/specs/bibo-foundation/design.md` (stack), `.kiro/notes/milanote-sync-architecture.md` mục 2.8 (vì sao Supabase), 2.11a (giới hạn gói).
+Liên quan: `docs/system/01-core.md` mục Stack, `.kiro/notes/milanote-sync-architecture.md` mục 2.8 (vì sao Supabase), 2.11a (giới hạn gói).
 
 ## Bức tranh
 

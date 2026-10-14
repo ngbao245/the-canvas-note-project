@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Kiến trúc bibo (2026-10-13)",
+    "quality_profile": "showcase",
+    "viewBox": [1280, 800],
+    "views": [
+      { "id": "save-path", "label": "Lưu trên máy", "focus": ["canvas", "queue", "idb", "tabs"], "note": "Mọi thay đổi canvas đi qua hàng đợi ghi, 1 lô là 1 transaction vào IndexedDB, rồi báo tab khác." },
+      { "id": "two-builds", "label": "2 bản build", "focus": ["user", "landing", "app", "sw"], "note": "Landing ở domain gốc, app ở domain app. Chỉ bản build app có service worker." },
+      { "id": "outbox", "label": "Gửi server", "focus": ["queue", "idb", "tabs", "sender", "server"], "note": "Tab giữ Web Lock gom 1s rồi gửi outbox. Hiện là server giả (dev) thay Supabase; canvas-sync chỉ đổi đích gửi." }
+    ]
+  },
+  "components": [
+    { "id": "user", "type": "external", "label": "Người dùng", "sublabel": "trình duyệt", "pos": [40, 280], "size": [160, 64] },
+    { "id": "landing", "type": "frontend", "label": "Landing", "sublabel": "canvas mini riêng", "tag": "domain gốc", "pos": [300, 80], "size": [160, 64] },
+    { "id": "app", "type": "frontend", "label": "Khung app", "sublabel": "App.tsx · Router", "tag": "domain app.", "pos": [300, 280], "size": [160, 64] },
+    { "id": "canvas", "type": "frontend", "label": "Canvas", "sublabel": "src/tools/canvas", "tag": "note + board", "pos": [560, 280], "size": [160, 64] },
+    { "id": "queue", "type": "backend", "label": "Hàng đợi ghi", "sublabel": "write-queue · api.ts", "pos": [820, 280], "size": [160, 64] },
+    { "id": "idb", "type": "database", "label": "IndexedDB", "sublabel": "bibo-canvas · 4 store", "pos": [1080, 280], "size": [160, 64] },
+    { "id": "sw", "type": "backend", "label": "Service worker", "sublabel": "chỉ bản build app", "pos": [300, 460], "size": [160, 64] },
+    { "id": "shared", "type": "frontend", "label": "Phần chung", "sublabel": "phím · i18n · theme", "pos": [560, 460], "size": [160, 64] },
+    { "id": "tabs", "type": "messagebus", "label": "Giữa các tab", "sublabel": "Broadcast · Web Locks", "pos": [820, 460], "size": [160, 64] },
+    { "id": "sender", "type": "backend", "label": "Lớp gửi outbox", "sublabel": "sync/ · cửa sổ 1s", "pos": [1080, 460], "size": [160, 64] },
+    { "id": "server", "type": "cloud", "label": "Server", "sublabel": "giả (dev) → Supabase", "tag": "apply_ops", "pos": [1080, 640], "size": [160, 64] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Domain gốc", "wraps": ["landing"] },
+    { "kind": "region", "label": "Trình duyệt · domain app.", "wraps": ["app", "canvas", "queue", "idb", "sw", "shared", "tabs", "sender"] },
+    { "kind": "region", "label": "Server · hiện: server giả", "wraps": ["server"] }
+  ],
+  "connections": [
+    { "id": "user-app", "from": "user", "to": "app", "label": "HTTPS", "variant": "emphasis" },
+    { "id": "user-landing", "from": "user", "to": "landing", "fromSide": "top", "toSide": "left" },
+    { "id": "landing-app", "from": "landing", "to": "app", "label": "link", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelDy": 81 },
+    { "id": "app-sw", "from": "app", "to": "sw", "label": "đăng ký", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelDy": 71 },
+    { "id": "app-canvas", "from": "app", "to": "canvas", "label": "lazy", "variant": "emphasis" },
+    { "id": "canvas-shared", "from": "canvas", "to": "shared", "label": "phím, chữ", "fromSide": "bottom", "toSide": "top", "labelDy": 71 },
+    { "id": "canvas-queue", "from": "canvas", "to": "queue", "label": "lưu", "variant": "emphasis" },
+    { "id": "queue-idb", "from": "queue", "to": "idb", "label": "1 transaction", "variant": "emphasis" },
+    { "id": "queue-tabs", "from": "queue", "to": "tabs", "label": "báo tab", "fromSide": "bottom", "toSide": "top", "labelDy": 71 },
+    { "id": "idb-sender", "from": "idb", "to": "sender", "label": "đọc outbox", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelDy": 71 },
+    { "id": "tabs-sender", "from": "tabs", "to": "sender", "label": "1 tab gửi", "variant": "dashed" },
+    { "id": "sender-server", "from": "sender", "to": "server", "label": "gửi lô", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelDy": 71 }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "2 bản build, 2 domain", "items": ["Landing: landing.html, không service worker", "Canvas mini trên landing không import src/tools/", "App: index.html, service worker chỉ ở bản build"] },
+    { "dot": "emerald", "title": "Lưu trên máy (đã có)", "items": ["Loại object: note và board", "Hàng đợi gom theo object, 1 lô = 1 transaction", "Store: boards, objects, cameras, outbox"] },
+    { "dot": "amber", "title": "Server", "items": ["Hiện: server giả /__fake-api, chỉ npm run dev", "Đứng thay Supabase, cùng dạng gói create / patch / delete", "Sắp làm: đăng nhập trong app, canvas-sync đổi đích sang Supabase"] }
+  ]
+}
