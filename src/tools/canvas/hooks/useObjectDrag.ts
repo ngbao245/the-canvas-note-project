@@ -47,8 +47,8 @@ import { readCssToken } from '@/lib/css-token';
  *
  *   onUp: xử lý theo zone hover (trash/board-tile/unsort/invalid/canvas), cleanup.
  *
- * Multi-select: tất cả selected hidden + geometry move ngầm. Preview chỉ primary
- * (chuẩn motion-rules). Item còn lại xuất hiện lại vị trí mới sau drop.
+ * Multi-select: tất cả selected hidden tại chỗ + geometry move ngầm. Preview vẽ
+ * cả cụm theo con trỏ (CanvasObjectDragPreview), giữ khoảng cách giữa các object.
  */
 
 const DRAG_THRESHOLD = 5;
@@ -151,6 +151,7 @@ export function useObjectDrag(objectId: string) {
     const zoom = getCameraEngine().getCamera().zoom;
     useCanvasDragStore.getState().setDrag({
       primaryId: start.primaryId,
+      ids: start.ids,
       clientX: lastClientRef.current.x,
       clientY: lastClientRef.current.y,
       // Convert canvas-space grab offset → preview-space (× zoom) vì preview

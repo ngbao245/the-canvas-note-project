@@ -4,7 +4,8 @@ import { getObjectTypeDefinition } from '../hooks/useObjectRegistry';
 import { useCameraStore } from '../store/camera-store';
 
 /**
- * FloatingObjectPreview — visualizer chung cho Toolbar drag + Unsort drag.
+ * FloatingObjectPreview — visualizer chung cho kéo object canvas, item Unsort,
+ * nút thanh tạo. Kéo nhiều object canvas: mỗi object 1 bản (CanvasObjectDragPreview).
  *
  * Portal ra document.body (position fixed) → thoát mọi stacking + overflow clip
  * của parent → tự nhiên nổi trên toolbar/header/panel overlay.
@@ -19,9 +20,6 @@ import { useCameraStore } from '../store/camera-store';
  *     theo previewW/sourceW nếu source size khác preview size — VD Unsort item
  *     232px source vs 338px canvas preview).
  *   - dim: cursor đang ở vùng khác canvas trống (isSecondaryZone) → opacity 0.5.
- *
- * KHÔNG dùng cho canvas drag — canvas dùng in-place pattern (item DOM cầm và
- * bay trong wrapper camera-transformed). Xem `useObjectDrag.ts`.
  */
 export function FloatingObjectPreview({
   object,
@@ -78,7 +76,7 @@ export function FloatingObjectPreview({
         // dư trong suốt → shadow cả khung hiện thành 1 hình chữ nhật thừa. Bỏ.
         boxShadow: def.ownSelectionFrame ? undefined : '0 12px 32px rgba(0, 0, 0, 0.35)',
         // Tầng drag-layer (screen-space) — preview nổi trên toolbar/header/panel.
-        // Xem `.kiro/notes/z-index-tiers.md`.
+        // Xem `docs/system/02-ui-common.md` mục "Lớp z".
         zIndex: 'var(--z-drag-layer)',
       }}
     >

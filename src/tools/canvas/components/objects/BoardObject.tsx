@@ -5,6 +5,7 @@ import { boardDataSchema } from '../../types';
 import { useBoardsStore } from '../../store/boards-store';
 import { useObjectsStore } from '../../store/objects-store';
 import { useInteractionStore } from '../../store/interaction-store';
+import { useCanvasDragStore } from '../../store/canvas-drag-store';
 import { renameBoard } from '../../engine/actions';
 import { ObjectShell } from './ObjectShell';
 import { SelectionBox } from '../SelectionBox';
@@ -19,7 +20,7 @@ import { editKeyHandler } from '@/lib/dom';
  *   - Viền chọn + QuickLineDot gắn vào khối vuông (SelectionBox đặt trong icon,
  *     registry `ownSelectionFrame`). Không có icon resize.
  *   - Double-click icon → navigate `/canvas/:linkedBoardId` (URL chỉ id).
- *   - Hover khi drop cross-board: ring primary + count preview +1.
+ *   - Hover khi drop cross-board: ring primary + số đếm cộng số object đang kéo.
  */
 export function BoardRenderer({ object, isSelected, isEditing, onEditEnd }: ObjectRendererProps) {
   const navigate = useNavigate();
@@ -37,10 +38,12 @@ export function BoardRenderer({ object, isSelected, isEditing, onEditEnd }: Obje
     return n;
   });
   const hoveredForDrop = useInteractionStore((s) => s.hoveredBoardTileId === object.id);
+  // Số object sẽ thêm khi thả: kéo object canvas thì đếm cả cụm, kiểu kéo khác 1.
+  const dropCount = useCanvasDragStore((s) => s.drag?.ids.length ?? 1);
 
   const name = board?.name || 'New Board';
   const color = board?.color ?? '#71717a';
-  const previewCount = hoveredForDrop ? cardCount + 1 : cardCount;
+  const previewCount = hoveredForDrop ? cardCount + dropCount : cardCount;
 
   const onIconDoubleClick = (e: ReactMouseEvent<HTMLDivElement>) => {
     // Stop propagation → không bubble lên ObjectsLayer (khỏi kích editing mode).
