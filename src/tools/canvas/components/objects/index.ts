@@ -1,5 +1,4 @@
 import { registerObjectType } from '../../hooks/useObjectRegistry';
-import { rectType } from './rect-type';
 import { noteType } from './note-type';
 import { boardType } from './board-type';
 
@@ -7,6 +6,6 @@ import { boardType } from './board-type';
 // `XxxObject.tsx` + định nghĩa `xxx-type.ts(x)`, rồi thêm vào mảng này.
 // Thứ tự = thứ tự hiện trên toolbar palette.
 // CanvasSurface import file này 1 lần để registry đầy đủ trước khi render.
-const OBJECT_TYPES = [rectType, noteType, boardType];
+const OBJECT_TYPES = [noteType, boardType];
 
 for (const def of OBJECT_TYPES) registerObjectType(def);

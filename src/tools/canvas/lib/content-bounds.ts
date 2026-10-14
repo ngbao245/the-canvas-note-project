@@ -2,8 +2,10 @@ import { ZOOM_OUT_BASELINE, type CanvasObject } from '../types';
 import { computeFitZoom, type Bounds } from '../engine/camera';
 
 /**
- * Tính AABB bao toàn bộ object trên board. Null nếu không có object.
- * Trong canvas-space.
+ * Tính AABB bao object đang nằm TRÊN CANVAS. Null nếu không có.
+ * Trong canvas-space. Bỏ item trong Unsort (`unsortIndex !== null`): chúng không vẽ
+ * trên canvas, giữ geometry cũ chỉ để kéo ra đúng chỗ; tính vào thì Fit / giới hạn
+ * pan nhắm vào chỗ trống (bạn chốt 2026-10-13).
  */
 export function computeContentBounds(objects: Iterable<CanvasObject>): Bounds | null {
   let minX = Infinity;
@@ -12,6 +14,7 @@ export function computeContentBounds(objects: Iterable<CanvasObject>): Bounds | 
   let maxY = -Infinity;
   let has = false;
   for (const o of objects) {
+    if (o.unsortIndex !== null) continue;
     has = true;
     const g = o.geometry;
     if (g.x < minX) minX = g.x;

@@ -2,9 +2,14 @@ import type { Config } from 'tailwindcss';
 
 /*
  * Tailwind đọc token HEX từ src/styles/index.css qua var().
- * Token dạng HEX/rgba nên KHÔNG dùng <alpha-value>; màu cần opacity đã có biến *-soft riêng.
+ * Token là HEX nên Tailwind không tự pha độ mờ: bọc bằng `color-mix` + `<alpha-value>`
+ * để `bg-primary/15`, `border-success/40`... sinh ra CSS thật (trước 2026-10-13 các class
+ * này bị bỏ im lặng). Không có `/xx` thì <alpha-value> = 1 → đúng màu gốc.
  * Thêm theme mới chỉ cần thêm khối [data-theme] trong index.css, không phải sửa file này.
  */
+const token = (name: string) =>
+  `color-mix(in srgb, var(--${name}) calc(<alpha-value> * 100%), transparent)`;
+
 const config: Config = {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   darkMode: ['selector', '[data-theme="dark"]'],
@@ -21,46 +26,46 @@ const config: Config = {
         'presence-pulse': 'presence-pulse 1.5s var(--easing-standard) infinite',
       },
       colors: {
-        border: 'var(--border)',
-        'border-strong': 'var(--border-strong)',
-        input: 'var(--input)',
-        ring: 'var(--ring)',
-        background: 'var(--background)',
-        foreground: 'var(--foreground)',
-        'subtle-foreground': 'var(--subtle-foreground)',
+        border: token('border'),
+        'border-strong': token('border-strong'),
+        input: token('input'),
+        ring: token('ring'),
+        background: token('background'),
+        foreground: token('foreground'),
+        'subtle-foreground': token('subtle-foreground'),
         primary: {
-          DEFAULT: 'var(--primary)',
-          foreground: 'var(--primary-foreground)',
-          hover: 'var(--primary-hover)',
-          soft: 'var(--primary-soft)',
+          DEFAULT: token('primary'),
+          foreground: token('primary-foreground'),
+          hover: token('primary-hover'),
+          soft: token('primary-soft'),
         },
         card: {
-          DEFAULT: 'var(--card)',
-          foreground: 'var(--card-foreground)',
-          elevated: 'var(--card-elevated)',
+          DEFAULT: token('card'),
+          foreground: token('card-foreground'),
+          elevated: token('card-elevated'),
         },
         popover: {
-          DEFAULT: 'var(--popover)',
-          foreground: 'var(--popover-foreground)',
+          DEFAULT: token('popover'),
+          foreground: token('popover-foreground'),
         },
         muted: {
-          DEFAULT: 'var(--muted)',
-          foreground: 'var(--muted-foreground)',
+          DEFAULT: token('muted'),
+          foreground: token('muted-foreground'),
         },
         destructive: {
-          DEFAULT: 'var(--destructive)',
-          foreground: 'var(--destructive-foreground)',
-          soft: 'var(--destructive-soft)',
+          DEFAULT: token('destructive'),
+          foreground: token('destructive-foreground'),
+          soft: token('destructive-soft'),
         },
         success: {
-          DEFAULT: 'var(--success)',
-          foreground: 'var(--success-foreground)',
-          soft: 'var(--success-soft)',
+          DEFAULT: token('success'),
+          foreground: token('success-foreground'),
+          soft: token('success-soft'),
         },
         warning: {
-          DEFAULT: 'var(--warning)',
-          foreground: 'var(--warning-foreground)',
-          soft: 'var(--warning-soft)',
+          DEFAULT: token('warning'),
+          foreground: token('warning-foreground'),
+          soft: token('warning-soft'),
         },
       },
       borderRadius: {

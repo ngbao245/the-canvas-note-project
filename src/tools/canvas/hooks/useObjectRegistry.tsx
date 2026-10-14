@@ -2,11 +2,13 @@
 // Canvas — Object type registry (Phase B)
 // ============================================================
 //
-// Registry map `type -> definition`. Mỗi object type (note/image/link/rect)
-// tự đăng ký renderer + defaultGeometry + defaultData + label lúc module load.
+// Registry map `type -> definition`. Định nghĩa từng loại nằm ở
+// `components/objects/xxx-type.ts(x)`, đăng ký 1 chỗ duy nhất qua mảng
+// `OBJECT_TYPES` trong `components/objects/index.ts` (hiện: note, board).
+// Nguồn chuẩn: `docs/system/11-object-types.md`.
 //
-// Engine core (coord/camera/actions move-resize-delete) KHÔNG đọc registry —
-// chỉ ObjectsLayer (render) + Toolbar (palette) + createObjectAt (tạo) tra vào đây.
+// Engine core (coord/camera/move-resize-delete) KHÔNG đọc registry — chỉ nơi
+// render, toolbar, tạo object, dán, preview kéo, resize tra vào đây.
 // Nhờ vậy Phase sau / plugin thêm type mới không đụng engine.
 // ============================================================
 
