@@ -31,7 +31,7 @@ export type Geometry = z.infer<typeof geometrySchema>;
 // `data: unknown` — renderer tự cast sang type của mình bằng Zod (Phase B).
 export const canvasObjectSchema = z.object({
   id: z.string(),
-  type: z.string(), // 'rect' Phase A; 'note' | 'text' | 'image' | 'link' Phase B; 'board' nested
+  type: z.string(), // loại trong sổ `components/objects/index.ts` (hiện 'note' | 'board'), xem docs/system/11-object-types.md
   boardId: z.string(), // id board chứa object (Home cũng là id thật)
   geometry: geometrySchema,
   data: z.unknown(),
@@ -43,9 +43,10 @@ export const canvasObjectSchema = z.object({
    */
   unsortIndex: z.number().int().min(0).nullable().default(null),
   /**
-   * Tăng 1 mỗi lần object được ghi xuống (hàng đợi ghi tự đóng dấu, caller không
-   * tự tăng). Bây giờ chỉ ghi lại; `canvas-sync`
-   * dùng để phát hiện xung đột.
+   * Tăng mỗi lần object được ghi xuống: lúc ghi đọc số trên đĩa trong cùng transaction
+   * rồi +1 (api.ts `writeObjects`), nên không lùi / trùng giữa tab hay khi undo. Caller
+   * không tự tăng. Bản trong store có thể giữ số cũ, không sao. `canvas-sync` dùng để
+   * phát hiện sửa chen ngang (bản máy, server có thể cấp số riêng).
    */
   version: z.number().int().min(0).default(0),
   createdAt: z.string(), // ISO
@@ -66,10 +67,8 @@ export type CanvasObject = z.infer<typeof canvasObjectSchema>;
  * Mỗi Enter = paragraph mới. Heading/bold/italic/list/link do user chọn qua
  * toolbar editing mode (StarterKit + extension-link).
  *
- * Note cũ (title + plain body) migrate qua `lib/note-data.ts::parseNoteData`
- * — merge title thành `<h1>` prepend, mỗi line body thành `<p>`. Renderer gọi
- * parser mỗi lần render, không persist migration ngược (Tiptap tự save HTML
- * khi user edit lần đầu).
+ * Đọc qua `lib/note-data.ts::parseNoteData` (chỉ điền mặc định, không chuyển
+ * dạng cũ).
  *
  * `color`: hex ColorBar top (user chọn qua toolbar element mode), null = default
  * primary/60 theme-aware. Palette ở `lib/note-colors.ts`.

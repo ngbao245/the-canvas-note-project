@@ -19,7 +19,8 @@ import { ActionButton } from '../Toolbar';
 import { ToolbarPopup } from '../ToolbarPopup';
 import { useToolbarPopupClose } from '../../hooks/useToolbarPopupClose';
 import { updateObjectData } from '../../engine/actions';
-import { noteDataSchema, type CanvasObject } from '../../types';
+import type { CanvasObject } from '../../types';
+import { parseNoteData } from '../../lib/note-data';
 import { NOTE_COLOR_PALETTE } from '../../lib/note-colors';
 import { useNoteEditorStore } from '../../store/note-editor-store';
 import { useI18n } from '@/lib/i18n';
@@ -337,16 +338,12 @@ function LinkPopup({ editor, onClose }: { editor: Editor; onClose: () => void })
 function ColorButton({ selectedObject }: { selectedObject: CanvasObject }) {
   const [open, setOpen] = useState(false);
   const { t } = useI18n();
-  const parsed = noteDataSchema.safeParse(selectedObject.data);
-  const currentColor = parsed.success ? parsed.data.color : null;
+  // Đọc qua parseNoteData như mọi chỗ khác: dữ liệu lạ vẫn giữ chữ, không ghi body rỗng.
+  const parsed = parseNoteData(selectedObject.data);
+  const currentColor = parsed.color;
 
   const applyColor = (color: string | null) => {
-    // Ensure data hợp lệ: nếu safeParse fail (data cũ bất thường), fill defaults
-    // matching schema mới (drop title, body HTML).
-    const base = parsed.success
-      ? parsed.data
-      : { body: '<p></p>', color: null, heightMode: 'auto' as const };
-    updateObjectData(selectedObject.id, { ...base, color });
+    updateObjectData(selectedObject.id, { ...parsed, color });
     setOpen(false);
   };
 

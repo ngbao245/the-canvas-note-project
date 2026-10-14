@@ -1,10 +1,13 @@
+import { BLOCK_KEY_ATTR, findBlockIndex, type BlockTarget } from './note-block-keys';
+
 /**
- * Helper cho CardClipper feature (Milanote parity) — tách paragraph khỏi Note
+ * Helper cho CardClipper feature (Milanote parity) — tách 1 khối khỏi Note
  * body HTML thành note mới trên canvas.
  *
  * Body Note = chuỗi HTML Tiptap, gồm top-level block children (p, h1, h2, ul,
- * ol, blockquote, ...). Paragraph index = vị trí trong `template.content.children`.
- * Dùng DOMParser template để parse an toàn, không touch document chính.
+ * ol, blockquote, ...). Khối tìm theo mã `data-key` (spec canvas-note-block-keys),
+ * note cũ chưa có mã thì theo vị trí.
+ * Dùng template để parse, không touch document chính.
  */
 
 function parseBodyChildren(html: string): { fragment: DocumentFragment; children: Element[] } {
@@ -13,25 +16,28 @@ function parseBodyChildren(html: string): { fragment: DocumentFragment; children
   return { fragment: template.content, children: Array.from(template.content.children) };
 }
 
-/** Đếm số top-level block trong body. Dùng để guard index out-of-range. */
-export function countParagraphs(html: string): number {
-  return parseBodyChildren(html).children.length;
+function resolveBlock(children: Element[], target: BlockTarget): Element | null {
+  const i = findBlockIndex(
+    children.map((c) => c.getAttribute(BLOCK_KEY_ATTR)),
+    target,
+  );
+  return i >= 0 ? children[i] : null;
 }
 
-/** Extract paragraph HTML tại index N. Null nếu out-of-range. */
-export function extractParagraphHtml(html: string, index: number): string | null {
-  const { children } = parseBodyChildren(html);
-  return children[index]?.outerHTML ?? null;
+/** HTML của khối cần tách. Null nếu không tìm thấy (đã bị xoá / ngoài phạm vi). */
+export function extractBlockHtml(html: string, target: BlockTarget): string | null {
+  return resolveBlock(parseBodyChildren(html).children, target)?.outerHTML ?? null;
 }
 
 /**
- * Remove paragraph tại index → HTML còn lại. Nếu xoá xong body rỗng → trả về
+ * Xoá khối → HTML còn lại. Không tìm thấy → trả nguyên. Xoá xong body rỗng → trả
  * '<p></p>' để Note vẫn có 1 paragraph editable (không bao giờ body === '').
  */
-export function removeParagraphAt(html: string, index: number): string {
+export function removeBlock(html: string, target: BlockTarget): string {
   const { fragment, children } = parseBodyChildren(html);
-  if (index < 0 || index >= children.length) return html;
-  children[index].remove();
+  const block = resolveBlock(children, target);
+  if (!block) return html;
+  block.remove();
   const container = document.createElement('div');
   container.appendChild(fragment);
   const result = container.innerHTML.trim();

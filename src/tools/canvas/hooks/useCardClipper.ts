@@ -1,8 +1,17 @@
 import { useEffect, useState, type RefObject } from 'react';
+import { BLOCK_KEY_ATTR } from '../lib/note-block-keys';
+
+export interface ClipperHover {
+  /** Vị trí khối (dùng khi note cũ chưa có mã). */
+  index: number;
+  /** Mã khối `data-key` (spec canvas-note-block-keys). null = note chưa có mã. */
+  key: string | null;
+  top: number;
+}
 
 /**
- * Hover detection cho CardClipper (Milanote parity). Trả về paragraph index
- * đang hover + Y position để CardClipperButton render đúng chỗ.
+ * Hover detection cho CardClipper (Milanote parity). Trả về khối đang hover
+ * (mã + vị trí) + Y position để CardClipperButton render đúng chỗ.
  *
  * `wrapperRef` — outer wrapper của Note (chứa cả padding + content root).
  * `contentRootRef` — element chứa top-level block children (p, h1, ul, ...).
@@ -20,8 +29,8 @@ import { useEffect, useState, type RefObject } from 'react';
 export function useCardClipper(
   wrapperRef: RefObject<HTMLElement | null>,
   contentRootRef: RefObject<HTMLElement | null>,
-): { index: number; top: number } | null {
-  const [state, setState] = useState<{ index: number; top: number } | null>(null);
+): ClipperHover | null {
+  const [state, setState] = useState<ClipperHover | null>(null);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
@@ -59,9 +68,10 @@ export function useCardClipper(
       const buttonSize = 24; // h-6 w-6
       const top = paraRect.top - wrapperRect.top + paraRect.height / 2 - buttonSize / 2;
 
+      const key = cur.getAttribute(BLOCK_KEY_ATTR);
       setState((prev) => {
-        if (prev && prev.index === index && Math.abs(prev.top - top) < 1) return prev;
-        return { index, top };
+        if (prev && prev.index === index && prev.key === key && Math.abs(prev.top - top) < 1) return prev;
+        return { index, key, top };
       });
     };
 

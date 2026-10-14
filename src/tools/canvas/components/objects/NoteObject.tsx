@@ -144,8 +144,8 @@ function FadeOverlay() {
  *     StarterKit paragraph node default.
  *   - Heading/bold/italic/list/link: user chọn qua toolbar editing mode
  *     (NoteToolbar.tsx, editor bridge qua note-editor-store).
- *   - Data: `body: string` chứa HTML (Tiptap `.getHTML()`). Migration từ shape
- *     cũ (title + plain text body) qua `lib/note-data.ts::parseNoteData`.
+ *   - Data: `body: string` chứa HTML (Tiptap `.getHTML()`), đọc qua
+ *     `lib/note-data.ts::parseNoteData`.
  *
  * Edit flow: double-click → editingId set → editor focus. Mỗi lần gõ tự lưu
  * (store + hàng đợi, không undo). Thoát sửa (blur / Esc) ghi đúng 1 bước undo.
@@ -234,7 +234,7 @@ function NoteView({ data, objectId }: { data: NoteData; objectId: string }) {
       {clipper && !lockedElsewhere ? (
         <CardClipperButton
           sourceId={objectId}
-          paragraphIndex={clipper.index}
+          target={{ key: clipper.key, index: clipper.index }}
           top={clipper.top}
           sourceBody={data.body}
           sourceColor={data.color}
@@ -267,6 +267,8 @@ function NoteEditor({
   // "trước" của bước undo.
   const startBodyRef = useRef(initial.body);
   const latestBodyRef = useRef(initial.body);
+  // Đã có thay đổi từ người dùng (không phải lần cấp mã khối lúc mở).
+  const userEditedRef = useRef(false);
   // Đã ghi bước undo của lần sửa này (Esc rồi blur lúc unmount không ghi 2 lần).
   const committedRef = useRef(false);
   // Bỏ qua blur ngay sau mount: chuỗi double-click phát pointer event làm editor
@@ -307,8 +309,16 @@ function NoteEditor({
         class: `${NOTE_CONTENT_CLASS} outline-none`,
       },
     },
-    onUpdate: ({ editor: ed }) => {
+    onUpdate: ({ editor: ed, transaction }) => {
       latestBodyRef.current = ed.getHTML();
+      // Note cũ chưa có mã khối: lúc mở, extension cấp mã bằng 1 lần đổi không vào
+      // lịch sử undo. Coi bản đã có mã là "trước khi sửa" → mở rồi thoát không gõ
+      // thì không ghi bước undo thừa. Vẫn tự lưu bên dưới để mã xuống máy.
+      if (!userEditedRef.current && transaction.getMeta('addToHistory') === false) {
+        startBodyRef.current = latestBodyRef.current;
+      } else {
+        userEditedRef.current = true;
+      }
       // Tự lưu ngay (hàng đợi gom, không debounce), không thêm bước undo.
       setNoteBodySilently(objectId, latestBodyRef.current);
       // Sync state → CardClipperButton nhận sourceBody hiện tại (paragraph mới
@@ -431,7 +441,7 @@ function NoteEditor({
       {clipper ? (
         <CardClipperButton
           sourceId={objectId}
-          paragraphIndex={clipper.index}
+          target={{ key: clipper.key, index: clipper.index }}
           top={clipper.top}
           sourceBody={currentBody}
           sourceColor={initial.color}

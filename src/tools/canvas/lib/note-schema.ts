@@ -2,6 +2,7 @@ import { getSchema, type Extensions } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import { DOMParser as PMDOMParser, DOMSerializer } from '@tiptap/pm/model';
+import { NoteBlockKeys } from './note-block-keys';
 
 /**
  * Schema nội dung Note — nguồn chuẩn cho cả editor lẫn bộ lọc HTML.
@@ -24,6 +25,8 @@ export const NOTE_SCHEMA_EXTENSIONS: Extensions = [
     // Mặc định extension-link đã chặn href `javascript:` / `data:` (isAllowedUri)
     // cả lúc parse lẫn lúc render → link độc bị bỏ mark, chỉ còn text.
   }),
+  // Mã từng khối (`data-key`). Nằm trong schema → bộ lọc HTML lúc hiển thị cũng giữ mã.
+  NoteBlockKeys,
 ];
 
 // Dựng 1 lần, dùng lại. getSchema tốn công (resolve toàn bộ extension).

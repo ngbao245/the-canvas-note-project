@@ -19,10 +19,11 @@ import { getCanvasRepository } from '../api';
 import { useObjectsStore } from '../store/objects-store';
 import { useBoardsStore } from '../store/boards-store';
 import { useSelectionStore } from '../store/selection-store';
-import { useHistoryStore } from '../store/history-store';
+import { beginHistoryGroup, endHistoryGroup, useHistoryStore } from '../store/history-store';
 import { useCurrentBoardStore } from '../store/current-board-store';
 import { getObjectTypeDefinition } from '../hooks/useObjectRegistry';
-import { extractParagraphHtml, removeParagraphAt } from '../lib/note-clip';
+import { extractBlockHtml, removeBlock } from '../lib/note-clip';
+import type { BlockTarget } from '../lib/note-block-keys';
 import { parseNoteData } from '../lib/note-data';
 
 /**
@@ -40,6 +41,17 @@ function mutateGeometry(id: string, geometry: Partial<Geometry>): void {
   const s = useObjectsStore.getState();
   if (!s.objects.get(id)) return;
   s.updateGeometry(id, geometry);
+}
+
+/**
+ * Đưa object vào store chỉ khi nó thuộc board đang xem (`INV-CANVAS-20`). Lệnh undo / redo
+ * dùng hàm này thay `add`: board khác thì chỉ ghi máy, lỡ có trong store thì bỏ ra.
+ */
+function putInView(obj: CanvasObject): void {
+  const view = useCurrentBoardStore.getState().currentBoardId;
+  const s = useObjectsStore.getState();
+  if (obj.boardId === view) s.add(obj);
+  else if (s.objects.has(obj.id)) s.remove(obj.id);
 }
 
 function persistObject(id: string): void {
@@ -124,17 +136,12 @@ export function createObjectAt(
       void repo.deleteObject(obj.id);
     },
     redo: () => {
-      useObjectsStore.getState().add(obj);
+      putInView(obj);
       useSelectionStore.getState().select(obj.id);
       void repo.saveObject(obj);
     },
   });
   return obj;
-}
-
-/** Wrapper tương thích: tạo rect (context menu Phase A vẫn dùng). x,y = tâm. */
-export function createRectAt(canvasX: number, canvasY: number, boardId: string): CanvasObject | null {
-  return createObjectAt('rect', canvasX, canvasY, boardId);
 }
 
 // --- Board create (compound: Board entity + BoardObject atomic) ---
@@ -212,7 +219,7 @@ export function createBoardAt(
     },
     redo: () => {
       useBoardsStore.getState().add(board);
-      useObjectsStore.getState().add(object);
+      putInView(object);
       useSelectionStore.getState().select(object.id);
       void repo.saveBoard(board);
       void repo.saveObject(object);
@@ -458,7 +465,7 @@ export function moveFromUnsortToCanvas(ids: string[], canvasX: number, canvasY: 
     label: `Move ${snapshots.length} object${snapshots.length === 1 ? '' : 's'} to canvas`,
     undo: () => {
       for (const s of snapshots) {
-        store.add(s);
+        putInView(s);
         void repo.saveObject(s);
       }
       // Reindex Unsort ngược (restore các item đã shift).
@@ -578,7 +585,7 @@ export function moveToUnsortHere(ids: string[]): void {
     undo: () => {
       // Restore snapshots (unsortIndex null + geometry cũ).
       for (const s of snapshots) {
-        useObjectsStore.getState().add(s);
+        putInView(s);
         void repo.saveObject(s);
       }
       // Reindex items cũ -N.
@@ -644,6 +651,8 @@ export async function countBoardTreeSize(rootBoardId: string): Promise<{
 export async function deleteBoardCascade(boardObjectId: string): Promise<void> {
   const boardObj = useObjectsStore.getState().objects.get(boardObjectId);
   if (!boardObj || boardObj.type !== 'board') return;
+  // Hàm chờ IndexedDB: chốt board của bước undo ngay lúc bấm xoá.
+  const historyBoardId = useHistoryStore.getState().activeBoardId;
   const data = boardObj.data as BoardData;
   const rootId = data?.linkedBoardId;
   if (!rootId) return;
@@ -708,7 +717,25 @@ export async function deleteBoardCascade(boardObjectId: string): Promise<void> {
       useObjectsStore.getState().remove(boardObjectId);
       void repo.deleteObject(boardObjectId);
     },
-  });
+  }, historyBoardId);
+}
+
+/**
+ * Xoá mọi object đang chọn, kể cả cả cây của từng board tile trong đó, gộp 1 bước undo.
+ * Dùng khi vùng chọn có board tile cùng object khác, hoặc nhiều board tile (bạn chốt 2026-10-13:
+ * xoá đúng cái người dùng chọn, không bỏ sót object).
+ */
+export async function deleteSelectionWithBoards(ids: string[]): Promise<void> {
+  const objects = useObjectsStore.getState().objects;
+  const tiles = ids.filter((id) => objects.get(id)?.type === 'board');
+  const rest = ids.filter((id) => !tiles.includes(id));
+  beginHistoryGroup();
+  try {
+    if (rest.length > 0) deleteObjects(rest);
+    for (const id of tiles) await deleteBoardCascade(id);
+  } finally {
+    endHistoryGroup(`Delete ${ids.length} objects`);
+  }
 }
 
 // --- Update data (edit inline, undo-able) ---
@@ -930,9 +957,8 @@ function insertObjectsComposite(
 
   const repo = getCanvasRepository();
   const apply = () => {
-    const s = useObjectsStore.getState();
     for (const obj of created) {
-      s.add(obj);
+      putInView(obj);
       void repo.saveObject(obj);
     }
     useSelectionStore.getState().replace(created.map((o) => o.id));
@@ -1020,9 +1046,8 @@ export function deleteObjects(ids: string[]): void {
   useHistoryStore.getState().push({
     label: snapshot.length === 1 ? 'Delete object' : `Delete ${snapshot.length} objects`,
     undo: () => {
-      const s = useObjectsStore.getState();
       for (const o of snapshot) {
-        s.add(o);
+        putInView(o);
         void repo.saveObject(o);
       }
       useSelectionStore.getState().replace(snapshot.map((o) => o.id));
@@ -1040,7 +1065,7 @@ export function deleteObjects(ids: string[]): void {
 //
 // Layer 1 (canvas object stacking): đổi CanvasObject.geometry.zIndex để item
 // chồng item trong board. Khác Layer 2 (screen overlay z-index CSS — xem
-// `.kiro/notes/z-index-tiers.md`). Mọi action undo-able qua history-store.
+// `docs/system/02-ui-common.md` mục "Lớp z"). Mọi action undo-able qua history-store.
 
 /** Push command đổi zIndex 1 object từ `from` → `to`. Skip nếu bằng nhau. */
 function pushZIndexChange(id: string, from: number, to: number, label: string): void {
@@ -1130,7 +1155,7 @@ function swapZIndex(idA: string, zA: number, idB: string, zB: number, label: str
 // --- Card Clipper (Milanote parity: tách paragraph khỏi Note thành note mới) ---
 
 /**
- * Tách paragraph tại index của Note gốc thành Note mới tại (canvasX, canvasY).
+ * Tách 1 khối (theo mã, note cũ theo vị trí) của Note gốc thành Note mới tại (canvasX, canvasY).
  * `cut=true` → Note gốc mất paragraph đó (Milanote default). `cut=false` → copy
  * (giữ paragraph gốc, chỉ tạo bản sao). Composite command: 1 undo entry revert
  * cả tạo mới + xoá paragraph gốc.
@@ -1141,7 +1166,7 @@ function swapZIndex(idA: string, zA: number, idB: string, zB: number, label: str
  */
 export function clipParagraphToNewNote(
   sourceId: string,
-  paragraphIndex: number,
+  target: BlockTarget,
   canvasX: number,
   canvasY: number,
   boardId: string,
@@ -1150,8 +1175,10 @@ export function clipParagraphToNewNote(
   const source = useObjectsStore.getState().objects.get(sourceId);
   if (!source) return null;
 
+  // Tìm theo mã trong body HIỆN TẠI (lúc thả): khối đổi vị trí vẫn lấy đúng, khối
+  // đã bị xoá thì huỷ (spec canvas-note-block-keys).
   const parsedData = parseNoteData(source.data);
-  const paragraphHtml = extractParagraphHtml(parsedData.body, paragraphIndex);
+  const paragraphHtml = extractBlockHtml(parsedData.body, target);
   if (!paragraphHtml) return null;
 
   const def = getObjectTypeDefinition('note');
@@ -1174,7 +1201,7 @@ export function clipParagraphToNewNote(
       rotation,
       zIndex,
     },
-    data: { body: paragraphHtml, color: parsedData.color },
+    data: { body: paragraphHtml, color: parsedData.color, heightMode: 'auto' },
     unsortIndex: null,
     version: 0,
     createdAt: now,
@@ -1182,13 +1209,14 @@ export function clipParagraphToNewNote(
   };
 
   const originalSourceData = source.data;
-  const nextSourceBody = cut ? removeParagraphAt(parsedData.body, paragraphIndex) : parsedData.body;
-  const nextSourceData = { body: nextSourceBody, color: parsedData.color };
+  const nextSourceBody = cut ? removeBlock(parsedData.body, target) : parsedData.body;
+  // Giữ mọi trường khác (heightMode...): trước đây chỉ ghi chữ + màu → note cao cố định bị về tự cao.
+  const nextSourceData = { ...parsedData, body: nextSourceBody };
 
   const repo = getCanvasRepository();
 
   const apply = () => {
-    useObjectsStore.getState().add(newObj);
+    putInView(newObj);
     useSelectionStore.getState().select(newObj.id);
     void repo.saveObject(newObj);
     if (cut) {

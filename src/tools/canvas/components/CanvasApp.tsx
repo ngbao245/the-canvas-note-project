@@ -10,6 +10,7 @@ import {
   deleteObjects,
   deleteBoardCascade,
   countBoardTreeSize,
+  deleteSelectionWithBoards,
   moveToUnsortHere,
 } from '../engine/actions';
 import { boardDataSchema } from '../types';
@@ -29,6 +30,14 @@ const UNSORT_PANEL_WIDTH = 260;
 
 type PendingKind =
   | { kind: 'multi'; ids: string[] }
+  | {
+      // Vùng chọn có board tile cùng object khác, hoặc nhiều board tile.
+      kind: 'mixed';
+      ids: string[];
+      boardIds: string[];
+      otherCount: number;
+      count: { boards: number; objects: number } | null;
+    }
   | {
       kind: 'board';
       objectId: string;
@@ -55,21 +64,34 @@ export function CanvasApp({ boardId }: { boardId: string }) {
 
   const handleDelete = (ids: string[]) => {
     const objects = useObjectsStore.getState().objects;
-    const boardObj = ids.map((id) => objects.get(id)).find((o) => o?.type === 'board');
-    if (boardObj) {
-      const parsed = boardDataSchema.safeParse(boardObj.data);
-      if (parsed.success) {
-        const linkedBoardId = parsed.data.linkedBoardId;
-        const board = useBoardsStore.getState().boards.get(linkedBoardId);
-        setPending({
-          kind: 'board',
-          objectId: boardObj.id,
-          boardId: linkedBoardId,
-          boardName: board?.name ?? 'Board',
-          count: null,
-        });
-        return;
-      }
+    // Board tile hợp lệ trong vùng chọn → id board con của nó.
+    const tiles: Array<{ objectId: string; boardId: string }> = [];
+    for (const id of ids) {
+      const o = objects.get(id);
+      if (o?.type !== 'board') continue;
+      const parsed = boardDataSchema.safeParse(o.data);
+      if (parsed.success) tiles.push({ objectId: id, boardId: parsed.data.linkedBoardId });
+    }
+    if (tiles.length === 1 && ids.length === 1) {
+      const board = useBoardsStore.getState().boards.get(tiles[0].boardId);
+      setPending({
+        kind: 'board',
+        objectId: tiles[0].objectId,
+        boardId: tiles[0].boardId,
+        boardName: board?.name ?? 'Board',
+        count: null,
+      });
+      return;
+    }
+    if (tiles.length > 0) {
+      setPending({
+        kind: 'mixed',
+        ids,
+        boardIds: tiles.map((x) => x.boardId),
+        otherCount: ids.length - tiles.length,
+        count: null,
+      });
+      return;
     }
     if (ids.length > 1) setPending({ kind: 'multi', ids });
     else deleteObjects(ids);
@@ -116,14 +138,27 @@ export function CanvasApp({ boardId }: { boardId: string }) {
   );
 
   useEffect(() => {
-    if (!pending || pending.kind !== 'board' || pending.count !== null) return;
+    if (!pending || pending.kind === 'multi' || pending.count !== null) return;
     let cancelled = false;
     (async () => {
-      const size = await countBoardTreeSize(pending.boardId);
+      if (pending.kind === 'board') {
+        const size = await countBoardTreeSize(pending.boardId);
+        if (cancelled) return;
+        setPending((p) =>
+          p && p.kind === 'board' && p.boardId === pending.boardId ? { ...p, count: size } : p,
+        );
+        return;
+      }
+      // Lẫn board: mỗi tile tính là 1 board + cây con của nó; object = object khác + nội dung các cây.
+      let boards = 0;
+      let objects = pending.otherCount;
+      for (const bid of pending.boardIds) {
+        const size = await countBoardTreeSize(bid);
+        boards += 1 + size.boards;
+        objects += size.objects;
+      }
       if (cancelled) return;
-      setPending((p) =>
-        p && p.kind === 'board' && p.boardId === pending.boardId ? { ...p, count: size } : p,
-      );
+      setPending((p) => (p === pending ? { ...p, count: { boards, objects } } : p));
     })();
     return () => {
       cancelled = true;
@@ -168,6 +203,27 @@ export function CanvasApp({ boardId }: { boardId: string }) {
           destructive
           onConfirm={() => {
             deleteObjects(pending.ids);
+            setPending(null);
+          }}
+          onCancel={() => setPending(null)}
+        />
+      ) : null}
+      {pending?.kind === 'mixed' ? (
+        <ConfirmDialog
+          open
+          title={t('CANVAS.CONFIRM.DELETE_MANY.TITLE')}
+          description={
+            pending.count === null
+              ? t('CANVAS.CONFIRM.DELETE_BOARD.COUNTING')
+              : t('CANVAS.CONFIRM.DELETE_MANY.DESCRIPTION', {
+                  items: deleteBoardItems(t, pending.count),
+                  undo: undoKeys,
+                })
+          }
+          confirmLabel={t('COMMON.DELETE')}
+          destructive
+          onConfirm={() => {
+            void deleteSelectionWithBoards(pending.ids);
             setPending(null);
           }}
           onCancel={() => setPending(null)}

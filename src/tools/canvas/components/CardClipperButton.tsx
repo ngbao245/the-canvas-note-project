@@ -3,7 +3,8 @@ import { getCameraEngine } from '../engine/camera-engine';
 import { clientToCanvas } from '../engine/coord';
 import { hitZone, isInvalidZone, isSecondaryZone } from '../lib/hit-test';
 import { clipParagraphToNewNote } from '../engine/actions';
-import { extractParagraphHtml } from '../lib/note-clip';
+import { extractBlockHtml } from '../lib/note-clip';
+import type { BlockTarget } from '../lib/note-block-keys';
 import { getObjectTypeDefinition } from '../hooks/useObjectRegistry';
 import { setCursorOverride } from '@/lib/cursor-override';
 import type { CanvasObject } from '../types';
@@ -51,14 +52,15 @@ interface PreviewState {
 
 export function CardClipperButton({
   sourceId,
-  paragraphIndex,
+  target,
   top,
   sourceBody,
   sourceColor,
   boardId,
 }: {
   sourceId: string;
-  paragraphIndex: number;
+  /** Khối cần tách: theo mã, note cũ chưa có mã thì theo vị trí. */
+  target: BlockTarget;
   /** Y offset trong wrapper (px, screen-space vì đã match camera scale). */
   top: number;
   /** Body HTML hiện tại của Note gốc — dùng extract paragraph khi drag start. */
@@ -73,9 +75,11 @@ export function CardClipperButton({
 
   const onPointerDown = (e: ReactPointerEvent<HTMLElement>) => {
     if (e.button !== 0) return;
-    const paragraphHtml = extractParagraphHtml(sourceBody, paragraphIndex);
+    const paragraphHtml = extractBlockHtml(sourceBody, target);
     if (!paragraphHtml) return;
     e.stopPropagation();
+    // Chụp khối lúc bấm: hover đổi trong lúc kéo không đổi khối sẽ tách.
+    const grabbed: BlockTarget = { ...target };
 
     startRef.current = { x: e.clientX, y: e.clientY };
     draggingRef.current = false;
@@ -144,7 +148,7 @@ export function CardClipperButton({
       if (!c || !boardId) return;
       // Milanote parity: default Cut, Alt = Copy.
       const cut = !ev.altKey;
-      clipParagraphToNewNote(sourceId, paragraphIndex, c.x, c.y, boardId, cut);
+      clipParagraphToNewNote(sourceId, grabbed, c.x, c.y, boardId, cut);
     };
 
     const onCancel = () => cleanup();
@@ -157,7 +161,7 @@ export function CardClipperButton({
     void mockObject;
   };
 
-  const paragraphHtmlForPreview = extractParagraphHtml(sourceBody, paragraphIndex);
+  const paragraphHtmlForPreview = extractBlockHtml(sourceBody, target);
 
   return (
     <>

@@ -5,6 +5,7 @@ import { useCameraStore } from '../store/camera-store';
 import { useObjectsStore } from '../store/objects-store';
 import { useBoardsStore } from '../store/boards-store';
 import { getCameraEngine } from '../engine/camera-engine';
+import { useHistoryStore } from '../store/history-store';
 
 /**
  * Sync current board state khi user navigate giữa boards:
@@ -31,6 +32,9 @@ export function useBoardSync({
     const persistBoardId = currentBoardId;
     const target = useBoardsStore.getState().boards.get(persistBoardId);
     if (!target) return; // Invalid — route.tsx sẽ redirect về `/canvas`.
+
+    // Lịch sử undo theo board: nút Undo / Ctrl+Z dùng stack của board vừa vào.
+    useHistoryStore.getState().setActiveBoard(persistBoardId);
 
     // Flush pending trước khi switch (tránh camera board cũ lỡ persist qua board mới).
     engine.flushPersist();
