@@ -33,3 +33,10 @@ pnpm-debug.log*
 
 # Bản nháp / bản cũ giữ lại tham khảo, không đưa lên git
 /drafts/
+
+# Skill cài từ nextlevelbuilder/ui-ux-pro-max-skill (nguồn public, tải lại được), chỉ giữ ở máy. Skill cũ vẫn theo dõi bình thường.
+/.kiro/skills/ui-ux-pro-max/
+/.kiro/skills/ui-styling/
+/.kiro/skills/design-system/
+/.kiro/skills/brand/
+/.kiro/skills/banner-design/

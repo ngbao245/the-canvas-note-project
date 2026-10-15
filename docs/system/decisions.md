@@ -1,15 +1,35 @@
 # Sổ quyết định
 
-Cập nhật: 2026-10-14
+Cập nhật: 2026-10-15
 
 Ghi quyết định bạn đã chốt: ngày, quyết gì, vì sao, thay quyết định nào. Hành vi hiện tại xem các phần `01`–`30`; file này chỉ giữ lý do. Mới nhất ở trên. Quyết định bị thay thì giữ dòng cũ, ghi "THAY bởi ...".
 
 Câu đã ghi ở đây là "ĐÃ CHỐT", không hỏi lại.
 
+## 2026-10-15
+
+| Quyết | Vì sao | Thay / ghi ở |
+|---|---|---|
+| Nút định dạng chữ (Đậm, Nghiêng, list, Text style, Link...) giữ trong toolbox dọc lúc sửa note. KHÔNG làm thanh định dạng nổi trên note / khi bôi đen chữ. Không thêm gì | 1 chỗ cho mọi thao tác; thanh nổi che object bên cạnh, đụng Card Clipper + góc resize + zoom; list / Text style tác động cả khối, không cần bôi đen; giống Milanote | `12` Toolbar |
+| Note tạm đủ chức năng, dừng thêm tính năng note cho tới khi có backend. Còn lại chỉ sửa lỗi từ test tay (NC1–NC8, P1–P4, CC1–CC8). Labels / Reactions / Comment / Convert to Document làm sau khi có backend | Bạn chốt: phần còn thiếu của note cần đăng nhập / đồng bộ | `12`, handoff |
+| Popup Màu note làm đủ như Milanote 1 đợt: tab Background / Top strip, 13 màu chuẩn, hàng cặp nền + chữ "A", hàng 7 màu gợi ý, Custom color (spec `canvas-note-color`, ĐÃ LÀM, chờ test CC1–CC8) | Bạn chốt 1A: làm chung 1 lần để dữ liệu chỉ đổi 1 lần | spec `canvas-note-color`. THAY hướng "tách sau, chưa làm" 2026-10-14 |
+| Màu note vẫn lưu hex (giữ `INV-NOTE-17`), không lưu tên màu theo theme | Đo Milanote: bộ màu chỉ khai 1 lần ở `:root`, theme sáng / tối dùng chung (trừ xám) | `12` |
+| NoteData thêm `background` + `textColor`; `color` giữ nghĩa thanh trên đầu | Note cũ không phải chuyển đổi | `12` bảng dữ liệu |
+| Nền không có màu chữ đi kèm → chữ tự tối / sáng theo độ sáng nền (ngưỡng 0.6), không lưu | Giống Milanote `colored-background-light`; tính lúc vẽ nên đổi nền là chữ theo ngay | `12` mục Màu |
+
 ## 2026-10-14
 
 | Quyết | Vì sao | Thay / ghi ở |
 |---|---|---|
+| Hoàn thiện note (spec `canvas-note-complete`, ĐÃ LÀM, chờ test NC1–NC8). Đo Milanote thật trước khi làm (handoff mục "Đo Milanote") | Nối nốt các nút giữ chỗ + định dạng chữ cho đủ parity Milanote | `12`, handoff |
+| Thêm định dạng: màu chữ (5), tô nền (5), Small text, Code block, Callout, gạch chân, gạch ngang, code trong dòng, căn lề. Milanote giấu gạch chân / gạch ngang / code trong More lúc sửa → bibo cũng gom vào More | Milanote note có đủ các cái này; checklist thì không có nên bỏ | `12` schema + toolbar |
+| Màu chữ / tô nền / căn lề / Small / Callout lưu là mark/attribute trong body HTML, extension vào `NOTE_SCHEMA_EXTENSIONS`, KHÔNG thêm trường data | 1 nguồn (schema) cho cả editor lẫn bộ lọc; xem lại sau F5 không mất định dạng | `12` `INV-NOTE-19` |
+| Small text + Callout = `data-variant` trên paragraph, không thêm node mới | Ít đụng schema / Card Clipper / mã khối; đủ parity | `12`, `lib/note-paragraph-variant.ts` |
+| Lock Position: thêm trường `locked` trong NoteData; chặn kéo + resize, vẫn sửa / đổi màu được; kéo cụm thì note khoá đứng yên | Giống Milanote Lock Position (khoá vị trí, không khoá nội dung) | `12` `INV-NOTE-18` |
+| Convert to Document hiện nút nhưng vô hiệu (mờ); Labels / Reactions / Comment cũng vô hiệu (Labels tách spec sau, Reactions / Comment cần đăng nhập) | Hiện đủ menu như Milanote nhưng chưa làm được thì để mờ, rõ hơn nút chết | `12` toolbar |
+| Gộp undo kéo góc note tự-cao thành 1 bước (`commitResize` nhận `extra`); min 68 chiều cao cả 2 mode (`minSize` trong định nghĩa loại) | Ctrl+Z 1 lần trả cả cỡ lẫn mode; note cố định không dẹt hơn note tự-cao. Giải quyết 2 câu còn mở của `12` | `12` `INV-NOTE-06`. Giải quyết câu mở 2026-10-13 |
+| Chấm QuickLine + góc resize to nhỏ theo zoom nhưng kẹp cỡ trên màn: chấm 8–16px, góc 14–26px, áp cả hai (ĐÃ LÀM, bạn chốt) | Zoom nhỏ góc resize teo còn vài px không bấm được, zoom to thì phình. Ở zoom 1 chấm 12, góc 20 (tăng từ 16, bạn báo nhỏ) | `10` Viền chọn. Bổ sung dòng "to nhỏ theo zoom" 2026-10-13 |
+| Chấm QuickLine nhận chuột: hover to 1.75 + hiện mũi tên chéo trong chấm (1.1 khó nhận ra), con trỏ giữ con trỏ thường (bỏ `crosshair`), bấm không lọt xuống card; góc resize không hover (ĐÃ LÀM, bạn chốt) | Chấm là điểm kéo ra mũi tên nối sau này, giờ dựng sẵn phản hồi + chặn chuột | `10` Viền chọn, `02` Con trỏ |
 | Undo theo từng board (đã làm): lệnh vào stack board đang xem lúc làm, kể cả lệnh đổi dữ liệu board khác; giữ 100 bước mỗi board; board bị xoá vẫn giữ stack; F5 mất | Kiro tự chọn theo hướng đã chốt 2026-10-13, giống Milanote (undo theo chỗ đang đứng). Đổi được nếu bạn muốn khác | `10` mục Undo / redo, `INV-CANVAS-20` |
 
 ## 2026-10-13
@@ -25,6 +45,12 @@ Câu đã ghi ở đây là "ĐÃ CHỐT", không hỏi lại.
 | Nhân bản / dán board tile = nhân bản cả board (chưa làm, cần spec) | 2 tile trỏ 1 board làm xoá / đếm rối; giống Milanote | `canvas-backlog.md` |
 | Token màu trong Tailwind bọc `color-mix` + `<alpha-value>` để `/15`, `/40` chạy (đã làm) | Sửa 1 chỗ cho mọi class độ mờ, đúng như `coding-style.md` dạy | `02` `INV-UI-13` |
 | Nút màu note đọc qua `parseNoteData` (đã làm) | Bịt đường duy nhất làm mất chữ khi dữ liệu lạ | `12` |
+| Card Clipper chỉ hiện lúc sửa note, theo khối đang gõ; hover to lên + mũi tên; kéo không thoát sửa (ĐÃ LÀM 2026-10-14, bạn chốt) | Giống Milanote | `12` Card Clipper |
+| Header canvas có thêm kiểu "Đảo nổi" (mockup 04b), chọn trong Cài đặt → Canvas, mặc định giữ "2 hàng". Canvas tràn màn, 2 đảo: trái = breadcrumb (tên board là mắt xích cuối, double-click đổi tên) + chấm trạng thái lưu, phải = bộ nút cũ + Chia sẻ / Xuất / % zoom. Bỏ đảo giữa (3B): đảo giữa ngắn lọt thỏm, tên board vốn là mắt xích cuối đường dẫn (ĐÃ LÀM 2026-10-14, bạn chốt 1B 2A 3B) | So sánh 2 kiểu trên cùng dữ liệu trước khi bỏ kiểu nào. Giữ kiểu nào, bỏ kiểu nào: CHƯA CHỐT (bạn nhắc 2026-10-15), chỉ các ý nhỏ 1B 2A 3B là đã chốt | `10` Header, `05` Canvas, spec `canvas-header-islands` |
+| Trạng thái lưu kiểu đảo = 1 chấm luôn hiện: xanh đứng yên (đã lưu), vàng chớp nhẹ (đang lưu / chờ đồng bộ), đỏ (lỗi), tooltip chữ đầy đủ. Sửa tên board: click ra canvas cũng lưu được; ô = đúng bề rộng chữ lúc xem (đo DOM lúc double-click) nên chuyển xem ↔ sửa không nhảy rộng, gõ dài hơn chữ cuộn trong ô, KHÔNG giãn (ĐÃ LÀM 2026-10-14, bạn chốt) | Chữ trạng thái cũ nhấp nháy nhanh, dài, kéo layout; bấm ra canvas không blur input nên không lưu | `10` Header |
+| Thả Card Clipper xong thì vào sửa note mới (cả cắt lẫn chép), chỉ note mới được chọn (ĐÃ LÀM 2026-10-14, bạn chốt) | Gõ tiếp ngay vào đoạn vừa tách; thay bản giữ sửa note gốc | `12` Card Clipper |
+| Chấm QuickLine + góc resize to nhỏ theo zoom (ĐÃ LÀM 2026-10-14, bạn chốt) | Giống Milanote | `10` Viền chọn |
+| Note không có thanh màu mặc định (chỉ hiện khi chọn màu); bỏ viền thử từng đoạn `p`; viền chọn + chấm tròn mặc định trắng đen theo theme, đổi được trong Cài đặt → Canvas (ĐÃ LÀM 2026-10-14, bạn chốt) | Thanh xanh và viền đoạn hiện ra do sửa token độ mờ 10-13, bạn không muốn | `10` Viền chọn, `12`, `05` |
 | `parseNoteData` gỡ đường chuyển note dạng cũ, chỉ điền mặc định (ĐÃ LÀM 2026-10-14, bạn chọn 3A) | Đã chốt bỏ dữ liệu cũ; bỏ lỗi phụ body chỉ có `<div>` bị escape thành chữ | `12` |
 | Xoá vào thùng rác không hỏi lại; thùng rác có popup "đã xoá gần đây" (chưa làm) | Lấy lại được thì không cần hỏi | `10` Câu còn mở, `canvas-backlog.md` |
 | Gỡ loại object `rect` | Không còn đường tạo, dữ liệu cũ đã bỏ; `11` đủ khuôn thêm loại mới | `11` |
