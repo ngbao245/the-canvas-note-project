@@ -9,7 +9,7 @@ Spec `design-system` (`docs/legacy/specs/design-system/`) đã implement xong Ta
 
 1. **Nguồn token duy nhất**: app `src/styles/index.css` là nguồn chuẩn. Mỗi theme 1 khối `[data-theme='...']` ngang hàng (dark mặc định + light). Thêm theme mới = copy khối, đổi màu.
 2. **Palette**: primary xanh `#007acc` (VS Code blue) là brand color chính thức. Token dạng HEX/rgba, `tailwind.config.ts` đọc qua `var()` trực tiếp (không HSL wrapper).
-3. **Font**: 'Plus Jakarta Sans' — đã chốt, load trong app.
+3. **Font**: THAY 2026-10-15 (Plus Jakarta Sans chưa từng được nạp). Giờ Inter (sans) + Fraunces (serif) + JetBrains Mono (mono), nguồn chuẩn `docs/system/02-ui-common.md` mục Font.
 4. **Motion token**: đã port sang app — `--duration-fast (60ms) / --duration-normal (200ms) / --easing-standard`. Chi tiết drag/drop + animation ở `.kiro/steering/motion-rules.md` (nếu tạo sau).
 5. **Component**: 2 trục độc lập.
    - Trục THEME (màu): `theme-store.ts` (Zustand persist).

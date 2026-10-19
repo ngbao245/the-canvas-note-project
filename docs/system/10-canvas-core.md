@@ -79,6 +79,14 @@ route.tsx (bootstrap, URL → board, useBoardSync, useCanvasPersistence, useCanv
 - `HelpMenu`: popup 2 mục: Phím tắt (mở modal, cũng mở bằng `/`) và Hướng dẫn (Sắp có).
 - `HeaderPopups`: nút Xuất (popup giao diện, chưa xuất được) và nút % zoom (popup View). Popup View: thanh zoom thang log chỉ hiện vị trí; nút "Về 100%" khi đang khác 100%, "Vừa nội dung" khi đúng 100%; phần Trình chiếu là giao diện, chưa chạy. % hiện zoom board (không gồm tỉ lệ giao diện).
 - `BoardTitleRow`: trái là trạng thái lưu / đồng bộ (`20`, `21`), giữa là tên board, phải là Chia sẻ · Xuất · % zoom. Luôn hiện, cả ở Home.
+- 2 kiểu header, chọn ở Cài đặt → Canvas → Kiểu header (`headerStyle`, `05`). Thêm 2026-10-14 để bạn so sánh, chưa quyết bỏ kiểu nào (spec `canvas-header-islands`):
+  - "2 hàng" (mặc định): `CanvasHeader` như trên, chiếm chỗ phía trên, canvas bên dưới.
+  - "Đảo nổi" (`CanvasHeaderIslands`, theo `mockups/04b-canvas.html`): canvas phủ cả màn, 2 đảo nổi 1 hàng cách mép 12px (bỏ đảo giữa 2026-10-14, bạn chốt 3B). Trái: breadcrumb với tên board là mắt xích cuối (double-click đổi tên tại chỗ qua `CurrentCrumbEditable`, Home không đổi tên được) + chấm trạng thái lưu. Phải: số object (chữ xám) + Undo / Redo + Trợ giúp + Tìm + Thông báo + 1 vạch ngăn + Chia sẻ + Xuất + % zoom + avatar. Đảo nền `card/90` + mờ nền sau + viền + bóng, bo `xl`, cao `h-11`, phóng theo Kích thước giao diện bằng CSS `zoom`. Khung ngoài không nhận chuột (khoảng giữa 2 đảo vẫn là canvas); mỗi đảo có `data-canvas-overlay` → kéo object vào là vùng thả sai. Đảo trái bó sát nội dung (breadcrumb `grow=false`), tối đa 60% hàng để board sâu không lấn đảo phải; cụm phải `min-w-max` không co. Theo design-philosophy (2026-10-14, `/frontend-ui-engineering`): số object là chữ xám (không Badge nền đậm), chỉ 1 vạch ngăn, Chia sẻ là điểm nhấn accent duy nhất, nút Khay chờ cùng ngôn ngữ với các đảo (bo xl + viền + bóng + nền mờ).
+  - Trạng thái lưu kiểu đảo = 1 chấm 8px luôn hiện (`SaveStatusDot`, bạn chốt 2026-10-14): xanh đứng yên = đã lưu / đã lên server, vàng chớp nhẹ (`animate-pulse`) = đang lưu / chờ đồng bộ, đỏ = lỗi ghi máy. Tooltip là chữ đầy đủ. Khác header 2 hàng (`SaveStatus`) hiện chữ, ẩn khi idle.
+  - Sửa tên board (cả 2 kiểu): click ra ngoài ô, kể cả xuống canvas, cũng lưu + thoát. Canvas surface `preventDefault` ở pointerdown nên input không tự blur; `CurrentCrumbEditable` / `TitleEditable` bắt pointerdown toàn trang (capture) để tự commit (sửa 2026-10-14, bạn báo bấm ra canvas không lưu được). Vào sửa giữ đúng bề rộng tên đang xem (span ẩn giãn theo chữ), gõ thêm mới dài ra.
+  - Ở kiểu đảo, thanh công cụ trái, nút mở Khay chờ và panel Khay chờ bắt đầu dưới hàng đảo (`lib/header-islands.ts` → `islandsTopInset`). Nút mở Khay chờ thành đảo nhỏ cách mép phải 12px.
+  - Đổi kiểu không mount lại `CanvasApp` (camera, chọn, Unsort giữ nguyên).
+  - Breadcrumb: lớp đo đặt `absolute` nên không góp chiều rộng vào khung; khung chỉ rộng bằng chuỗi đang hiện (đảo trái bó sát). Hook đo đọc `getBoundingClientRect` từng item nên vẫn đo đúng. `grow` (mặc định true) bật `flex-1` cho header 2 hàng; đảo truyền `grow={false}`.
 
 ### Breadcrumb (`BreadcrumbList.tsx`, `hooks/useBreadcrumbFit.ts`)
 
@@ -96,17 +104,28 @@ route.tsx (bootstrap, URL → board, useBoardSync, useCanvasPersistence, useCanv
 
 | Thao tác | Cách chạy |
 |---|---|
-| Lăn chuột | Pan dọc mượt (`panSmooth`). Tốc độ theo Cài đặt (`SCROLL_SPEED_FACTOR`, mặc định 0.5) |
+| Lăn chuột | Pan dọc mượt (`panSmooth`, qua ramp). Tốc độ theo Cài đặt (`SCROLL_SPEED_FACTOR`, mặc định 0.5) |
+| Vuốt 2 ngón touchpad | Pan 2 trục, áp thẳng theo tay, không ramp (`panDirect`). Tốc độ theo cùng Cài đặt nhưng bảng riêng (`TOUCHPAD_SPEED_FACTOR`: 0.7 / 1 / 1.4). Phân loại chuột / touchpad ở `lib/wheel-input.ts`: line mode = chuột; delta lẻ, 2 trục cùng khác 0 hoặc \|delta\| < 40 = touchpad; trong 1 cử chỉ (sự kiện cách < 120ms) chỉ nâng lên touchpad, không hạ. Giới hạn đã biết (bạn xác nhận 2026-10-16): Chrome / Edge Windows khoá trục khi bắt đầu vuốt thẳng ngang / dọc (gửi 1 trục, trục kia = 0 tới khi nhấc tay), web không tắt được. Muốn đi chéo phải vuốt chéo ngay từ đầu |
 | Shift + lăn | Pan ngang |
-| Ctrl / Cmd + lăn, pinch trackpad | Zoom quanh con trỏ theo nấc: vào ×1.25, ra ×0.75 mỗi nấc, không phụ thuộc độ lớn `deltaY`. Đuổi mượt trên thang log (alpha 0.2), giữ điểm dưới con trỏ đứng yên |
-| Mốc 100% | Nấc băng qua 100% bị kẹp về đúng 100%. Lăn tiếp liên tục bị nuốt; ngừng ≥ 250ms rồi lăn mới vượt |
-| Space giữ + kéo, chuột giữa kéo, Ctrl / Cmd + kéo | Pan 1:1 (`pan`). Space đổi con trỏ `grab` trong mặt canvas, lúc kéo `grabbing` toàn trang |
+| Ctrl / Cmd + lăn chuột | Zoom theo nấc (`zoomImpulse`): vào ×1.25, ra ×0.75 mỗi nấc, không phụ thuộc độ lớn `deltaY`. Đuổi mượt trên thang log (alpha 0.2) |
+| Pinch / Ctrl + 2 ngón trên touchpad | Zoom liên tục theo độ lớn delta (`zoomContinuous`, log2 đổi 1/(100·ln2) ≈ 0.0144 mỗi px, khớp tỉ lệ pinch của Chrome). Ramp đuổi nhanh 45%/khung (`PINCH_RAMP_ALPHA`, chuột 20%), neo đúng ngón tay, không hút về object (sửa 2026-10-16: bản ì → bản áp thẳng mất mượt → bản ramp nhanh). Nhận touchpad theo `lib/wheel-input.ts`. Bản cũ coi mỗi sự kiện touchpad là 1 nấc → 40% → 100% → 300% gần như tức thì (sửa 2026-10-15) |
+| Mốc 100% | Chuột: nấc băng qua 100% bị kẹp; lăn tiếp liên tục bị nuốt, ngừng ≥ 250ms rồi lăn mới vượt. Touchpad: băng qua 100% bị kẹp, đẩy tiếp cùng chiều thêm 0.12 log2 (~9%) mới vượt, đổi chiều thì nhả ngay |
+| Space giữ + kéo, chuột giữa kéo, Ctrl / Cmd + kéo | Pan 1:1 (`panElastic`), tới rìa thì kéo lố, thả trượt về (xem Giới hạn pan). Kéo nghe ở `window` nên con trỏ ra header / Khay chờ / bảng dev vẫn kéo tiếp. Space + kéo và chuột giữa bắt đầu được ở bất kỳ đâu trên trang (cả trên object, toolbar, header), trừ dialog và ô đang gõ; Ctrl + kéo bắt đầu trên mặt canvas, kể cả trên object. Kéo có di chuyển thì nuốt click ngay sau (không bấm nhầm nút chỗ thả). Space đổi con trỏ `grab` toàn trang, lúc kéo `grabbing` (sửa 2026-10-15, bạn báo chỉ kéo được khi con trỏ trên canvas) |
 | `F` | Fit nội dung (lề 15% mỗi phía, tối thiểu 80px). Không có object → về 100% |
 | `0`, Ctrl+0 | Về `{0, 0}`, 100% |
 | Ctrl + `+` / `-` | Zoom nấc quanh tâm màn hình |
 
 - Giới hạn zoom: 5%–300% (`types.ts`). Zoom tối thiểu động (`computeDynamicZoomMin`): luôn ra được 40%; nội dung trải rộng thì hạ xuống mức fit. Giới hạn chỉ áp cho thao tác zoom mới, không kéo camera đang ở dưới lên.
-- Giới hạn pan (`pan-bounds.ts`): khung nội dung + lề 30% mỗi phía phải còn ít nhất 1 phần trên màn hình. Không có object → không giới hạn.
+- Giới hạn pan (`pan-bounds.ts` + `camera-engine.ts`, spec `canvas-pan-bounce` 2026-10-16), 3 lớp:
+  1. Vùng tài liệu (canvas-space): khung bao object trên canvas (bỏ item Khay chờ, GỒM object đang kéo / resize) nới trái / phải 500, trên / dưới 400 (`DOC_PAD_*`, số đo Milanote). Board trống: 1000 × 800 quanh gốc. Engine giữ hợp mọi vùng đã nhận → chỉ giãn trong phiên board: kéo object về / xoá object không làm camera tự dời. Vào board khác (`resetDocBounds` trong `useBoardSync`, gọi trước khi nạp camera) thì quên vùng cũ; vùng mới chỉ dựng khi object đúng board đã nạp (`loadedBoardId` khớp), trước đó camera không bị chặn. Trần an toàn ±100.000 canvas (`DOC_COORD_LIMIT`).
+  2. Phạm vi camera (px màn), tính lúc dùng từ tài liệu × zoom + cỡ màn: to hơn màn → màn đi trong tài liệu; nhỏ hơn → tài liệu trôi trong màn tới khi mép chạm mép màn. Không còn khoảng thở tĩnh.
+  3. Kéo lố: kéo màn bằng tay (`panElastic`) và lăn (`panSmooth`) theo vị trí thô; vượt phạm vi thì nặng dần (`rubberBand`), trần min(15% màn, 120px) mỗi trục. Thả tay (`endPointerPan`), ngừng lăn 120ms (`WHEEL_SETTLE_MS`), hoặc touchpad lố: debounce 80ms theo sự kiện (`TOUCHPAD_OVERSCROLL_DEBOUNCE_MS`), giữ lố tối đa 350ms tính từ lúc bắt đầu lố (`TOUCHPAD_OVERSCROLL_MAX_HOLD_MS`) để quán tính không giữ màn mãi; sau khi trượt về thì bỏ phần quán tính đẩy ra ngoài tới hết cử chỉ → đích về phạm vi, ramp có sẵn đưa camera trượt về (giảm tốc, không nảy, đúng `motion-rules.md`). Zoom, Fit, Về 100%, nạp camera bỏ phần lố trước; zoom lúc camera còn lố thì lerp thẳng tới đích, không neo chuột. Tự cuộn lúc kéo object (`useEdgePan`, `pan`) chặn cứng, không lố; không còn điều kiện "phía đó có object khác". Dải tự cuộn rộng 60px (`EDGE_ZONE`); riêng bên trái đo từ mép phải toolbox (`EDGE_INSET_LEFT` 64px), vì toolbox đè lên dải sát mép. Lưu IDB luôn lưu vị trí đã chặn.
+  - Đổi cỡ cửa sổ / Kích thước giao diện làm camera ra ngoài phạm vi → trượt về bằng ramp, không nhảy.
+  - Khác Milanote: bibo cho toạ độ âm thay vì dời cả board. Lịch sử: khung + lề 30%, giữ X% màn, khoá khi gọn trong màn, khoảng thở `SCREEN_SLACK_RATIO` (2026-10-15) đều đã bỏ.
+- Zoom quanh 1 điểm (lăn chuột, pinch, phím, chọn %) đi chung 1 đường `zoomTo` trong `camera-engine.ts` (sửa 2026-10-15, bạn báo zoom ở chỗ trống rồi kéo thì camera giật về):
+  1. Zoom in: chuột trong khung nội dung → neo đúng chỗ chuột; chuột ở chỗ trống → neo kéo về điểm gần nhất trên object gần chuột nhất (`attractPointerToNearest`, danh sách khung object do `CanvasSurface` đưa vào cùng lúc tính khung nội dung, bỏ item Khay chờ). Board nhiều cụm rời nhau, chuột ở khoảng trống giữa 2 cụm vẫn zoom vào cụm gần (giống Milanote). Zoom out vẫn neo ở chuột.
+  2. Đích = zoom quanh neo rồi chặn giới hạn pan.
+  3. Neo của hiệu ứng zoom giải ngược từ camera đang vẽ tới đích (`solveZoomAnchor`) → camera đi thẳng 1 đường, tới nơi trùng đích, không bẻ hướng ở mép giới hạn, lăn dồn nhiều nấc không nhảy cuối. Từng khung vẫn chặn giới hạn pan để chắc không ra ngoài.
 - Khung nội dung (`computeContentBounds`) chỉ tính object trên canvas, bỏ item Unsort (từ 2026-10-13). Số "N mục" ở header vẫn đếm cả Unsort (tổng của board). Lúc kéo / resize bỏ các object đang chọn ra để khung không chạy theo. Tính lại qua `subscribe` store khi object đổi, khi đổi mode, khi đổi kích thước giao diện, khi viewport đổi (`ResizeObserver`).
 
 ### Lưới (`engine/grid-lod.ts`)
@@ -135,7 +154,10 @@ route.tsx (bootstrap, URL → board, useBoardSync, useCanvasPersistence, useCanv
 
 - Nằm TRONG khối card (con của `ObjectView`, hoặc con của phần thân với loại `ownSelectionFrame`), cùng lớp z với card. Card nằm trên che cả card lẫn viền.
 - Viền vẽ bằng `box-shadow` 2px bù zoom (luôn 2px trên màn), khít mép phần tử cha. Có `data-canvas-overlay`.
-- Chỉ khi chọn đúng 1 object: chấm QuickLine góc phải trên (chỉ hình, chưa kéo được) + góc resize phải dưới (trừ `resizable={false}`).
+- Màu viền + màu chấm QuickLine (chấm đặc, không viền, đổi 2026-10-14) = `var(--canvas-selection)` (`index.css`). Mặc định `--foreground`: đen trên nền sáng, trắng trên nền tối. Cài đặt → Canvas → "Màu viền chọn" đổi sang Xanh / Lục / Vàng (`primary` / `success` / `warning`) qua `<html data-canvas-selection>`. Đổi 2026-10-14, trước luôn `primary`. Vòng viền của `ObjectShell` (phong cách vẽ tay) cũng dùng biến này.
+- Chỉ khi chọn đúng 1 object: chấm QuickLine góc phải trên (chưa kéo được) + góc resize phải dưới (trừ `resizable={false}`).
+- Chấm QuickLine nhận chuột: hover to lên 1.75 thành nút tròn có mũi tên chéo lên phải (`ArrowUpRight`, màu `--canvas-selection-foreground`: nền trắng đen thì lấy `--background`, màu khác lấy `*-foreground` tương ứng); con trỏ giữ con trỏ thường (bạn chốt 2026-10-14, bỏ `crosshair`). Bạn báo 1.1 khó nhận ra nên to 1.75 + mũi tên; bấm / double-click `stopPropagation`, không chọn, không kéo, không vào sửa card (bạn chốt 2026-10-14, chuẩn bị cho kéo ra mũi tên nối, `canvas-backlog.md` mục Line). Góc resize không có hiệu ứng hover.
+- Chấm và góc resize tính theo canvas-px: zoom nhỏ thì nhỏ, zoom to thì to (giống Milanote, đổi 2026-10-14; trước giữ cỡ cố định trên màn). Cỡ trên màn kẹp trong khoảng: chấm 8–16px, góc 14–26px; ngoài khoảng thì đứng yên (`zoomedSize`, bạn chốt 2026-10-14). Ở zoom 1: chấm 12, góc 20 (góc tăng từ 16 vì bạn báo nhỏ). Khoảng cách góc resize tới mép đổi cùng tỉ lệ (1/8 cỡ). Viền chọn vẫn luôn 2px màn hình.
 
 ### Kéo object (`hooks/useObjectDrag.ts`, `CanvasObjectDragPreview.tsx`, `FloatingObjectPreview.tsx`)
 
@@ -169,7 +191,9 @@ Vòng rAF lúc kéo object: con trỏ cách mép mặt canvas < 60px → pan, t�
 
 ### Resize (`SelectionBox.tsx` → `CornerResizeHandle`)
 
-- Chỉ góc phải dưới, chỉ khi chọn 1 object. Neo góc trái trên. Tối thiểu 40 × 40 (`MIN_OBJECT_SIZE`). Con trỏ `nwse-resize`.
+- Chỉ góc phải dưới, chỉ khi chọn 1 object. Neo góc trái trên. Con trỏ `nwse-resize`.
+- Kích thước tối thiểu theo loại: `getObjectMinSize(type)` (`useObjectRegistry.tsx`) = `minSize` của loại, thiếu thì 40 × 40 (`MIN_OBJECT_SIZE`). Kéo góc (`SelectionBox`) lẫn mọi đường đổi cỡ trong engine (`clampedGeometry` của `applyResize` / `previewResize`) đều kẹp qua hàm này, không đọc `minSize` trực tiếp (sửa 2026-10-15: trước engine chỉ kẹp 40). Note 160 × 68 (`12`).
+- Object đang sửa có chiều cao tạm (`editingHeight`, note fixed `12`): kéo góc bắt đầu từ `shownHeight` (khung đang thấy), undo trả về cao đã lưu.
 - Lúc kéo: `previewResize` (chỉ store), mode `resizing`. Thả: `commitResize` (ghi + 1 bước undo), rồi `onResizeCommit` của loại nếu kích thước đổi (`11`).
 - Góc resize `stopPropagation` + chặn double-click lọt lên card.
 
@@ -260,6 +284,7 @@ Theo 3 tầng của `coding-style.md`. Ở đây: object `cursor-move` (đang s�
 | `components/FloatingObjectPreview.tsx`, `CanvasObjectDragPreview.tsx` | Preview nổi lúc kéo |
 | `components/ContextMenu.tsx`, `ConfirmDialog.tsx`, `CanvasNotice.tsx` | Menu chuột phải, dialog xác nhận, thông báo ngắn |
 | `components/CanvasHeader.tsx`, `BoardTitleRow.tsx`, `BreadcrumbList.tsx`, `HeaderPopups.tsx`, `HelpMenu.tsx` | Header |
+| `components/CanvasHeaderIslands.tsx`, `lib/header-islands.ts` | Header kiểu đảo nổi + khoảng lùi cho thanh công cụ / Khay chờ |
 | `components/objects/BoardObject.tsx` | Board tile |
 | `components/UnsortPanel.tsx`, `UnsortItem.tsx` | Panel, tab, item Unsort |
 | `components/Toolbar.tsx` | Nút thùng rác (phần còn lại ở `11`) |

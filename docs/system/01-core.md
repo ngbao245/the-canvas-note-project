@@ -32,7 +32,7 @@ Bảng dưới là nguồn chuẩn của stack (chuyển từ spec `bibo-foundat
 
 Không dùng: Redux, MobX, styled-components, MUI, Ant Design.
 
-Thư viện ngoài stack đang dùng: Tiptap (editor note, `12`), Zod (kiểm dữ liệu), `drawably` (phong cách vẽ tay cho `components/style/`), `lucide-react` (icon).
+Thư viện ngoài stack đang dùng: Tiptap (editor note, `12`), Zod (kiểm dữ liệu), `drawably` (phong cách vẽ tay cho `components/style/`), `lucide-react` (icon), `@tanstack/react-virtual` (lưới ảo hoá popup icon board). Chỉ dùng khi dev: `lucide-static` (nguồn tag cho script `gen:icon-catalog`).
 
 Gói ghim đúng bản (không dùng `^`): `vite-plugin-pwa`, `vitest`, `@tiptap/extension-unique-id`. Đây là các gói thêm gần đây, theo luật thêm thư viện là ghim bản. Gói cũ hơn còn `^`, chưa chốt có ghim lại không. Nâng bản gói đã ghim phải làm có chủ ý.
 
@@ -63,7 +63,7 @@ Output dài thì chặn: `npm run build 2>&1 | Select-Object -Last 15`.
 - 2 domain là 2 origin: IndexedDB, localStorage, BroadcastChannel tách hẳn. Landing không đọc / ghi được dữ liệu canvas.
 - Link landing → app đọc `VITE_APP_URL` lúc build landing (`src/routes/landing/app-url.ts`). Thiếu thì trỏ `http://localhost:3000`, build có cảnh báo.
 - Landing luôn theme sáng; ngôn ngữ dùng store ngôn ngữ chung nhưng vì khác origin nên không thấy lựa chọn của app.
-- Bản build app chia chunk: `react-vendor` (react, react-dom, router) và `vendor` (zustand, query, lucide, clsx, tailwind-merge, cva). Mỗi route lazy là 1 chunk riêng.
+- Bản build app chia chunk: `react-vendor` (react, react-dom, router) và `vendor` (zustand, query, clsx, tailwind-merge, cva). Mỗi route lazy là 1 chunk riêng. `lucide-react` cố ý không nằm trong `vendor`: popup icon board import cả bộ icon, gom vào vendor thì cả bộ tải ngay lúc mở app. Bộ đầy đủ chỉ được import ở `src/tools/canvas/lib/lucide-icons.ts` (nạp qua lazy), không import từ code chạy ngay.
 
 ### Luồng khởi động app
 

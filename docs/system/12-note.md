@@ -21,7 +21,7 @@ Không gồm: khuôn loại object, sổ đăng ký, lọc khi dán nói chung (
 | `heightMode` | `auto` / `fixed` | `auto` | Xem "Chiều cao" |
 | `locked` | boolean | `false` | Khoá vị trí (More → Lock Position). `true` = không kéo di chuyển, không kéo góc đổi cỡ. Vẫn chọn / mở sửa / đổi màu được (2026-10-14) |
 
-- Note mới (`note-type.tsx`): 338 × 68, `{ body: '<p></p>', color: null, heightMode: 'auto' }`.
+- Note mới (`note-type.tsx`): 300 × 68 (hẹp hơn 338 của Milanote, bạn chốt 2026-10-15), `{ body: '<p></p>', color: null, heightMode: 'auto' }`.
 - Mọi chỗ đọc `data` note trong renderer, engine, dán, resize, nút màu đi qua `parseNoteData` (`lib/note-data.ts`), không đọc thô. (Nút màu đổi từ `safeParse` sang `parseNoteData` 2026-10-13: trước đó dữ liệu lạ làm ghi body rỗng, mất chữ.)
 - `parseNoteData` chỉ điền mặc định: `body` không phải chuỗi hoặc rỗng → `<p></p>`, `color` không phải chuỗi → `null`, `heightMode` khác `'fixed'` → `'auto'`, `locked` khác `true` → `false`. `data` không phải object → note rỗng mặc định.
 - `isObjectLocked(type, data)` (`lib/note-data.ts`): type khác `note` → luôn false; note → đọc `locked`. Hook kéo (`useObjectDrag`) + lớp vẽ (`ObjectsLayer`) dùng để chặn di chuyển / ẩn góc resize. Không chuyển dạng cũ (`title` + chữ thường) nữa (gỡ 2026-10-14, bạn chốt bỏ dữ liệu cũ); `body` giữ nguyên chuỗi, vào DOM vẫn qua `sanitizeNoteHtml`.
@@ -42,17 +42,19 @@ Không gồm: khuôn loại object, sổ đăng ký, lọc khi dán nói chung (
 ### Hiển thị (`NoteObject.tsx`)
 
 - `NoteRenderer`: bọc `ObjectShell` (`variant="card"`, thanh màu theo `color`). Đang sửa → `NoteEditor`, không → `NoteView`.
-- Khung: `px-5 py-6` (dọc 48 tổng). Chữ dùng chung 1 class `NOTE_CONTENT_CLASS` cho cả xem lẫn sửa, nên đổi chế độ không nhảy layout: `text-sm`, `leading-relaxed`, `break-words whitespace-pre-wrap`, đoạn liền nhau cách 10px, font serif, kiểu riêng cho `h1-3`, list, quote, code trong dòng (`code`), code block (`pre`), gạch chân (`u`), gạch ngang (`s`), tô nền (`mark`), Small text (`p[data-variant=small]`), Callout (`p[data-variant=callout]`), link. Màu chữ + màu nền là inline style trên mark nên tự áp, không cần class.
+- Khung: `px-5 py-6` (dọc 48 tổng). Chữ dùng chung 1 class `NOTE_CONTENT_CLASS` cho cả xem lẫn sửa, nên đổi chế độ không nhảy layout: `text-sm`, `leading-relaxed`, `break-words whitespace-pre-wrap`, đoạn liền nhau cách 10px, thân chữ sans (Inter), `h1-3` serif (Fraunces), code mono (JetBrains Mono) (2026-10-15, trước thân chữ serif), kiểu riêng cho `h1-3`, list, quote, code trong dòng (`code`), code block (`pre`), gạch chân (`u`), gạch ngang (`s`), tô nền (`mark`), Small text (`p[data-variant=small]`), Callout (`p[data-variant=callout]`), link. Màu chữ + màu nền là inline style trên mark nên tự áp, không cần class.
 - `select-text` chỉ đặt ở editor mode (contenteditable), không ở view mode. Xem note (không sửa) thì chữ không bôi đen được, thừa hưởng `select-none` của `CanvasSurface`; muốn chọn chữ phải double-click vào sửa (bạn chốt 2026-10-14, giống Milanote). Trước đó `select-text` đặt chung cho cả 2 mode nên chữ lúc xem cũng chọn được. Safari cần `select-text` cho contenteditable khi tổ tiên là `select-none`.
 - Đoạn `p` không có viền (viền thử `outline-primary/40` đã gỡ 2026-10-14, bạn chốt).
 
 ### Chiều cao (`heightMode`)
 
 - `auto`: `ResizeObserver` đo `scrollHeight` vùng chữ + 48 → chiều cao cần. Chỉ TĂNG khi cần lớn hơn hiện tại quá 1px, không bao giờ tự co. Tối thiểu 68. Ghi bằng `applyResize` (không vào undo). Bỏ qua lúc đang resize.
-- `fixed`: không tự tăng. Chữ vượt khung → cắt + lớp mờ cao 32px ở đáy (`FadeOverlay`, `pointer-events-none`).
+- `fixed`, lúc xem: không tự tăng. Chữ vượt khung → cắt + lớp mờ cao 32px ở đáy (`FadeOverlay`, `pointer-events-none`).
+- Đang kéo góc note (mode `resizing` + note được chọn): cắt + lớp mờ ngay như `fixed`, kể cả note còn `auto`. Trước đó note auto kéo lùn thì chữ tràn ra ngoài khung tới lúc thả mới cắt (sửa 2026-10-15).
+- `fixed`, lúc sửa (bạn chốt 2026-10-15): note tạm dài ra cho thấy hết chữ, Enter hoặc chữ tràn dòng thì dài thêm ngay; không cắt, không lớp mờ. `useEditingExpand` (`NoteObject.tsx`) đo chữ ProseMirror + 48 → `interaction-store.editingHeight`; lớp vẽ + góc resize lấy `shownHeight` = max(cao đã lưu, chiều cao tạm). Chiều cao tạm chỉ để vẽ: không ghi geometry, không vào undo, đổi / thoát sửa là về null → note thụt về đúng cao đã kéo, che lại phần thừa. Kéo góc lúc đang sửa bắt đầu từ khung đang thấy, undo vẫn trả về cao đã lưu.
 - Chuyển `auto` → `fixed`: `onResizeCommit` của loại note trả `extra` (apply/undo/redo thao tác trên data silent), `SelectionBox` truyền vào `commitResize` để GỘP đổi `heightMode` vào CÙNG bước undo với resize. Ctrl+Z 1 lần trả cả cỡ lẫn `heightMode` (sửa 2026-10-14: trước là 2 bước riêng).
 - Không có đường về `auto` (Milanote cũng không có).
-- Kéo góc note (cả `auto` lẫn `fixed`) chặn tối thiểu 68 chiều cao qua `minSize: { height: 68 }` trong định nghĩa loại; `SelectionBox` đọc `def.minSize` khi kéo. Bằng với note tự cao 1 dòng, không bị bóp dẹt hơn (sửa 2026-10-14).
+- Kích thước tối thiểu note: rộng 160, cao 68, khai `minSize: { width: 160, height: 68 }` trong định nghĩa loại. Cao 68 = note tự cao 1 dòng (sửa 2026-10-14); rộng 160 trừ padding 40 còn ~120px cho chữ (bạn chốt 2026-10-15). Mọi đường đổi cỡ kẹp qua `getObjectMinSize` (`11`).
 
 ### Sửa, tự lưu, undo
 
@@ -98,7 +100,7 @@ Toolbar chung (`Toolbar.tsx`) đọc `renderElementActions` / `renderEditingActi
 - Text style: Title (`h1`), Heading (`h2`), Subheading (`h3`), Body (đoạn), Quote (blockquote).
 - Link: ô URL. Lưu chỉ được khi có chữ đang chọn hoặc caret nằm trong link cũ; `extendMarkRange('link')` nên không cần bôi đen đúng link cũ. Có link → thêm nút Remove. Enter = lưu.
 - Màu (spec `canvas-note-color`, parity Milanote đo 2026-10-15): popup 2 tab, mở luôn ở Background. Rộng 188px, 5 ô 1 hàng, ô 28×24 khe 6px (nhỏ hơn ô Milanote 36×30, bạn chốt 2026-10-15). 2 tab chồng cùng 1 ô lưới, tab ẩn `invisible` nên popup luôn cao bằng tab dài nhất, đổi tab không co giãn / nhảy vị trí.
-  - Background: không màu + 11 màu chuẩn (`NOTE_STANDARD_COLORS`) + trong suốt; hàng cặp nền + chữ "A" (`NOTE_COLOR_PAIRS`); hàng 7 màu gợi ý (`NOTE_SUGGESTED_COLORS`); Custom color.
+  - (Cũ, trước 2026-10-16, xem dòng "Từ 2026-10-16" bên dưới.) Background: không màu + 11 màu chuẩn (`NOTE_STANDARD_COLORS`) + trong suốt; hàng cặp nền + chữ "A" (`NOTE_COLOR_PAIRS`); hàng 7 màu gợi ý (`NOTE_SUGGESTED_COLORS`); Custom color.
   - Top strip: bỏ màu (gạch chéo `destructive`) + 11 màu chuẩn; hàng gợi ý; Custom color. Không có trong suốt, không có hàng "A".
   - Màu chuẩn dùng chung 2 theme (trừ xám); cặp "A" và gợi ý mỗi theme 1 bộ (`useResolvedTheme`).
   - Chọn màu không đóng popup. Mỗi lần đổi thật = 1 bước undo (`updateObjectData`); chọn lại đúng màu đang áp thì không ghi bước.
@@ -107,6 +109,7 @@ Toolbar chung (`Toolbar.tsx`) đọc `renderElementActions` / `renderEditingActi
   - Icon nút Màu vẽ màu hiện tại (nền + thanh + "A"), note không màu giữ icon Palette.
   - Lưu hex, không lưu id màu (`INV-NOTE-17`). Tên màu chuẩn lưu key dịch; ô cặp / gợi ý dùng mã hex làm tooltip.
   - Tách đoạn (Card Clipper) và dán giữ đủ 3 trường màu.
+  - Từ 2026-10-16 (bạn chốt: chữ luôn tự tính theo nền, như board): bỏ hàng cặp "A" và hàng gợi ý. Note dùng chung 2 hàng 10 ô với board (`BOARD_DARK_COLORS` / `BOARD_LIGHT_COLORS`): phần 1 màu ra chữ trắng (ô trơn), phần 2 màu ra chữ đen (ô chia chéo `boardSwatchBackground`), phần 3 màu tuỳ chỉnh. Giữ ô "không màu" / "bỏ màu" / "trong suốt". KHÔNG có ô "Theo giao diện" (board có, note bỏ — bạn chốt 2026-10-16). Chữ vẫn qua `noteInkColor` (ngưỡng 0.6). Cả 2 tab: phần 1 = ô đầu (không màu / bỏ màu) + màu chuẩn ra chữ trắng (ô trơn) + trong suốt (chỉ tab Nền); phần 2 = màu chuẩn ra chữ đen (ô chia chéo ở tab Nền, `boardSwatchBackground`); phần 3 = màu tuỳ chỉnh đã lưu (chung với board) + Custom color. Chia theo `isLightSwatch` lúc render (xám đổi hex theo theme nên đổi phần). Không tạo `textColor` mới; note cũ có `textColor` vẫn hiện tới khi chọn màu khác. Custom color áp cả khi bấm ra ngoài bảng màu (vẫn 1 bước undo).
 
 ### Giữ trạng thái sửa khi bấm toolbar
 
@@ -117,7 +120,7 @@ Hai lớp, thiếu 1 lớp là thoát sửa (và thoát 2 tầng dồn thành 1)
 
 ### Popup dùng chung
 
-- `ToolbarPopup` (`components/ToolbarPopup.tsx`): render qua portal ra `body`, `position: fixed`, `z-toolbar`, gắn `data-canvas-overlay`. Lý do portal: list toolbar `overflow-y-auto` ép `overflow-x` thành `auto` → popup đặt cạnh phải bị cắt. Vị trí đo theo rect phần tử cha bọc nút mở: mặc định bên phải nút, căn mép trên nút; sát mép phải mà bên trái đủ chỗ thì lật trái; luôn kẹp trong viewport (lề 8px), cao hơn viewport thì giới hạn chiều cao + cuộn. Có mũi tên SVG trỏ tâm dọc nút (không vượt góc bo). Đo lại khi popup đổi cỡ, cửa sổ resize, vùng cuộn toolbar cuộn. 2 lớp: lớp ngoài chứa mũi tên (không overflow), lớp trong mang `className` của caller (nền card, viền, bóng). `forwardRef` trỏ lớp ngoài cho hook đóng.
+- `ToolbarPopup` (`components/ToolbarPopup.tsx`): render qua portal ra `body`, `position: fixed`, `z-toolbar`, gắn `data-canvas-overlay`. Lý do portal: list toolbar `overflow-y-auto` ép `overflow-x` thành `auto` → popup đặt cạnh phải bị cắt. Vị trí đo theo rect phần tử cha bọc nút mở: mặc định bên phải nút, căn mép trên nút; sát mép phải mà bên trái đủ chỗ thì lật trái; luôn kẹp trong viewport (lề 8px), cao hơn viewport thì giới hạn chiều cao + cuộn. Có mũi tên SVG trỏ tâm dọc nút (không vượt góc bo). Đo lại khi popup đổi cỡ, cửa sổ resize, vùng cuộn toolbar cuộn (cuộn bên trong chính popup thì bỏ qua; đo lại giữ vị trí cuộn). Scale theo Kích thước giao diện cùng tỉ lệ toolbar (lớp ngoài `scale`, gốc góc trên trái), vì portal nằm ngoài cây đã scale của toolbar. 2 lớp: lớp ngoài chứa mũi tên (không overflow), lớp trong mang `className` của caller (nền card, viền, bóng). `forwardRef` trỏ lớp ngoài cho hook đóng.
 - `useToolbarPopupClose({ popupRef, anchorLabel, onClose, onRefocus })`:
   - Esc qua `useEscapeLayer`: chỉ đóng popup, không lọt xuống canvas (bỏ chọn) hay editor (thoát sửa). Gọi `onRefocus` nếu có.
   - `pointerdown` (pha capture) ngoài popup → đóng. Bỏ qua khi trúng nút mở, tìm bằng `[aria-label="{anchorLabel}"]`, vì nút tự bật / tắt qua state.
@@ -166,8 +169,8 @@ Cơ chế khoá theo người chọn ở `20`. Phần note:
 | `INV-NOTE-02` | `NOTE_SCHEMA_EXTENSIONS` là bộ extension duy nhất cho cả editor lẫn `sanitizeNoteHtml`. Thêm extension có node / mark / thuộc tính thì thêm vào đây; extension chỉ là UI thì thêm riêng ở editor | Bộ lọc không xoá thứ editor tạo ra, editor không hiện thứ bộ lọc chặn | Review |
 | `INV-NOTE-03` | HTML note chỉ vào DOM sau `sanitizeNoteHtml` (`NoteView`); dán đi qua `sanitizePastedData` của note. Bộ lọc parse trên document tách rời | Chặn XSS từ clipboard và dữ liệu cũ (phần chung: `INV-OBJ-03`..`05`) | Review |
 | `INV-NOTE-04` | Đọc `data` note qua `parseNoteData`; ghi lại thì gộp `{ ...data, trường đổi }`, không ghi lại chỉ vài trường | Đã từng mất `heightMode` khi cắt đoạn | Review |
-| `INV-NOTE-05` | `auto` chỉ tự tăng, không tự co; tối thiểu 68; ghi không vào undo; bỏ qua khi đang resize. `fixed` không tự tăng, chữ vượt thì cắt + lớp mờ | Giống Milanote; khoảng trống người dùng kéo ra được giữ | Review |
-| `INV-NOTE-06` | Kéo góc note (có đổi kích thước) → `heightMode: 'fixed'` qua `onResizeCommit`, GỘP vào cùng bước undo với resize (trả `extra`, không push riêng). Tối thiểu 68 chiều cao cả 2 mode qua `minSize` | Sau khi người dùng tự đặt cỡ, note không tự giãn đè lên; Ctrl+Z 1 lần trả cả cỡ lẫn mode; note fixed không dẹt hơn note auto | Review, test tay Z-note |
+| `INV-NOTE-05` | `auto` chỉ tự tăng, không tự co; tối thiểu 68; ghi không vào undo; bỏ qua khi đang resize. `fixed` lúc xem không tự tăng, chữ vượt thì cắt + lớp mờ; lúc sửa tạm dài theo chữ qua `editingHeight` (chỉ vẽ, không ghi geometry, không undo), thoát sửa về cao đã lưu | Giống Milanote; khoảng trống người dùng kéo ra được giữ; không gõ vào vùng mờ | Review, test tay F1–F4 |
+| `INV-NOTE-06` | Kéo góc note (có đổi kích thước) → `heightMode: 'fixed'` qua `onResizeCommit`, GỘP vào cùng bước undo với resize (trả `extra`, không push riêng). Tối thiểu rộng 160 × cao 68 cả 2 mode qua `minSize` + `getObjectMinSize` | Sau khi người dùng tự đặt cỡ, note không tự giãn đè lên; Ctrl+Z 1 lần trả cả cỡ lẫn mode; note fixed không dẹt hơn note auto, không hẹp tới mức không đọc được | Review, test tay Z-note, W1 |
 | `INV-NOTE-18` | Note `locked` (More → Lock Position): hook kéo + resize bỏ qua (không di chuyển, ẩn góc kéo). Kéo cụm có note khoá → note khoá đứng yên, object khác vẫn kéo. Vẫn chọn / sửa / đổi màu được. Đọc qua `isObjectLocked` | Giống Milanote Lock Position; không khoá luôn việc sửa chữ | Review |
 | `INV-NOTE-19` | Màu chữ / tô nền / căn lề / Small / Callout là mark / attribute trong `body` HTML, extension nằm trong `NOTE_SCHEMA_EXTENSIONS` → bộ lọc giữ. KHÔNG thêm trường data cho chúng | Đổi 1 nguồn (schema) là cả editor lẫn bộ lọc theo; xem lại note sau F5 không mất định dạng | Review (`INV-NOTE-02`) |
 | `INV-NOTE-07` | Gõ chữ ghi ngay (`setNoteBodySilently`, kênh `text`, không debounce, không undo); thoát sửa ghi đúng 1 bước undo nếu chữ khác; editor bị gỡ giữa chừng vẫn ghi bước đó | Không mất chữ khi F5 / đóng tab; Ctrl+Z lùi cả 1 lần sửa | Review (`INV-DATA-10`) |
@@ -195,7 +198,7 @@ Cơ chế khoá theo người chọn ở `20`. Phần note:
 | `src/tools/canvas/store/note-editor-store.ts` | Đưa editor đang mở sang toolbar |
 | `src/tools/canvas/lib/note-schema.ts` | `NOTE_SCHEMA_EXTENSIONS`, `sanitizeNoteHtml` |
 | `src/tools/canvas/lib/note-data.ts` | `parseNoteData` (điền mặc định) |
-| `src/tools/canvas/lib/note-colors.ts` | Bảng màu note (chuẩn, cặp "A", gợi ý), `noteInkColor`, `sameColor` |
+| `src/tools/canvas/lib/note-colors.ts` | Bảng màu chuẩn note, `noteInkColor`, `sameColor` |
 | `src/tools/canvas/lib/note-text-colors.ts` | Bảng màu chữ (5) + tô nền (5) trong Text style |
 | `src/tools/canvas/lib/note-paragraph-variant.ts` | Extension Small text + Callout (`data-variant`) |
 | `src/tools/canvas/lib/note-commit-keys.ts` | Esc, Mod-Enter trong editor |

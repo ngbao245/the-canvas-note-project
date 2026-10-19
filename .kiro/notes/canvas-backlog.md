@@ -19,6 +19,19 @@ Luật: chỉ ghi tính năng CHƯA làm. Làm xong → xoá mục (hành vi m�
 - Ctrl+D / dán board tile → tạo board MỚI và chép cả nội dung (cây con, object), giống Milanote. Hiện ra 2 tile trỏ cùng 1 board (sai: xoá / đếm rối).
 - Cần spec riêng: chép sâu bao nhiêu cấp, đổi id mọi object + `linkedBoardId`, tên board mới ("... copy"?), 1 bước undo, dán sang board khác, clipboard chỉ mang tile (chưa mang nội dung).
 
+## Toolbar board tile — phần còn thiếu (Kiro làm phần chính 2026-10-15)
+
+Đã làm: Màu, Đổi tên, Thêm (Mở tab mới, Sao chép liên kết, Khoá vị trí, Đưa lên / xuống). Chi tiết hành vi ở `docs/system/11-object-types.md`. Còn thiếu so với Milanote:
+
+- **Biểu tượng (Icon)**: Milanote là cả thư viện icon (nhóm Recommended / New / Board / Letters & numbers), có ô tìm kiếm + Tải ảnh lên. Hiện nút để mờ "sắp ra mắt". Cần spec riêng: lưu icon vào `Board` (id icon hay blob ảnh), bộ icon lấy từ đâu, vẽ icon đè lên khối màu thế nào.
+- **Hàng ô 2 màu trong popup Màu**: Milanote có hàng 5 ô nửa nền nửa màu icon (gắn với Icon). Chưa làm vì phụ thuộc Icon.
+- **Dòng "Created by you N days ago"** cuối menu Thêm: cần tài khoản, làm cùng `canvas-sync` / `canvas-sharing`.
+- **Màu gợi ý theme sáng**: hàng 7 màu gợi ý của board mới đo ở theme tối (`lib/board-colors.ts`), theme sáng đang dùng chung. Đo lại Milanote ở theme sáng nếu muốn khớp.
+
+## Tile board — chữ cứng chưa qua bộ dịch (nhỏ)
+
+- `BoardObject.tsx`: "0 cards" (`N card{s}`) và `aria-label` "Vào board {name}" ghép cứng, chưa qua `t()`. Gom vào đợt rà i18n Task 5-7 (`canvas-session-handoff.md` mục "Đang dở").
+
 ## Thùng rác (bạn chốt 2026-10-13)
 
 - Xoá vào thùng rác không hỏi lại. Bấm nút thùng rác → popup "đã xoá gần đây", lấy lại được (giống Milanote). Hiện nút chỉ xoá thẳng, chưa có popup, chưa lưu object đã xoá.

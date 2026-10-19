@@ -47,11 +47,13 @@ Thứ tự = mảng `SECTIONS` trong `SettingsModal.tsx`.
 | Thanh công cụ | — | — | — | Vỏ: `PlaceholderSection` (`EmptyState` "Sắp ra mắt") |
 | Canvas | Lưới nền: bật / tắt | `useCanvasSettingsStore`, `bibo-canvas-settings` | `CanvasSurface` vẽ / ẩn lưới chấm | Chạy |
 | | Tốc độ cuộn: Chậm / Vừa / Nhanh | như trên | Hệ số nhân delta lăn chuột 0.3 / 0.5 / 0.8, đọc lúc lăn (`CanvasSurface`). Mô tả chèn phím zoom qua `getShortcutDef('canvas.zoom-wheel')` | Chạy |
+| | Màu viền chọn: Trắng đen / Xanh / Lục / Vàng | như trên (`selectionColor`) | `App` gắn `<html data-canvas-selection>` (`applySelectionColorAttr`, giá trị lạ → mặc định); CSS `--canvas-selection` cho viền chọn + chấm tròn (`10`) | Chạy (thêm 2026-10-14) |
+| | Kiểu header: 2 hàng / Đảo nổi | như trên (`headerStyle`) | `route.tsx` chọn `CanvasHeader` hay `CanvasHeaderIslands`; `Toolbar`, `CanvasApp`, `UnsortToggle` lùi xuống dưới hàng đảo (`10` mục Header). `useHeaderStyle()` đổi giá trị lạ về `bar` | Chạy (thêm 2026-10-14, để so sánh) |
 | Dữ liệu | Số board, số object | — (chỉ đọc) | Gọi `countData()` (`lib/data-stats.ts`) | Chạy |
 | | Dung lượng | — (chỉ đọc) | `navigator.storage.estimate()` cho cả origin. Không hỗ trợ thì hiện "Không rõ" | Chạy |
 | | Sao lưu | — | — | Vỏ: "Sắp ra mắt" (export lâu dài ở backend) |
 
-Đặt lại mặc định: Giao diện (theme Sáng, Phẳng, Vừa) và Canvas (lưới bật, cuộn Vừa). Mục khác không có nút này.
+Đặt lại mặc định: Giao diện (theme Sáng, Phẳng, Vừa) và Canvas (lưới bật, cuộn Vừa, viền Trắng đen, header 2 hàng). Mục khác không có nút này.
 
 Hút cạnh / khớp lưới khi thả luôn bật, không có trong Cài đặt (chốt 2026-10-02).
 
@@ -62,7 +64,7 @@ Hút cạnh / khớp lưới khi thả luôn bật, không có trong Cài đặt
 | `theme-store` | `bibo-theme` | `light` (chốt 2026-10-05; người đã lưu lựa chọn giữ nguyên) |
 | `interface-store` | `bibo-interface` | `medium` (= 1.0, cỡ như trước khi có setting) |
 | `ui-style-store` | `bibo-ui-style` | `flat` |
-| `canvas-settings-store` | `bibo-canvas-settings` | `{ showGrid: true, scrollSpeed: 'normal' }` |
+| `canvas-settings-store` | `bibo-canvas-settings` | `{ showGrid: true, scrollSpeed: 'normal', selectionColor: 'contrast', headerStyle: 'bar' }` |
 | `keyboard-platform-store` | `bibo-keyboard-platform` | `auto` |
 | `lib/i18n/locale-store` | `bibo-locale` | Theo trình duyệt, không ghi cho tới khi chọn (`03`) |
 

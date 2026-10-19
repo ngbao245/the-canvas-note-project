@@ -19,7 +19,7 @@ Không gồm: khởi động app, thứ tự nạp CSS (`01`), modal Cài đặt
 - Tailwind `darkMode: ['selector', '[data-theme="dark"]']`.
 - Thêm theme: chép khối token, đổi tên `[data-theme='ten-moi']`, mở rộng type `Theme` trong `theme-store.ts`. Không sửa `tailwind.config.ts`.
 - `theme-store.ts` (localStorage `bibo-theme`) lưu LỰA CHỌN: `light | dark | system`. `useResolvedTheme()` giải `system` theo `prefers-color-scheme` và tự đổi khi máy đổi. `App.tsx` gắn theme đã giải lên `<html data-theme>`, nên `<html>` không bao giờ mang `system`.
-- Font: chữ chung `'Plus Jakarta Sans', Inter, system-ui...` (trên `body`). Tiêu đề card canvas dùng `font-serif` = Fraunces, nạp từ Google Fonts ở đầu `index.css`.
+- Font (2026-10-15): 3 vai trò, khai 1 chỗ. `@import` Google Fonts đầu `index.css` nạp Inter + Fraunces + JetBrains Mono; `tailwind.config.ts` `fontFamily`: `sans` = Inter (body qua `font-sans`, thân note, UI), `serif` = Fraunces (heading note, tên board header `TITLE_TEXT_CLS`), `mono` = JetBrains Mono (code note). Đổi font: sửa dòng `@import` + bảng `fontFamily`, không ghi tên font trong component.
 - Ngoại lệ màu cứng: màu do người dùng chọn (màu note) là dữ liệu; giấy ký họa landing dùng biến `--sk-*` riêng, chi tiết `30`.
 
 ### Phong cách hiển thị (phẳng / vẽ tay)
@@ -133,7 +133,6 @@ Chờ dữ liệu: skeleton theo đúng hình nội dung thật. Spinner chỉ c
 
 - (2026-10-13) Spec `design-system` + note `design-system.md` ghi theme mặc định dark, code mặc định light (comment trong `theme-store.ts` ghi bạn chốt 2026-10-05). Chờ bạn xác nhận để bỏ ghi chú cũ.
 - (2026-10-13) Spec `design-system` US-3 ghi phong cách mặc định vẽ tay, code mặc định `flat`. Chưa thấy chỗ ghi chốt. Chờ bạn chốt.
-- (2026-10-13) Font `Plus Jakarta Sans` đứng đầu `font-family` nhưng không nạp ở đâu (`index.css` chỉ nạp Fraunces, `index.html` không có link font). Máy không cài font này sẽ ra Inter / font hệ thống. Có nạp không: chờ bạn chốt.
 - (2026-10-13) Vệt `shimmer` của `Skeleton` dùng `via-white/5` (trắng cứng): nền light gần như không thấy. Có đổi sang token không: chờ bạn chốt.
 - (2026-10-13) `CardClipperButton` vừa dùng `setCursorOverride` vừa có `active:cursor-grabbing` (class tầng 3 tại component). Có gỡ class không: chờ bạn chốt.
 - (2026-10-13) Thu nhỏ token `--z-toolbar` … `--z-tooltip` từ 20000-60000 xuống 1-9 (giữ tên): còn treo ở `canvas-backlog.md`.

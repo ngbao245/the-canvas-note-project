@@ -24,7 +24,7 @@ Không gồm: chi tiết note (editor, tự lưu, mã đoạn, Card Clipper: `12
 | `onResizeCommit` | Không | Chạy sau khi resize xong (Note: chuyển `heightMode` sang `fixed`) |
 | `sanitizePastedData` | Không, trừ loại hiện HTML / URL người dùng nhập | Lọc `data` khi dán. Trả `null` → bỏ object |
 | `renderElementActions` | Không | Nút khi chọn 1 object. Không có → bộ nút chung |
-| `renderEditingActions` | Không | Nút khi đang sửa. Không có → loại đó không vào chế độ sửa trên toolbar |
+| `renderEditingActions` | Không | Nút khi đang sửa. Không có → lúc sửa toolbar vẫn hiện nút chọn (Board sửa tên tại chỗ) |
 
 ### Sổ đăng ký
 
@@ -36,8 +36,20 @@ Không gồm: chi tiết note (editor, tự lưu, mã đoạn, Card Clipper: `12
 
 | Loại | Nút | Mặc định (rộng × cao) | Riêng |
 |---|---|---|---|
-| `note` | Có | 338 × 68 (Milanote đo DOM). Cao tự tăng theo chữ khi `heightMode: auto` | `sanitizePastedData` (lọc HTML), `onResizeCommit` (→ `fixed`), nút chọn + nút sửa riêng. Chi tiết `12` |
-| `board` | Có | 98 × 139 (Milanote đo DOM) | `ownSelectionFrame`. Tạo qua `createBoardAt` (Board mới + tile trong 1 bước undo), không qua `createObjectAt`. `data` chỉ có `linkedBoardId`. Chi tiết `10` |
+| `note` | Có | 300 × 68 (2026-10-15, trước 338 theo Milanote). Tối thiểu 160 × 68 (`minSize`). Cao tự tăng theo chữ khi `heightMode: auto` | `sanitizePastedData` (lọc HTML), `onResizeCommit` (→ `fixed`), nút chọn + nút sửa riêng. Chi tiết `12` |
+| `board` | Có | 98 × 139 (Milanote đo DOM) | `ownSelectionFrame`. Tạo qua `createBoardAt` (Board mới + tile trong 1 bước undo), không qua `createObjectAt`. `data`: `linkedBoardId` + `locked`. Nút chọn riêng (`BoardToolbar.tsx`), không có nút sửa. Chi tiết `10` |
+
+### Toolbar khi chọn board tile (`components/objects/BoardToolbar.tsx`, đo Milanote 2026-10-15)
+
+- Màu: đổi `Board.color` (`setBoardColor`, 1 bước undo, popup không đóng khi chọn). Popup 3 phần (spec `canvas-board-color-polish`): phần 1 ô "Theo giao diện" (chia chéo trắng / đen; lưu `Board.color = 'theme'`, vẽ ra trắng ở giao diện sáng, đen ở giao diện tối) + ô "Mặc định" + màu nền đậm (icon/chữ trắng), phần 2 màu nền sáng (icon/chữ đen; ô vẽ chia chéo: nửa trên trái màu nền, nửa dưới phải màu chữ đen, `boardSwatchBackground`), phần 3 màu custom đã lưu (màu sáng cũng chia chéo) + nút "Màu tuỳ chỉnh…". Chia đậm/sáng theo luminance 0.6 (`BOARD_DARK_COLORS` / `BOARD_LIGHT_COLORS` trong `lib/board-colors.ts`). Không tab, không ô trong suốt. Mọi chỗ vẽ `Board.color` (tile, nút Màu, breadcrumb, xem trước trong popup icon) đi qua `resolveBoardColor(color, theme)`; màu icon tự động tính tương phản trên hex đã đổi.
+- Màu tuỳ chỉnh đã lưu dùng chung mọi loại object (note cả 2 tab, nền board): store `store/custom-color-store.ts` (localStorage `bibo-custom-colors` bản 2, mảng hex; bản 1 có `{ hex, ink }` tự chuyển về hex; riêng máy, 5 ô = 1 hàng, mới nhất đầu, bỏ trùng không phân biệt hoa thường). Bảng màu custom đóng theo kiểu nào cũng áp (OK, Enter, bấm ra ngoài). Kéo trong bảng màu → board / note đổi màu ngay (`previewBoardColor` / `previewObjectData` trong `engine/actions.ts`: chỉ đổi store, không lưu, không undo, nhớ giá trị gốc của đúng các trường bị xem trước, không chụp cả `data`); lúc chốt, action ghi thật trả các trường đó về gốc trước rồi ghi → cả lần kéo = 1 bước undo, chỉ lưu 1 lần, trường khác đổi xen giữa không bị đè. Mọi lần ghi giao diện board (màu, icon) đều trả màu đang xem trước về trước (test `engine/color-preview.test.ts`). Chỉ `CustomColorButton` ghi vào store; `SavedColorRow` (cùng file `ColorSwatches.tsx`) vẽ hàng đã lưu, hàng trống vẫn giữ chiều cao.
+- Màu icon / chữ trên khối vuông: luôn tự tính theo nền, không lưu, không chỉnh tay (bạn chốt 2026-10-16, như Milanote): nền đậm trắng, nền sáng đen (`boardInkColor`, ngưỡng luminance 0.6, chưa đo khớp ngưỡng Milanote). Áp cho mọi ô, kể cả màu tuỳ chỉnh. Nền "Theo giao diện" → đen ở giao diện sáng, trắng ở giao diện tối. Ô màu ra chữ đen vẽ chia chéo (popup và nút Màu trên toolbar).
+- Icon (spec `canvas-board-icon`): đổi `Board.icon` (`setBoardIcon`, 1 bước undo, popup không đóng khi chọn). `icon` = `{ kind: 'lucide', value: tên kebab-case }` hoặc `{ kind: 'text', value: tối đa 2 ký tự }`, null = không icon (board cũ không có field cũng coi là null). Icon vẽ giữa khối vuông 72×72, màu theo mục Màu icon ở trên. Nút toolbar hiện chính icon của board. Popup cao cố định 420px: hàng trên (ô tìm theo tên + tag; ở Tự nhập là tiêu đề), cột trái gồm nguồn (Thư viện / Tự nhập / Tải ảnh mờ) rồi danh mục, vùng phải, hàng dưới "Bỏ biểu tượng" luôn có (mờ khi chưa có icon) để nội dung không nhảy. Thư viện mở ở mục Gợi ý, không có "Tất cả": Dùng gần đây (12 icon, localStorage `bibo-icon-recent`, riêng máy) → Theo tên board (từ trong tên board khớp tên icon trước, tag sau; bỏ từ "new", "board"...) → Phổ biến (danh sách cố định). Danh mục và kết quả tìm dùng lưới ảo hoá. Khác Milanote: cột trái không kiêm lịch sử tìm kiếm, bỏ nhóm "Letters & numbers" (thay bằng Tự nhập). Danh sách icon lấy từ `lucide-react` (bản đang render, 1544 icon), tag lấy từ `lucide-static`; danh mục suy ra từ tag trong `scripts/gen-icon-catalog.mjs` (lucide không phát hành danh mục chính thức). Sinh lại catalog: `npm run gen:icon-catalog`.
+
+Mọi popup mở từ toolbar canvas (`ToolbarPopup`) căn mép trên theo khung toolbar (`data-toolbar-root`), mũi tên vẫn trỏ vào nút.
+- Đổi tên: mở ô sửa tên dưới tile, chọn hết chữ. Toolbar giữ nguyên (loại không có `renderEditingActions` thì toolbar không sang chế độ sửa).
+- Thêm (More): Mở trong tab mới, Sao chép liên kết (URL `/canvas/{id}`, báo qua notice), Khoá vị trí (`data.locked`, chặn kéo như note), Đưa lên trên cùng, Đưa xuống dưới cùng. Tạo lối tắt, Chuyển thành mẫu: mờ, sắp ra mắt.
+- Milanote còn dòng "Created by you N days ago" cuối menu: chưa làm (cần tài khoản).
 
 Loại `rect` (thử từ Phase A, không có nút) đã gỡ 2026-10-13 theo bạn chốt: không còn đường tạo, dữ liệu cũ đã bỏ khi lên database bản 2. Object `rect` còn sót (nếu có) rơi vào luật `INV-OBJ-06`: không vẽ, giữ nguyên dữ liệu.
 
@@ -94,7 +106,8 @@ Clipboard là nguồn không tin được (trang nào cũng ghi được chuỗi
 |---|---|
 | `src/tools/canvas/hooks/useObjectRegistry.tsx` | Khuôn `ObjectTypeDefinition`, sổ, `getToolbarObjectTypes` |
 | `src/tools/canvas/components/objects/index.ts` | `OBJECT_TYPES` |
-| `src/tools/canvas/components/objects/{note,board}-type.ts(x)` | Định nghĩa từng loại |
+| `src/tools/canvas/components/objects/{note,board}-type.tsx` | Định nghĩa từng loại |
+| `src/tools/canvas/components/objects/{Note,Board}Toolbar.tsx`, `components/ColorSwatches.tsx` | Nút toolbar theo loại, ô màu dùng chung |
 | `src/tools/canvas/components/objects/{Note,Board}Object.tsx`, `ObjectShell.tsx` | Renderer, khung chung |
 | `src/tools/canvas/components/Toolbar.tsx`, `TileIcons.tsx`, `hooks/useToolbarDrag.tsx` | Thanh tạo object, nút giữ chỗ, kéo tạo |
 | `src/tools/canvas/engine/actions.ts` | `createObjectAt`, `createBoardAt` |

@@ -1,4 +1,4 @@
-# Sổ quyết định
+﻿# Sổ quyết định
 
 Cập nhật: 2026-10-15
 
@@ -6,10 +6,27 @@ Ghi quyết định bạn đã chốt: ngày, quyết gì, vì sao, thay quyết
 
 Câu đã ghi ở đây là "ĐÃ CHỐT", không hỏi lại.
 
+## 2026-10-16
+
+| Quyết | Vì sao | Thay / ghi ở |
+|---|---|---|
+| Màu chữ / icon trên board và note luôn tự tính theo độ sáng nền, không lưu, không chỉnh tay. Bỏ `Board.iconColor`, `Board.ink`, nhấp đúp đổi chữ, hàng cặp "A" và hàng gợi ý của note. Popup màu (board + note) = phần chữ trắng (ô trơn) / phần chữ đen (ô chia chéo) / màu tuỳ chỉnh đã lưu | Bạn chốt: giống Milanote, chỉ 1 quy tắc, chỉnh màu chỉ ở nút Màu | `11`, `12`. THAY hàng cặp "A" + gợi ý trong dòng "Popup Màu note làm đủ như Milanote" (2026-10-15) |
+| Màu tuỳ chỉnh đã lưu dùng chung mọi loại object (note, board), 5 ô, riêng máy; bảng màu tuỳ chỉnh bấm ra ngoài cũng tính là áp | Bạn chốt | `11`, `12` |
+| Giới hạn pan 3 lớp: vùng tài liệu (chỉ giãn trong phiên board, gồm object đang kéo), phạm vi camera (tính từ tài liệu × zoom + màn, bỏ khoảng thở), kéo lố tạm thời (spec `canvas-pan-bounce`, ĐÃ LÀM, bạn test OK 2026-10-16) | Bản cũ dừng cứng ở rìa, vùng co làm camera tự dời, kéo object ra xa không tự cuộn được | THAY khoảng thở `SCREEN_SLACK_RATIO` + "tài liệu co ngay" 2026-10-15. `10` Giới hạn pan |
+| Touchpad tách khỏi chuột: pan 2 ngón áp thẳng 1:1 không ramp, Cài đặt "Tốc độ cuộn" dùng bảng riêng 0.7 / 1 / 1.4 (chuột giữ 0.3 / 0.5 / 0.8) | Đi chung đường chuột thì nhân 0.5 + ramp 20%/khung → chậm, trễ, trôi | `10` bảng thao tác |
+| Pinch: mốc 100% còn 0.12 log2 (trước 0.3); neo đúng ngón tay, không hút về object; ramp đuổi nhanh hơn chuột (`PINCH_RAMP_ALPHA`, áp thẳng thử rồi mất mượt) | Pinch là thao tác trực tiếp, điểm dưới ngón tay phải đứng yên; 0.3 gây cảm giác kẹt | `10` bảng thao tác |
+| Lăn chuột ngừng `WHEEL_SETTLE_MS` thì trượt về; touchpad lố thì debounce theo sự kiện (`TOUCHPAD_OVERSCROLL_DEBOUNCE_MS`) nhưng trần `TOUCHPAD_OVERSCROLL_MAX_HOLD_MS` tính từ lúc bắt đầu lố; trần an toàn tài liệu ±100.000 canvas | Quán tính touchpad gửi sự kiện 1-2s sau khi nhấc tay, debounce thuần giữ màn lố mãi | `10` Giới hạn pan |
+| Board trống giữ vùng 1000 × 800 quanh gốc | Milanote chưa đo đủ case này; cỡ theo màn dễ sai theo zoom lúc vào | spec `canvas-pan-bounce` |
+| Tài liệu × zoom nhỏ hơn màn: tài liệu trôi tự do trong màn, có kéo lố | Đúng ý "pan tự do", không quay lại lỗi khoá trục | spec `canvas-pan-bounce` |
+| Kéo lố trần min(15% màn, 120px), trượt về giảm tốc rồi dừng, không nảy qua lại | Nhẹ, mượt, giữ đúng `motion-rules.md` (cấm spring) | spec `canvas-pan-bounce` |
+
 ## 2026-10-15
 
 | Quyết | Vì sao | Thay / ghi ở |
 |---|---|---|
+| Note fixed lúc sửa tạm dài theo chữ (Enter / tràn dòng thấy ngay), chỉ để vẽ, không lưu, không undo; thoát sửa về cao đã kéo, che lại phần thừa | Trước đó gõ Enter là chữ rơi vào vùng mờ, không thấy mình gõ gì | `12` Chiều cao, `INV-NOTE-05` |
+| Min size theo loại áp ở MỌI đường đổi cỡ qua `getObjectMinSize`; note rộng ≥ 160 (cao ≥ 68 giữ). Note mới rộng 300 (trước 338) | Engine trước chỉ kẹp 40 chung, loại mới khai `minSize` là tự được giữ; 160 trừ padding còn ~120px chữ; 338 hơi rộng | `10` Resize, `11`, `12` |
+| Font app: Inter (thân note + UI), Fraunces (heading note + tên board header), JetBrains Mono (code). Khai 1 chỗ: `@import` trong `index.css` + `fontFamily` sans / serif / mono trong `tailwind.config.ts` | Inter phủ Latin / Cyrillic / Greek / Việt (quốc tế), chấp nhận giống Milanote; Fraunces đã có sẵn, tạo điểm nhấn ở heading | `02`, `12` |
 | Nút định dạng chữ (Đậm, Nghiêng, list, Text style, Link...) giữ trong toolbox dọc lúc sửa note. KHÔNG làm thanh định dạng nổi trên note / khi bôi đen chữ. Không thêm gì | 1 chỗ cho mọi thao tác; thanh nổi che object bên cạnh, đụng Card Clipper + góc resize + zoom; list / Text style tác động cả khối, không cần bôi đen; giống Milanote | `12` Toolbar |
 | Note tạm đủ chức năng, dừng thêm tính năng note cho tới khi có backend. Còn lại chỉ sửa lỗi từ test tay (NC1–NC8, P1–P4, CC1–CC8). Labels / Reactions / Comment / Convert to Document làm sau khi có backend | Bạn chốt: phần còn thiếu của note cần đăng nhập / đồng bộ | `12`, handoff |
 | Popup Màu note làm đủ như Milanote 1 đợt: tab Background / Top strip, 13 màu chuẩn, hàng cặp nền + chữ "A", hàng 7 màu gợi ý, Custom color (spec `canvas-note-color`, ĐÃ LÀM, chờ test CC1–CC8) | Bạn chốt 1A: làm chung 1 lần để dữ liệu chỉ đổi 1 lần | spec `canvas-note-color`. THAY hướng "tách sau, chưa làm" 2026-10-14 |
@@ -41,6 +58,7 @@ Câu đã ghi ở đây là "ĐÃ CHỐT", không hỏi lại.
 | Kéo nhiều object: preview vẽ cả cụm, không ẩn object khác; board tile cộng đúng số object đang kéo (ĐÃ LÀM 2026-10-14, bạn báo) | Object chưa thả vẫn thuộc board này nên phải thấy; số +1 sai khi kéo nhiều | `10` `INV-CANVAS-21` |
 | Unsort chỗ chèn + vạch chèn đo vị trí thật từng item, bỏ bước cố định 148px (ĐÃ LÀM 2026-10-14; thử MCP thấy lệch thật: vạch nằm dưới item cuối khi con trỏ ở giữa item ngắn) | Item cao 60–140 không đều, bước cố định lệch | `10` mục Unsort |
 | Fit, giới hạn pan, zoom tối thiểu, kéo ra mép bỏ item Unsort; số "N mục" ở header vẫn đếm cả Unsort (đã làm) | Item Unsort không vẽ trên canvas; số ở header là tổng của board | `10` `INV-CANVAS-18` |
+| Giới hạn pan = ô cuộn trên "tài liệu" kiểu Milanote: gốc (hoặc object − 50 nếu âm) tới object xa nhất + 500 / + 400, nhân zoom; nhỏ hơn màn thì khoá. Giữ camera tự vẽ, không chuyển sang thanh cuộn thật (bạn chọn A 2026-10-15, theo số đo MCP). Zoom in ở chỗ trống hút về object gần chuột nhất, camera đi thẳng tới đích đã chặn (ĐÃ LÀM 2026-10-15, bạn test OK) | Bản cũ cho kéo tới màn trống, zoom ở chỗ trống rồi kéo thì giật; giống Milanote | `10` mục camera |
 | Delete vùng chọn có board tile + object khác: xoá hết, dialog đếm cả 2, 1 bước undo (đã làm) | Xoá đúng cái người dùng chọn | `10` |
 | Nhân bản / dán board tile = nhân bản cả board (chưa làm, cần spec) | 2 tile trỏ 1 board làm xoá / đếm rối; giống Milanote | `canvas-backlog.md` |
 | Token màu trong Tailwind bọc `color-mix` + `<alpha-value>` để `/15`, `/40` chạy (đã làm) | Sửa 1 chỗ cho mọi class độ mờ, đúng như `coding-style.md` dạy | `02` `INV-UI-13` |
