@@ -44,15 +44,18 @@ export function zoomAroundPoint(
   };
 }
 
-/** Zoom bằng factor (VD 1.1) quanh 1 điểm. */
-export function zoomByFactor(
-  camera: Camera,
-  pointer: Point,
-  factor: number,
-  min: number = ZOOM_MIN,
-  max: number = ZOOM_MAX,
-): Camera {
-  return zoomAroundPoint(camera, pointer, camera.zoom * factor, min, max);
+/**
+ * Tìm điểm screen mà zoom quanh nó đưa `from` tới đúng `to` (cả x, y, zoom).
+ * Từ: to.x = p·(1 − r) + from.x·r, với r = to.zoom / from.zoom.
+ * Null khi zoom gần như không đổi (r ≈ 1, không có điểm neo hợp lý).
+ */
+export function solveZoomAnchor(from: Camera, to: Camera): Point | null {
+  const r = to.zoom / from.zoom;
+  if (Math.abs(Math.log2(r)) < 0.01) return null;
+  return {
+    x: (to.x - from.x * r) / (1 - r),
+    y: (to.y - from.y * r) / (1 - r),
+  };
 }
 
 /** Pan camera bằng delta screen. */

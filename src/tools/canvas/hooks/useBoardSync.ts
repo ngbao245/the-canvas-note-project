@@ -38,6 +38,9 @@ export function useBoardSync({
 
     // Flush pending trước khi switch (tránh camera board cũ lỡ persist qua board mới).
     engine.flushPersist();
+    // Quên vùng tài liệu board cũ trước khi nạp camera: không chặn camera mới
+    // theo vùng cũ. Vùng mới dựng khi object board này nạp xong (`setPanBounds`).
+    engine.resetDocBounds(persistBoardId);
     useCameraStore.getState().hydrate(target.camera);
 
     engine.setPersistCallback((camera) => {

@@ -30,29 +30,120 @@ export function usePointerInteraction(ref: RefObject<HTMLElement | null>) {
     let marqueeStart: { x: number; y: number; shift: boolean } | null = null;
 
     // Space giữ để kéo màn hình. Thả phím, mất focus cửa sổ hoặc unmount → release.
-    // Con trỏ `grab` chỉ đè trong mặt canvas (gốc = el), kể cả trên object.
+    // Con trỏ `grab` đè toàn trang: Space + kéo bắt đầu được ở bất kỳ đâu.
     const panShortcuts = bindShortcuts(CANVAS_SHORTCUT_DEFS, {
       'canvas.pan': {
         run: () => {
           spacePressed = true;
-          setCursorOverride('grab', el);
+          if (!panStart) setCursorOverride('grab');
         },
         release: () => {
           spacePressed = false;
-          setCursorOverride(null, el);
+          if (!panStart) setCursorOverride(null);
         },
       },
     });
     const unregisterPan = registerLayer('tool', () => panShortcuts);
 
+    // --- Kéo màn: nghe ở window, con trỏ ra header / Khay chờ / bảng dev vẫn kéo tiếp ---
+    let panMoved = false;
+    const onPanMove = (e: PointerEvent) => {
+      if (!panStart) return;
+      // Không còn nút nào giữ mà vẫn đang kéo = mất pointerup (Alt+Tab, hộp thoại
+      // hệ thống lúc đang giữ chuột) → kết thúc, không cho màn chạy theo chuột rê.
+      if (e.buttons === 0) {
+        endPan();
+        return;
+      }
+      const dx = e.clientX - panStart.x;
+      const dy = e.clientY - panStart.y;
+      if (dx !== 0 || dy !== 0) panMoved = true;
+      panStart = { x: e.clientX, y: e.clientY };
+      // 1:1 theo tay trong phạm vi, tới rìa thì kéo lố (nặng dần, có trần).
+      getCameraEngine().panElastic({ x: dx, y: dy });
+    };
+    const endPan = () => {
+      if (!panStart) return;
+      panStart = null;
+      // Đang lố thì trượt về rìa.
+      getCameraEngine().endPointerPan();
+      window.removeEventListener('pointermove', onPanMove);
+      window.removeEventListener('pointerup', endPan);
+      window.removeEventListener('pointercancel', endPan);
+      window.removeEventListener('blur', endPan);
+      useInteractionStore.getState().setMode('idle');
+      setCursorOverride(spacePressed ? 'grab' : null);
+      // Bấm bắt đầu kéo trên 1 nút / link (header, Khay chờ, link trong note) rồi thả
+      // cũng trên đó → trình duyệt vẫn bắn click (nút trái) hoặc auxclick (chuột
+      // giữa: link mở tab mới). Nuốt cả 2 ngay sau lần kéo có di chuyển.
+      if (panMoved) {
+        const swallow = (ev: MouseEvent) => {
+          ev.stopPropagation();
+          ev.preventDefault();
+        };
+        for (const type of ['click', 'auxclick'] as const) {
+          window.addEventListener(type, swallow, { capture: true, once: true });
+          setTimeout(() => window.removeEventListener(type, swallow, { capture: true }), 0);
+        }
+      }
+    };
+    const startPan = (e: PointerEvent) => {
+      e.preventDefault();
+      panStart = { x: e.clientX, y: e.clientY };
+      panMoved = false;
+      useInteractionStore.getState().setMode('panning');
+      // Toàn trang: lúc pan chuột có thể lướt qua object (cursor-move) hoặc ra header.
+      setCursorOverride('grabbing');
+      window.addEventListener('pointermove', onPanMove);
+      window.addEventListener('pointerup', endPan);
+      window.addEventListener('pointercancel', endPan);
+      // Mất focus cửa sổ giữa lúc kéo → pointerup có thể không về.
+      window.addEventListener('blur', endPan);
+    };
+
+    // Space + kéo, chuột giữa: bắt đầu ở bất kỳ đâu trên trang (object, toolbar,
+    // header, Khay chờ, bảng dev). Bắt ở capture của window để chạy trước handler
+    // React của object / nút, rồi chặn luôn (không chọn, không kéo object).
+    // Bỏ qua dialog (ConfirmDialog, Cài đặt) và ô đang gõ chữ.
+    const onWindowPointerDown = (e: PointerEvent) => {
+      if (panStart) return;
+      if (!(spacePressed || e.button === 1)) return;
+      if (isMacSecondaryClick(e)) return;
+      const t = e.target;
+      if (
+        t instanceof Element &&
+        t.closest('[role="dialog"], [role="alertdialog"], input, textarea, select, [contenteditable="true"]')
+      ) {
+        return;
+      }
+      e.stopPropagation();
+      startPan(e);
+    };
+    window.addEventListener('pointerdown', onWindowPointerDown, { capture: true });
+
     const onPointerDown = (e: PointerEvent) => {
+      if (panStart) return;
+      const onObject =
+        e.target instanceof Element && e.target.closest('[data-object-id]') !== null;
+      // Ctrl+kéo (Cmd trên macOS) = kéo màn, kể cả bắt đầu trên object (object để
+      // sự kiện Ctrl nổi lên, tự lo Ctrl+click không di chuyển = chọn thêm).
+      if (
+        e.button === 0 &&
+        isPrimaryModifier(e) &&
+        !isMacSecondaryClick(e) &&
+        !useInteractionStore.getState().editingId &&
+        !(e.target instanceof Element && e.target.closest('[data-canvas-overlay]'))
+      ) {
+        startPan(e);
+        return;
+      }
       // Bỏ qua nếu pointerdown xuất phát từ object hoặc overlay screen-space
       // (toolbar palette, pill...). React synthetic stopPropagation KHÔNG chặn
       // được native listener này (surface nằm giữa target và React root), nên
       // phải guard bằng target — nếu không, kéo object sẽ chạy song song marquee.
       if (
-        e.target instanceof Element &&
-        e.target.closest('[data-object-id], [data-canvas-overlay]')
+        onObject ||
+        (e.target instanceof Element && e.target.closest('[data-canvas-overlay]'))
       ) {
         return;
       }
@@ -71,20 +162,6 @@ export function usePointerInteraction(ref: RefObject<HTMLElement | null>) {
 
       // macOS Ctrl+click = chuột phải: không pan, không marquee, để context menu mở.
       if (isMacSecondaryClick(e)) return;
-      const isMiddle = e.button === 1;
-      // Ctrl+kéo (Cmd trên macOS) = kéo màn hình.
-      const isCtrl = isPrimaryModifier(e);
-      const shouldPan = spacePressed || isMiddle || (isCtrl && e.button === 0);
-
-      if (shouldPan) {
-        e.preventDefault();
-        el.setPointerCapture(e.pointerId);
-        panStart = { x: e.clientX, y: e.clientY };
-        useInteractionStore.getState().setMode('panning');
-        // Toàn trang: lúc pan chuột có thể lướt qua object (cursor-move) hoặc ra header.
-        setCursorOverride('grabbing');
-        return;
-      }
 
       if (e.button === 0) {
         e.preventDefault();
@@ -99,14 +176,6 @@ export function usePointerInteraction(ref: RefObject<HTMLElement | null>) {
     };
 
     const onPointerMove = (e: PointerEvent) => {
-      if (panStart) {
-        const dx = e.clientX - panStart.x;
-        const dy = e.clientY - panStart.y;
-        panStart = { x: e.clientX, y: e.clientY };
-        // Engine.pan applies immediate 1:1 hand movement (không ramp).
-        getCameraEngine().pan({ x: dx, y: dy });
-        return;
-      }
       if (marqueeStart) {
         const rect = el.getBoundingClientRect();
         const cx = e.clientX - rect.left;
@@ -123,14 +192,6 @@ export function usePointerInteraction(ref: RefObject<HTMLElement | null>) {
     };
 
     const onPointerUp = (e: PointerEvent) => {
-      if (panStart) {
-        el.releasePointerCapture(e.pointerId);
-        panStart = null;
-        useInteractionStore.getState().setMode('idle');
-        // Còn giữ Space thì `grab` trên el vẫn còn, không cần set lại.
-        setCursorOverride(null);
-        return;
-      }
       if (marqueeStart) {
         el.releasePointerCapture(e.pointerId);
         const inter = useInteractionStore.getState();
@@ -175,8 +236,9 @@ export function usePointerInteraction(ref: RefObject<HTMLElement | null>) {
 
     return () => {
       unregisterPan();
-      setCursorOverride(null, el);
-      if (panStart) setCursorOverride(null);
+      endPan();
+      if (spacePressed) setCursorOverride(null);
+      window.removeEventListener('pointerdown', onWindowPointerDown, { capture: true });
       el.removeEventListener('pointerdown', onPointerDown);
       el.removeEventListener('pointermove', onPointerMove);
       el.removeEventListener('pointerup', onPointerUp);

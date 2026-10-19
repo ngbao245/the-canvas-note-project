@@ -51,8 +51,8 @@ export const useCameraStore = create<CameraState>(() => ({
   fit: (bounds, viewport) => engine.fit(bounds, viewport),
 }));
 
-// Wire engine → store snapshot. Zustand subscribers fire, React consumer
-// re-render 60Hz throttled trong lúc ramp.
+// Wire engine → store snapshot mỗi khung engine vẽ (không điều tiết). Component
+// chỉ chọn camera.zoom / boardZoom nên lúc pan không vẽ lại gì.
 engine.subscribe((camera, boardZoom) => {
   useCameraStore.setState({ camera, boardZoom });
 });

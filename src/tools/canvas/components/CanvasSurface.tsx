@@ -4,18 +4,19 @@ import { useObjectsStore } from '../store/objects-store';
 import { useInteractionStore } from '../store/interaction-store';
 import { useSelectionStore } from '../store/selection-store';
 import { useUnsortStore } from '../store/unsort-store';
-import { SCROLL_SPEED_FACTOR, useCanvasSettingsStore } from '@/stores/canvas-settings-store';
+import {
+  SCROLL_SPEED_FACTOR,
+  TOUCHPAD_SPEED_FACTOR,
+  useCanvasSettingsStore,
+} from '@/stores/canvas-settings-store';
 import { isZoomWheel } from '@/lib/shortcuts';
 import { useInterfaceStore } from '@/stores/interface-store';
 import { getCameraEngine } from '../engine/camera-engine';
+import { createWheelClassifier } from '../lib/wheel-input';
 import { screenToCanvas } from '../engine/coord';
 import { createObjectAt } from '../engine/actions';
 import { usePointerInteraction } from '../hooks/usePointerInteraction';
-import {
-  computeContentBounds,
-  computeDynamicZoomMin,
-  computePanBounds,
-} from '../lib/content-bounds';
+import { computeContentBounds, computeDynamicZoomMin } from '../lib/content-bounds';
 import { ObjectsLayer } from './ObjectsLayer';
 import { MarqueeOverlay } from './MarqueeOverlay';
 import { ContextMenu } from './ContextMenu';
@@ -97,7 +98,7 @@ export function CanvasSurface({ boardId }: { boardId: string }) {
     const update = () => {
       const rect = el.getBoundingClientRect();
       engine.setViewport(rect.width, rect.height);
-      recomputeDynamicZoomMin();
+      syncCameraConstraints();
     };
     update();
     const observer = new ResizeObserver(update);
@@ -109,25 +110,30 @@ export function CanvasSurface({ boardId }: { boardId: string }) {
   // Đổi Kích thước giao diện → fit zoom đổi theo → tính lại zoom min. Engine tự đổi scale qua store.
   const interfaceSize = useInterfaceStore((s) => s.size);
 
-  // --- Recompute dynamic zoom min + pan bounds khi objects đổi ---
+  // --- Ràng buộc camera (zoom min, vùng tài liệu, điểm hút zoom) khi objects đổi ---
   //
-  // Trong lúc drag/resize, exclude object đang mutate khỏi bounds compute.
-  // Nếu không, bounds "trôi" theo item (khi 1 item duy nhất, camera clamp
-  // dõi theo item → mất biên chặn). Item đứng yên định biên là đúng semantics.
-  const recomputeDynamicZoomMin = () => {
+  // Vùng tài liệu tính từ MỌI object, gồm object đang kéo / resize: kéo ra xa là
+  // tài liệu giãn theo (engine chỉ giãn, không co → camera không dõi theo item).
+  // Zoom min + điểm hút zoom vẫn bỏ object đang mutate (item đứng yên định mức).
+  const syncCameraConstraints = () => {
     const engine = getCameraEngine();
     const viewport = engine.getViewport();
     if (viewport.width === 0 || viewport.height === 0) return;
-    const objects = useObjectsStore.getState().objects;
+    const { objects, loadedBoardId } = useObjectsStore.getState();
     const currentMode = useInteractionStore.getState().mode;
     const isMutating = currentMode === 'dragging' || currentMode === 'resizing';
     const selected = useSelectionStore.getState().selectedIds;
-    const iter = isMutating
-      ? Array.from(objects.values()).filter((o) => !selected.has(o.id))
-      : Array.from(objects.values());
-    const bounds = computeContentBounds(iter);
-    engine.setDynamicZoomMin(computeDynamicZoomMin(bounds, viewport, engine.getInterfaceScale()));
-    engine.setPanBounds(computePanBounds(bounds));
+    const all = Array.from(objects.values());
+    const still = isMutating ? all.filter((o) => !selected.has(o.id)) : all;
+    const stillBounds = computeContentBounds(still);
+    engine.setDynamicZoomMin(
+      computeDynamicZoomMin(stillBounds, viewport, engine.getInterfaceScale()),
+    );
+    // loadedBoardId: lúc chờ nạp board mới, store còn object board cũ → engine bỏ qua.
+    // Không kéo / resize thì `still` = `all` → dùng lại khung vừa tính (chạy mỗi phím).
+    engine.setPanBounds(isMutating ? computeContentBounds(all) : stillBounds, loadedBoardId);
+    // Cùng tập object với khung nội dung: bỏ item Khay chờ (INV-CANVAS-18).
+    engine.setAttractRects(still.filter((o) => o.unsortIndex === null).map((o) => o.geometry));
   };
 
   // Objects đổi (kéo từng frame, gõ chữ) → tính lại qua subscribe, không render lại
@@ -135,16 +141,16 @@ export function CanvasSurface({ boardId }: { boardId: string }) {
   useEffect(
     () =>
       useObjectsStore.subscribe((s, prev) => {
-        if (s.objects !== prev.objects) recomputeDynamicZoomMin();
+        if (s.objects !== prev.objects) syncCameraConstraints();
       }),
     // Không cần deps: recompute chỉ đọc getState(), không giữ giá trị render.
     [],
   );
 
   useEffect(() => {
-    recomputeDynamicZoomMin();
-    // mode đổi khi vào/thoát drag → recompute sau drop để pan bounds ôm lại vị
-    // trí mới của item vừa move.
+    syncCameraConstraints();
+    // mode đổi khi vào/thoát kéo → tính lại sau khi thả: zoom min + điểm hút gồm
+    // lại item vừa di chuyển.
   }, [mode, interfaceSize]);
 
   // --- Wheel handler: pan mặc định, Ctrl+wheel zoom ---
@@ -152,17 +158,20 @@ export function CanvasSurface({ boardId }: { boardId: string }) {
     const el = surfaceRef.current;
     if (!el) return;
     const engine = getCameraEngine();
+    const classify = createWheelClassifier();
 
     const onWheel = (e: WheelEvent) => {
       const rect = el.getBoundingClientRect();
       const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
       const { dx: rawDx, dy: rawDy } = normalizeWheelDelta(e);
+      const touchpad = classify(e, e.timeStamp) === 'touchpad';
 
-      // Ctrl+wheel (hoặc pinch trackpad Mac = ctrlKey=true) → zoom around cursor.
-      // Momentum: mỗi notch bơm impulse, engine tự glide liên tục.
+      // Ctrl+wheel (hoặc pinch touchpad, trình duyệt gửi ctrlKey=true) → zoom quanh con trỏ.
+      // Touchpad → zoom liên tục, áp thẳng; chuột → 1 nấc / sự kiện.
       if (isZoomWheel(e)) {
         e.preventDefault();
-        engine.zoomImpulse(pointer, rawDy);
+        if (touchpad) engine.zoomContinuous(pointer, rawDy);
+        else engine.zoomImpulse(pointer, rawDy);
         return;
       }
 
@@ -174,8 +183,15 @@ export function CanvasSurface({ boardId }: { boardId: string }) {
         dx = dy;
         dy = 0;
       }
-      // panSmooth: engine ramp ~80ms → wheel notch (deltaY=100) glide thay vì jump.
-      const speed = SCROLL_SPEED_FACTOR[useCanvasSettingsStore.getState().scrollSpeed];
+      const scrollSpeed = useCanvasSettingsStore.getState().scrollSpeed;
+      if (touchpad) {
+        // Touchpad: theo ngón tay ngay, không ramp.
+        const speed = TOUCHPAD_SPEED_FACTOR[scrollSpeed];
+        engine.panDirect({ x: -dx * speed, y: -dy * speed });
+        return;
+      }
+      // Chuột: ramp → nấc lăn (deltaY=100) trượt thay vì nhảy.
+      const speed = SCROLL_SPEED_FACTOR[scrollSpeed];
       engine.panSmooth({ x: -dx * speed, y: -dy * speed });
     };
 

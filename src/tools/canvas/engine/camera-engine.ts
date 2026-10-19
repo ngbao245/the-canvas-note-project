@@ -10,23 +10,36 @@
 //     biến thành sliding continuous.
 //   - DOM write trực tiếp qua ref (wrapper + grid), bypass React re-render frame.
 //   - Notify listeners sau mỗi flush → store snapshot 60Hz throttled.
-//   - Dynamic zoom min (content-aware) + pan bounds clamp (content-aware).
-//   - Persist debounce 500ms trên targetRef (goal user cuối).
+//   - Dynamic zoom min (content-aware).
+//   - Giới hạn pan 3 lớp (`pan-bounds.ts`, spec `canvas-pan-bounce`):
+//       docBounds  = vùng tài liệu, chỉ giãn trong phiên board, reset khi đổi board.
+//       phạm vi    = tính lúc dùng từ docBounds × zoom + viewport.
+//       gestureRaw = vị trí thô lúc đang kéo màn / lăn; target = bản kéo lố
+//                    của nó. Hết cử chỉ → target về phạm vi, ramp đưa current về.
+//   - Persist debounce 500ms trên targetRef đã chặn cứng (không lưu chỗ lố).
 // ============================================================
 
 import type { Camera } from '../types';
 import { ZOOM_MIN, ZOOM_MAX } from '../types';
-import type { Point } from './coord';
+import { screenToCanvas, type Point } from './coord';
 import {
   clampZoom,
   panBy,
   resetCamera,
   zoomAroundPoint,
-  zoomByFactor,
+  solveZoomAnchor,
   fitBounds,
   type Bounds,
 } from './camera';
-import { clampCameraToBounds } from './pan-bounds';
+import {
+  attractPointerToNearest,
+  clampCameraToBounds,
+  computeScrollRegion,
+  sameBounds,
+  softClampCamera,
+  unionBounds,
+  unsoftCamera,
+} from './pan-bounds';
 import { computeGridLod } from './grid-lod';
 import { INTERFACE_SCALE, getInterfaceScale, useInterfaceStore } from '@/stores/interface-store';
 
@@ -39,6 +52,11 @@ import { INTERFACE_SCALE, getInterfaceScale, useInterfaceStore } from '@/stores/
  * Alpha 0.35 cũ settle 183ms → có gap "đứng yên" giữa notch → khực khựng.
  */
 const ZOOM_RAMP_ALPHA = 0.2;
+/**
+ * Ramp cho pinch: đuổi nhanh hơn nấc chuột (~5 khung) → vẫn mượt nhưng bám tay.
+ * Áp thẳng không ramp thì mỗi sự kiện là 1 bước nhảy nhỏ, mất mượt (bạn báo 2026-10-16).
+ */
+const PINCH_RAMP_ALPHA = 0.25;
 const ZOOM_LOG_SNAP_THRESHOLD = 0.004;
 const XY_SNAP_THRESHOLD = 0.1;
 
@@ -73,8 +91,37 @@ const ZOOM_STEP_OUT = 0.75;
 /** Ngừng lăn >= ngưỡng này (ms) mới nhả detent để vượt 100%. */
 const DETENT_RELEASE_MS = 250;
 
+// --- Zoom liên tục (pinch touchpad) ---
+
+/**
+ * log2 zoom đổi trên mỗi px delta. Chrome quy pinch thành deltaY sao cho tỉ lệ
+ * ≈ exp(-deltaY / 100) → log2 = deltaY / (100 · ln2) ≈ 0.0144/px: zoom đúng
+ * theo tay. Bản cũ 0.01 chỉ ~70% tay (bạn báo pinch ì, 2026-10-16).
+ */
+const PINCH_ZOOM_SPEED = 1 / (100 * Math.LN2);
+
+/** Quãng phải đẩy thêm (log2) sau khi kẹp 100% mới vượt. 0.12 ≈ 9% (bạn chốt 2026-10-16, trước 0.3). */
+const PINCH_DETENT_LOG = 0.12;
+
 /** Debounce persist camera state ra IndexedDB. */
 const PERSIST_DEBOUNCE_MS = 500;
+
+/**
+ * Lăn / cuộn touchpad không có sự kiện "thả": ngừng lăn quãng này thì coi như
+ * hết cử chỉ, camera đang lố trượt về rìa. Touchpad còn quán tính thì sự kiện
+ * vẫn tới, màn đứng ở chỗ lố tới khi hết. Số Kiro tự chọn, đổi được.
+ */
+const WHEEL_SETTLE_MS = 60;
+
+/**
+ * Touchpad đang lố: debounce có trần.
+ * - Mỗi sự kiện lúc lố hẹn lại DEBOUNCE: còn vuốt thì còn giữ lố, ngừng là về.
+ * - Tính từ lúc bắt đầu lố, giữ tối đa MAX_HOLD dù sự kiện còn tới: Windows gửi
+ *   quán tính 1-2 giây sau khi nhấc tay, debounce thuần thì phải chờ hết quán
+ *   tính mới về (bạn báo 2026-10-16).
+ */
+const TOUCHPAD_OVERSCROLL_DEBOUNCE_MS = 80;
+const TOUCHPAD_OVERSCROLL_MAX_HOLD_MS = 280;
 
 // --- Types ---
 
@@ -109,10 +156,32 @@ export class CameraEngine {
   private dynamicMin: number = ZOOM_MIN;
   private readonly maxZoom: number = ZOOM_MAX;
 
-  private panBoundsRef: Bounds | null = null;
+  /**
+   * Vùng tài liệu của board đang xem: hợp mọi vùng đã nhận trong phiên board,
+   * chỉ giãn. Null = chưa biết (vừa đổi board, object chưa nạp) → không chặn.
+   */
+  private docBounds: Bounds | null = null;
+  /** Board mà docBounds thuộc về. Khung bao của board khác bị bỏ qua. */
+  private docBoardId: string | null = null;
+  /** Vị trí thô (theo tay, không chặn) của cử chỉ kéo màn / lăn đang chạy. */
+  private gestureRaw: { x: number; y: number } | null = null;
+  private pointerPanActive = false;
+  private wheelSettleTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * Sau khi touchpad lố rồi trượt về: chiều bị chặn mỗi trục (1 / -1, 0 = không).
+   * Quán tính còn tới thì bỏ phần đẩy ra ngoài, không lố lại. Hết khi nghỉ
+   * quá WHEEL_SETTLE_MS (cử chỉ mới).
+   */
+  private touchpadBlock: { x: number; y: number } | null = null;
+  private lastTouchpadAt = -Infinity;
+  /** Lúc touchpad bắt đầu lố (performance.now), null = không lố. Dùng cho trần giữ lố. */
+  private overscrollStartAt: number | null = null;
+  private attractRects: readonly Bounds[] = [];
   private viewportRef: { width: number; height: number } = { width: 0, height: 0 };
 
   private rampRafId: number | null = null;
+  /** Độ đuổi của ramp hiện tại: pinch nhanh hơn, còn lại ZOOM_RAMP_ALPHA. */
+  private rampAlpha = ZOOM_RAMP_ALPHA;
   private renderRafId: number | null = null;
   private renderDirty = false;
 
@@ -133,6 +202,9 @@ export class CameraEngine {
   private detentHeld = false;
   // Timestamp notch zoom gần nhất (ms) — đo gap để phát hiện "ngừng lăn".
   private lastZoomNotchAt = 0;
+  // Kẹp 100% cho zoom liên tục: chiều đang bị kẹp (1 in, -1 out, 0 không kẹp) + quãng đã đẩy thêm.
+  private pinchDetent = 0;
+  private pinchDetentAccum = 0;
 
   private listeners = new Set<CameraListener>();
   private persistCb: PersistCallback | null = null;
@@ -198,41 +270,134 @@ export class CameraEngine {
     // camera đang zoom < min về min. User đang xa content là chủ ý.
   }
 
-  setPanBounds(bounds: Bounds | null): void {
-    this.panBoundsRef = bounds;
-    const clamped = clampCameraToBounds(this.targetRef, bounds, this.viewportRef);
-    if (clamped !== this.targetRef) {
-      this.targetRef = clamped;
-      this.scheduleRamp();
-      this.schedulePersist();
+  /** Khung từng object trên canvas (canvas-space), để zoom in hút về object gần chuột nhất. */
+  setAttractRects(rects: readonly Bounds[]): void {
+    this.attractRects = rects;
+  }
+
+  /**
+   * Vào board khác: quên vùng tài liệu cũ. Gọi TRƯỚC khi nạp camera board mới,
+   * để camera không bị chặn theo vùng của board cũ. Cùng board thì giữ (vùng
+   * đã giãn không mất khi effect chạy lại).
+   */
+  resetDocBounds(boardId: string): void {
+    if (boardId === this.docBoardId) return;
+    this.docBoardId = boardId;
+    this.docBounds = null;
+    this.dropGesture();
+  }
+
+  /**
+   * Nhận khung bao object (gồm cả object đang kéo) của board `boardId`.
+   * Vùng tài liệu = hợp với vùng cũ → chỉ giãn. Khung của board khác (store
+   * object còn giữ board cũ lúc chờ nạp) bị bỏ qua.
+   */
+  setPanBounds(content: Bounds | null, boardId: string | null): void {
+    if (boardId === null || boardId !== this.docBoardId) return;
+    const region = computeScrollRegion(content);
+    const prev = this.docBounds;
+    const next = prev ? unionBounds(prev, region) : region;
+    if (prev && sameBounds(prev, next)) return;
+    this.docBounds = next;
+
+    if (this.gestureRaw) {
+      this.retargetGesture();
+      return;
     }
+    if (!this.clampTarget()) return;
+    if (!prev) {
+      // Lần đầu dựng vùng sau khi vào board: đặt thẳng, không cho thấy camera trượt lúc nạp.
+      this.cancelRamp();
+      this.currentRef = this.targetRef;
+      this.scheduleRender();
+    }
+    this.schedulePersist();
   }
 
   setViewport(width: number, height: number): void {
     if (this.viewportRef.width === width && this.viewportRef.height === height) return;
     this.viewportRef = { width, height };
-    const clamped = clampCameraToBounds(this.targetRef, this.panBoundsRef, this.viewportRef);
-    if (clamped !== this.targetRef) {
-      this.targetRef = clamped;
-      this.scheduleRamp();
-    }
+    if (this.gestureRaw) this.retargetGesture();
+    else this.clampTarget();
   }
 
   /**
    * Đổi tỉ lệ giao diện. Zoom board giữ nguyên, x/y giữ nguyên → nội dung phóng quanh gốc toạ độ
-   * (Milanote parity). Vẽ lại ngay, không tween, không persist (zoom board không đổi).
+   * (Milanote parity). Zoom vẽ lại ngay; x/y lệch phạm vi mới thì trượt về bằng ramp, không nhảy.
+   * Không persist (zoom board không đổi).
    */
   setInterfaceScale(next: number): void {
     if (!(next > 0) || next === this.scale) return;
     const ratio = next / this.scale;
     this.scale = next;
     this.cancelRamp();
+    this.dropGesture();
     this.zoomAnchor = null;
     this.detentHeld = false;
     const scaled: Camera = { ...this.targetRef, zoom: this.targetRef.zoom * ratio };
-    this.targetRef = clampCameraToBounds(scaled, this.panBoundsRef, this.viewportRef);
-    this.currentRef = this.targetRef;
+    this.currentRef = scaled;
+    this.targetRef = clampCameraToBounds(scaled, this.docBounds, this.viewportRef);
     this.scheduleRender();
+    if (this.targetRef !== scaled) this.scheduleRamp();
+  }
+
+  // --- Cử chỉ kéo màn / lăn (kéo lố) ---
+
+  /**
+   * Chặn cứng đích vào phạm vi; lệch thì ramp đưa camera đang vẽ về (không nhảy).
+   * Trả true nếu đích đổi.
+   */
+  private clampTarget(): boolean {
+    const clamped = clampCameraToBounds(this.targetRef, this.docBounds, this.viewportRef);
+    if (clamped === this.targetRef) return false;
+    this.targetRef = clamped;
+    this.scheduleRamp();
+    return true;
+  }
+
+  /** Đích lúc đang trong cử chỉ = bản kéo lố của vị trí thô, ở zoom đích. */
+  private retargetGesture(): void {
+    if (!this.gestureRaw) return;
+    this.targetRef = this.softTarget(this.gestureRaw);
+    this.scheduleRamp();
+  }
+
+  private softTarget(raw: { x: number; y: number }): Camera {
+    return softClampCamera({ ...raw, zoom: this.targetRef.zoom }, this.docBounds, this.viewportRef);
+  }
+
+  /**
+   * Cộng `delta` vào vị trí thô rồi đặt đích kéo lố. Cử chỉ mới: vị trí thô
+   * suy ngược từ đích (đích có thể còn lố từ cử chỉ trước).
+   */
+  private moveGesture(delta: Point): void {
+    const raw =
+      this.gestureRaw ?? unsoftCamera(this.targetRef, this.docBounds, this.viewportRef);
+    this.gestureRaw = { x: raw.x + delta.x, y: raw.y + delta.y };
+    this.targetRef = this.softTarget(this.gestureRaw);
+  }
+
+  private clearWheelTimer(): void {
+    if (this.wheelSettleTimer !== null) {
+      clearTimeout(this.wheelSettleTimer);
+      this.wheelSettleTimer = null;
+    }
+  }
+
+  /** Hết cử chỉ: đích về phạm vi, ramp có sẵn đưa camera trượt về (giảm tốc, không nảy). */
+  private endGesture(): void {
+    const hadGesture = this.gestureRaw !== null;
+    this.dropGesture();
+    if (!hadGesture) return;
+    this.clampTarget();
+    this.schedulePersist();
+  }
+
+  /** Bỏ trạng thái cử chỉ, không tự chặn đích (nơi gọi tự đặt đích mới). */
+  private dropGesture(): void {
+    this.clearWheelTimer();
+    this.overscrollStartAt = null;
+    this.gestureRaw = null;
   }
 
   /** Giới hạn zoom quy ra zoom hiệu dụng. */
@@ -259,11 +424,12 @@ export class CameraEngine {
       y: camera.y,
       zoom: this.boardToEff(camera.zoom),
     };
-    const clamped = clampCameraToBounds(clampedZoom, this.panBoundsRef, this.viewportRef);
+    const clamped = clampCameraToBounds(clampedZoom, this.docBounds, this.viewportRef);
     this.targetRef = clamped;
     this.currentRef = clamped;
     this.lastPersistedRef = clamped;
     this.cancelRamp();
+    this.dropGesture();
     this.detentHeld = false; // reset detent, tránh kẹt sau load
     this.lastZoomNotchAt = 0;
     this.zoomAnchor = null;
@@ -271,74 +437,181 @@ export class CameraEngine {
   }
 
   /**
-   * Cache anchor screen + world tại thời điểm zoom kick. Trong rampStep, x, y
-   * sẽ derive từ zoom(t) qua công thức screen = anchor.world * zoom + camera.xy
-   * → giữ điểm dưới cursor cố định world suốt ramp, không drift.
+   * Mọi kiểu zoom quanh 1 điểm đi qua đây.
+   * 1. Zoom in: chuột ở chỗ trống → neo kéo về điểm gần nhất trên object gần
+   *    chuột nhất (`attractPointerToNearest`).
+   * 2. Đích = zoom quanh điểm neo rồi chặn giới hạn pan.
+   * 3. Neo của hiệu ứng zoom giải ngược từ camera đang vẽ tới đích
+   *    (`solveZoomAnchor`) → đường đi là 1 phép zoom thẳng, tới nơi trùng đích.
+   *    Bản cũ neo ở chỗ chuột rồi mới chặn → camera chạy theo chuột, đập vào
+   *    mép giới hạn rồi bẻ hướng; lăn dồn thì lệch đích, cuối hiệu ứng nhảy.
    *
-   * Dùng CURRENT camera (không phải target) làm reference vì current là snapshot
-   * DOM đang render — đảm bảo tại thời điểm anchor cache, invariant đang giữ.
+   * `direct` (pinch / zoom liên tục): neo đúng chỗ ngón tay, không hút về object,
+   * ramp đuổi nhanh hơn (PINCH_RAMP_ALPHA) để vừa mượt vừa bám tay.
    */
-  private cacheZoomAnchor(pointer: Point): void {
-    const cam = this.currentRef;
-    this.zoomAnchor = {
-      screenX: pointer.x,
-      screenY: pointer.y,
-      worldX: (pointer.x - cam.x) / cam.zoom,
-      worldY: (pointer.y - cam.y) / cam.zoom,
-    };
+  private zoomTo(pointer: Point, effZoom: number, direct = false): void {
+    // Zoom không kéo lố: đang lố thì về rìa trước (đích chặn cứng), rồi zoom từ đó.
+    this.endGesture();
+    const prev = this.targetRef;
+    const anchor =
+      !direct && effZoom > prev.zoom
+        ? attractPointerToNearest(pointer, prev, this.attractRects)
+        : pointer;
+    this.targetRef = clampCameraToBounds(
+      zoomAroundPoint(prev, anchor, effZoom, this.minEff(), this.maxEff()),
+      this.docBounds,
+      this.viewportRef,
+    );
+    const cur = this.currentRef;
+    // Camera đang vẽ còn ở chỗ lố: không neo (nhánh neo chặn cứng từng khung →
+    // khung đầu nhảy vào rìa). Lerp thẳng x / y + log zoom tới đích.
+    const curOutside = clampCameraToBounds(cur, this.docBounds, this.viewportRef) !== cur;
+    this.rampAlpha = direct ? PINCH_RAMP_ALPHA : ZOOM_RAMP_ALPHA;
+    const p = curOutside ? null : solveZoomAnchor(cur, this.targetRef);
+    const world = p ? screenToCanvas(p, cur) : null;
+    this.zoomAnchor =
+      p && world ? { screenX: p.x, screenY: p.y, worldX: world.x, worldY: world.y } : null;
+    this.scheduleRamp();
+    this.schedulePersist();
   }
 
-  /** Pan immediate: cả 2 refs update sync. Dùng cho pointer drag. */
+  /**
+   * Pan tức thì, chặn cứng, không kéo lố. Dùng cho tự cuộn lúc kéo object
+   * (`useEdgePan`): object bám chuột theo camera đang vẽ, lố thì lệch chuột.
+   */
   pan(delta: Point): void {
     this.zoomAnchor = null; // pan phá anchor cursor
+    this.dropGesture();
     this.targetRef = clampCameraToBounds(
       panBy(this.targetRef, delta),
-      this.panBoundsRef,
+      this.docBounds,
       this.viewportRef,
     );
     this.currentRef = clampCameraToBounds(
       panBy(this.currentRef, delta),
-      this.panBoundsRef,
+      this.docBounds,
       this.viewportRef,
     );
     this.scheduleRender();
     this.schedulePersist();
   }
 
-  /** Pan smoothed qua ramp. Dùng cho wheel/trackpad scroll. */
+  /**
+   * Kéo màn bằng tay (Space, chuột giữa, Ctrl + kéo): 1:1 trong phạm vi, lố
+   * thì nặng dần, có trần. Gọi `endPointerPan` lúc thả để trượt về.
+   */
+  panElastic(delta: Point): void {
+    this.pointerPanActive = true;
+    this.applyGestureNow(delta);
+  }
+
+  /**
+   * Pan touchpad 2 ngón: 1:1 theo tay, không qua ramp (bản cũ đi chung đường
+   * chuột → trễ ~4 khung + trôi thêm, bạn báo nặng tay 2026-10-16). Lố được;
+   * ngừng WHEEL_SETTLE_MS thì trượt về như lăn chuột.
+   */
+  panDirect(delta: Point): void {
+    const now = performance.now();
+    if (now - this.lastTouchpadAt > WHEEL_SETTLE_MS) this.touchpadBlock = null; // cử chỉ mới
+    this.lastTouchpadAt = now;
+
+    const block = this.touchpadBlock;
+    const d = block
+      ? {
+          x: block.x !== 0 && Math.sign(delta.x) === block.x ? 0 : delta.x,
+          y: block.y !== 0 && Math.sign(delta.y) === block.y ? 0 : delta.y,
+        }
+      : delta;
+    if (d.x === 0 && d.y === 0) return;
+    this.applyGestureNow(d);
+
+    if (this.overscrollDir() === null) {
+      this.overscrollStartAt = null;
+      this.armWheelSettle();
+      return;
+    }
+    // Đang lố: debounce theo sự kiện, nhưng không quá trần tính từ lúc bắt đầu lố.
+    this.overscrollStartAt ??= now;
+    const left = this.overscrollStartAt + TOUCHPAD_OVERSCROLL_MAX_HOLD_MS - now;
+    const wait = Math.max(0, Math.min(TOUCHPAD_OVERSCROLL_DEBOUNCE_MS, left));
+    // Chặn chiều vừa lố trước khi trượt về: quán tính touchpad không đẩy ra lần nữa.
+    this.armWheelSettle(wait, () => {
+      this.touchpadBlock = this.overscrollDir();
+    });
+  }
+
+  /** Chiều đích đang lố mỗi trục (cùng dấu với delta đã đẩy ra), null nếu trong phạm vi. */
+  private overscrollDir(): { x: number; y: number } | null {
+    const clamped = clampCameraToBounds(this.targetRef, this.docBounds, this.viewportRef);
+    if (clamped === this.targetRef) return null;
+    return {
+      x: Math.sign(this.targetRef.x - clamped.x),
+      y: Math.sign(this.targetRef.y - clamped.y),
+    };
+  }
+
+  /** Cộng delta vào cử chỉ, camera đang vẽ theo ngay (không chờ ramp). */
+  private applyGestureNow(delta: Point): void {
+    this.zoomAnchor = null;
+    const prevTarget = this.targetRef;
+    this.moveGesture(delta);
+    if (this.rampRafId !== null) {
+      // Ramp còn chạy (vừa zoom / lăn): dời current cùng lượng, ramp tự khép phần lệch.
+      this.currentRef = {
+        ...this.currentRef,
+        x: this.currentRef.x + (this.targetRef.x - prevTarget.x),
+        y: this.currentRef.y + (this.targetRef.y - prevTarget.y),
+      };
+    } else {
+      this.currentRef = this.targetRef;
+    }
+    this.scheduleRender();
+    this.schedulePersist();
+  }
+
+  /** Thả / huỷ kéo màn. Còn đang lăn thì để hẹn giờ lăn kết thúc cử chỉ. */
+  endPointerPan(): void {
+    this.pointerPanActive = false;
+    if (this.wheelSettleTimer === null) this.endGesture();
+  }
+
+  /**
+   * Pan mượt qua ramp, dùng cho lăn chuột (nấc to, cần trượt). Lố được như kéo
+   * tay; ngừng lăn WHEEL_SETTLE_MS thì trượt về.
+   */
   panSmooth(delta: Point): void {
     this.zoomAnchor = null; // pan phá anchor cursor
-    this.targetRef = clampCameraToBounds(
-      panBy(this.targetRef, delta),
-      this.panBoundsRef,
-      this.viewportRef,
-    );
+    this.rampAlpha = ZOOM_RAMP_ALPHA;
+    this.moveGesture(delta);
     this.scheduleRamp();
     this.schedulePersist();
+    this.armWheelSettle();
+  }
+
+  /**
+   * Lăn không có sự kiện thả: hẹn lại mỗi sự kiện, hết hẹn thì kết thúc cử chỉ.
+   * Đang kéo màn bằng tay thì để `endPointerPan` kết thúc. `beforeEnd` chạy ngay
+   * trước khi kết thúc (touchpad lố: ghi chiều cần chặn).
+   */
+  private armWheelSettle(waitMs = WHEEL_SETTLE_MS, beforeEnd?: () => void): void {
+    this.clearWheelTimer();
+    this.wheelSettleTimer = setTimeout(() => {
+      this.wheelSettleTimer = null;
+      this.overscrollStartAt = null;
+      if (this.pointerPanActive) return;
+      beforeEnd?.();
+      this.endGesture();
+    }, waitMs);
   }
 
   /** Zoom tới zoom board cụ thể quanh 1 điểm screen. */
   zoomAt(pointer: Point, newZoom: number): void {
-    this.cacheZoomAnchor(pointer);
-    this.targetRef = clampCameraToBounds(
-      zoomAroundPoint(this.targetRef, pointer, newZoom * this.scale, this.minEff(), this.maxEff()),
-      this.panBoundsRef,
-      this.viewportRef,
-    );
-    this.scheduleRamp();
-    this.schedulePersist();
+    this.zoomTo(pointer, newZoom * this.scale);
   }
 
   /** Zoom theo factor (compound trên target) + ramp chase. Cho keyboard/programmatic. */
   zoomByAt(pointer: Point, factor: number): void {
-    this.cacheZoomAnchor(pointer);
-    this.targetRef = clampCameraToBounds(
-      zoomByFactor(this.targetRef, pointer, factor, this.minEff(), this.maxEff()),
-      this.panBoundsRef,
-      this.viewportRef,
-    );
-    this.scheduleRamp();
-    this.schedulePersist();
+    this.zoomTo(pointer, this.targetRef.zoom * factor);
   }
 
   /**
@@ -386,16 +659,48 @@ export class CameraEngine {
     this.applyStepTarget(pointer, this.boardToEff(next));
   }
 
+  /**
+   * Zoom liên tục theo độ lớn delta (pinch touchpad, cuộn 2 ngón kèm Ctrl).
+   * Touchpad bắn ~60 sự kiện/giây, delta nhỏ; coi mỗi sự kiện là 1 nấc như
+   * `zoomImpulse` thì 40% → 100% → 300% chỉ trong vài khung (bạn báo 2026-10-15).
+   *
+   * Mốc 100% vẫn khựng, nhưng theo quãng đẩy chứ không theo thời gian (pinch
+   * không có "nhả tay" rõ): băng qua 100% thì kẹp lại, phải đẩy tiếp thêm
+   * PINCH_DETENT_LOG cùng chiều mới vượt. Đổi chiều thì nhả kẹp ngay.
+   */
+  zoomContinuous(pointer: Point, deltaY: number): void {
+    if (deltaY === 0) return;
+    const dLog = -deltaY * PINCH_ZOOM_SPEED; // log2 thay đổi
+    const current = this.targetRef.zoom / this.scale;
+
+    if (this.pinchDetent !== 0) {
+      if (Math.sign(dLog) !== this.pinchDetent) {
+        this.pinchDetent = 0;
+        this.pinchDetentAccum = 0;
+      } else {
+        this.pinchDetentAccum += Math.abs(dLog);
+        if (this.pinchDetentAccum < PINCH_DETENT_LOG) return;
+        this.pinchDetent = 0;
+        this.pinchDetentAccum = 0;
+      }
+      this.zoomTo(pointer, this.boardToEff(current * Math.pow(2, dLog)), true);
+      return;
+    }
+
+    const next = current * Math.pow(2, dLog);
+    const crosses = (current > 1 && next < 1) || (current < 1 && next > 1);
+    if (crosses) {
+      this.pinchDetent = Math.sign(dLog);
+      this.pinchDetentAccum = 0;
+      this.zoomTo(pointer, this.scale, true);
+      return;
+    }
+    this.zoomTo(pointer, this.boardToEff(next), true);
+  }
+
   /** Set target zoom (hiệu dụng) quanh anchor + kick ramp + persist. Dùng bởi zoomImpulse. */
   private applyStepTarget(pointer: Point, targetZoom: number): void {
-    this.cacheZoomAnchor(pointer);
-    this.targetRef = clampCameraToBounds(
-      zoomAroundPoint(this.targetRef, pointer, targetZoom, this.minEff(), this.maxEff()),
-      this.panBoundsRef,
-      this.viewportRef,
-    );
-    this.scheduleRamp();
-    this.schedulePersist();
+    this.zoomTo(pointer, targetZoom);
   }
 
   /** Zoom quanh center viewport. Dùng cho keyboard shortcut. */
@@ -407,19 +712,12 @@ export class CameraEngine {
 
   setZoom(zoom: number, viewport?: { width: number; height: number }): void {
     const vp = viewport ?? this.viewportRef;
-    const anchor = { x: vp.width / 2, y: vp.height / 2 };
-    this.cacheZoomAnchor(anchor);
-    this.targetRef = clampCameraToBounds(
-      zoomAroundPoint(this.targetRef, anchor, zoom * this.scale, this.minEff(), this.maxEff()),
-      this.panBoundsRef,
-      this.viewportRef,
-    );
-    this.scheduleRamp();
-    this.schedulePersist();
+    this.zoomTo({ x: vp.width / 2, y: vp.height / 2 }, zoom * this.scale);
   }
 
   fit(bounds: Bounds, viewport: { width: number; height: number }): void {
     this.zoomAnchor = null; // fit đổi cả x, y, zoom — không quanh cursor
+    this.dropGesture();
     const target = fitBounds(bounds, viewport);
     this.targetRef = clampCameraToBounds(
       {
@@ -428,7 +726,7 @@ export class CameraEngine {
         // fitBounds tính zoom hiệu dụng vừa khung → clamp theo giới hạn hiệu dụng.
         zoom: clampZoom(target.zoom, this.minEff(), this.maxEff()),
       },
-      this.panBoundsRef,
+      this.docBounds,
       this.viewportRef,
     );
     this.scheduleRamp();
@@ -437,9 +735,10 @@ export class CameraEngine {
 
   reset(): void {
     this.zoomAnchor = null;
+    this.dropGesture();
     const initial = resetCamera();
     initial.zoom = this.boardToEff(1);
-    this.targetRef = clampCameraToBounds(initial, this.panBoundsRef, this.viewportRef);
+    this.targetRef = clampCameraToBounds(initial, this.docBounds, this.viewportRef);
     this.scheduleRamp();
     this.schedulePersist();
   }
@@ -460,8 +759,10 @@ export class CameraEngine {
     }
     if (!this.persistCb) return;
     if (this.targetRef === this.lastPersistedRef) return;
+    // Lưu vị trí đã chặn cứng: đang lố mà F5 / đổi board thì khôi phục trong rìa.
     // IDB lưu zoom board, không gồm tỉ lệ giao diện.
-    const snapshot: Camera = { ...this.targetRef, zoom: this.targetRef.zoom / this.scale };
+    const settled = clampCameraToBounds(this.targetRef, this.docBounds, this.viewportRef);
+    const snapshot: Camera = { ...settled, zoom: settled.zoom / this.scale };
     this.lastPersistedRef = this.targetRef;
     try {
       this.persistCb(snapshot);
@@ -472,6 +773,7 @@ export class CameraEngine {
 
   destroy(): void {
     this.cancelRamp();
+    this.clearWheelTimer();
     if (this.renderRafId !== null) {
       cancelAnimationFrame(this.renderRafId);
       this.renderRafId = null;
@@ -531,27 +833,35 @@ export class CameraEngine {
     if (done) {
       this.currentRef = { ...this.targetRef };
       this.zoomAnchor = null; // ramp settled → hết cần lock anchor
+      this.rampAlpha = ZOOM_RAMP_ALPHA;
       this.applyTransforms();
       this.notifyListeners();
       return;
     }
 
-    const nextZoom = Math.pow(2, logCurrent + dLog * ZOOM_RAMP_ALPHA);
+    const alpha = this.rampAlpha;
+    const nextZoom = Math.pow(2, logCurrent + dLog * alpha);
 
     if (this.zoomAnchor) {
       // Zoom around cursor: derive x, y từ zoom(t) giữ anchor invariant.
       // screen_at_cursor = anchor.worldX * zoom + camera.x → camera.x = screen - worldX*zoom.
-      // Bỏ qua targetRef.x/y linear lerp — anchor derive luôn chính xác.
-      this.currentRef = {
-        x: this.zoomAnchor.screenX - this.zoomAnchor.worldX * nextZoom,
-        y: this.zoomAnchor.screenY - this.zoomAnchor.worldY * nextZoom,
-        zoom: nextZoom,
-      };
+      // Neo đã giải từ đích nên đường đi gần như luôn trong giới hạn; vẫn chặn
+      // từng khung vì giới hạn không tuyến tính theo zoom (phần "giữ lại trên
+      // màn" có trần). Không chặn → camera ra ngoài, lần kéo sau giật về.
+      this.currentRef = clampCameraToBounds(
+        {
+          x: this.zoomAnchor.screenX - this.zoomAnchor.worldX * nextZoom,
+          y: this.zoomAnchor.screenY - this.zoomAnchor.worldY * nextZoom,
+          zoom: nextZoom,
+        },
+        this.docBounds,
+        this.viewportRef,
+      );
     } else {
       // Pan/fit/reset không có anchor → lerp x, y linear như cũ.
       this.currentRef = {
-        x: this.currentRef.x + dx * ZOOM_RAMP_ALPHA,
-        y: this.currentRef.y + dy * ZOOM_RAMP_ALPHA,
+        x: this.currentRef.x + dx * alpha,
+        y: this.currentRef.y + dy * alpha,
         zoom: nextZoom,
       };
     }
@@ -610,6 +920,7 @@ export class CameraEngine {
     }, PERSIST_DEBOUNCE_MS);
   }
 }
+
 
 // --- Singleton ---
 const engine = new CameraEngine({ x: 0, y: 0, zoom: 1 });
