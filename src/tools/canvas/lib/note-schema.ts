@@ -1,8 +1,13 @@
-import { getSchema, type Extensions } from '@tiptap/react';
+import { getSchema, type Attributes, type Extensions } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { Color } from '@tiptap/extension-color';
+import { Highlight } from '@tiptap/extension-highlight';
+import { TextAlign } from '@tiptap/extension-text-align';
 import { DOMParser as PMDOMParser, DOMSerializer } from '@tiptap/pm/model';
 import { NoteBlockKeys } from './note-block-keys';
+import { NoteParagraphVariant } from './note-paragraph-variant';
 
 /**
  * Schema nội dung Note — nguồn chuẩn cho cả editor lẫn bộ lọc HTML.
@@ -13,8 +18,9 @@ import { NoteBlockKeys } from './note-block-keys';
  * thêm ở đây, cả 2 phía tự theo.
  */
 export const NOTE_SCHEMA_EXTENSIONS: Extensions = [
-  // StarterKit v3 đã gồm Link → tắt bản trong kit, dùng bản cấu hình riêng bên dưới
-  // (trước đây Link bị đăng ký 2 lần: cảnh báo "Duplicate extension names").
+  // StarterKit v3 đã gồm Link + Underline + Strike + Code → tắt Link trong kit,
+  // dùng bản cấu hình riêng bên dưới (tránh "Duplicate extension names").
+  // Underline / Strike / Code dùng thẳng từ kit (chỉ nối nút trong toolbar).
   StarterKit.configure({ link: false }),
   Link.configure({
     // Edit mode: click link không mở tab mới — user cần click để đặt caret sửa.
@@ -25,9 +31,48 @@ export const NOTE_SCHEMA_EXTENSIONS: Extensions = [
     // Mặc định extension-link đã chặn href `javascript:` / `data:` (isAllowedUri)
     // cả lúc parse lẫn lúc render → link độc bị bỏ mark, chỉ còn text.
   }),
+  // Màu chữ: TextStyle (mark <span style>) làm nền cho Color. Color set thuộc
+  // tính color vào TextStyle. Lưu hex trong body HTML (data color exception).
+  TextStyle,
+  Color,
+  // Tô nền chữ: Highlight multicolor (<mark data-color>). multicolor để lưu
+  // nhiều màu nền khác nhau, không chỉ 1 màu mặc định. Bản gốc đọc `data-color`
+  // thô rồi ghi thẳng vào `style` → HTML dán vào chèn được CSS lạ
+  // (`red;background-image:url(...)`). Lọc màu ngay lúc đọc.
+  Highlight.extend({
+    addAttributes() {
+      const parent: Attributes = this.parent?.() ?? {};
+      return {
+        ...parent,
+        color: {
+          ...parent.color,
+          parseHTML: (element: HTMLElement) =>
+            safeCssColor(element.getAttribute('data-color') || element.style.backgroundColor),
+        },
+      };
+    },
+  }).configure({ multicolor: true }),
+  // Căn lề đoạn: thuộc tính text-align cho heading + paragraph. Lưu attribute
+  // trong HTML. Bộ lọc giữ vì nằm trong schema.
+  TextAlign.configure({ types: ['heading', 'paragraph'] }),
+  // Small text + Callout: thuộc tính `data-variant` trên paragraph (không thêm
+  // node mới). Bộ lọc giữ vì nằm trong schema.
+  NoteParagraphVariant,
   // Mã từng khối (`data-key`). Nằm trong schema → bộ lọc HTML lúc hiển thị cũng giữ mã.
   NoteBlockKeys,
 ];
+
+/**
+ * Chỉ nhận màu dạng hex hoặc rgb()/rgba() (trình duyệt trả `style.backgroundColor`
+ * dạng rgb). Giá trị khác → null (bỏ màu, giữ chữ).
+ */
+function safeCssColor(value: string | null): string | null {
+  if (!value) return null;
+  const v = value.trim();
+  if (/^#[0-9a-f]{3,8}$/i.test(v)) return v;
+  if (/^rgba?\(\s*[\d.]+%?\s*(,\s*[\d.]+%?\s*){2,3}\)$/i.test(v)) return v;
+  return null;
+}
 
 // Dựng 1 lần, dùng lại. getSchema tốn công (resolve toàn bộ extension).
 let parser: PMDOMParser | null = null;

@@ -1,29 +1,40 @@
 /**
- * Palette 6 màu cho Note (Milanote parity). Data color = user chọn, KHÔNG phải
- * theme token → hard-code hex OK theo rule bibo (data color exception).
+ * Màu note (parity Milanote, spec `canvas-note-color`). Data color = người dùng
+ * chọn, KHÔNG phải theme token → hard-code hex OK.
  *
- * `null` (không có trong palette) = "mặc định" → ColorBar dùng `primary/60`
- * theme-aware.
+ * Lưu hex vào NoteData (`color` thanh, `background` nền, `textColor` chữ đi kèm),
+ * không lưu id (INV-NOTE-17): đổi bảng màu sau này không đổi màu note cũ.
  *
- * Lưu vào NoteData.color dưới dạng HEX string (không phải id) — user thấy đúng
- * màu cả khi Kiro đổi palette sau này (data-driven, không mapping runtime).
- *
- * Tên màu lưu dạng KEY dịch (`labelKey`), không lưu chữ: hằng số ngoài component chạy 1 lần
- * lúc tải file, lưu chữ ở đây thì đổi ngôn ngữ không cập nhật. Dịch lúc render bằng `t(labelKey)`.
+ * Popup Màu note dùng chung 2 hàng màu với board (`board-colors.ts`). Chữ note luôn
+ * tự tính theo nền (bạn chốt 2026-10-16); `textColor` của note cũ vẫn được đọc
+ * (`noteInkColor`), không tạo mới nữa.
  */
-import type { MessageKey } from '@/lib/i18n';
+import type { NoteData } from '../types';
+import { INK_ON_LIGHT, isLightHex } from './color-contrast';
 
-export interface NoteColorSwatch {
-  id: string;
-  hex: string;
-  labelKey: MessageKey;
+export type NoteColorFields = Pick<NoteData, 'color' | 'background' | 'textColor'>;
+
+/** Giá trị `background` đặc biệt: note không nền (thấy lưới canvas). */
+export const NOTE_BG_TRANSPARENT = 'transparent';
+
+/** Mực chữ trên nền tối: dịu hơn trắng tinh của board. */
+const INK_ON_DARK = '#f5f5f5';
+
+/** So màu không phân biệt hoa thường (ô chọn màu trình duyệt trả chữ thường). */
+export function sameColor(a: string | null, b: string | null): boolean {
+  if (a === null || b === null) return a === b;
+  return a.toLowerCase() === b.toLowerCase();
 }
 
-export const NOTE_COLOR_PALETTE: readonly NoteColorSwatch[] = [
-  { id: 'red', hex: '#f87171', labelKey: 'CANVAS.NOTE_COLOR.RED' },
-  { id: 'orange', hex: '#fb923c', labelKey: 'CANVAS.NOTE_COLOR.ORANGE' },
-  { id: 'yellow', hex: '#facc15', labelKey: 'CANVAS.NOTE_COLOR.YELLOW' },
-  { id: 'green', hex: '#4ade80', labelKey: 'CANVAS.NOTE_COLOR.GREEN' },
-  { id: 'blue', hex: '#60a5fa', labelKey: 'CANVAS.NOTE_COLOR.BLUE' },
-  { id: 'purple', hex: '#a78bfa', labelKey: 'CANVAS.NOTE_COLOR.PURPLE' },
-];
+/**
+ * Màu chữ của note: màu đi kèm → tự tương phản theo nền → null (màu chữ theme).
+ * Nền trong suốt / không nền → null.
+ */
+export function noteInkColor(fields: Pick<NoteData, 'background' | 'textColor'>): string | null {
+  if (fields.textColor) return fields.textColor;
+  const bg = fields.background;
+  if (!bg || bg === NOTE_BG_TRANSPARENT) return null;
+  const light = isLightHex(bg);
+  if (light === null) return null;
+  return light ? INK_ON_LIGHT : INK_ON_DARK;
+}

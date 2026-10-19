@@ -9,12 +9,31 @@ const EMPTY_BODY = '<p></p>';
  * Body đi vào DOM vẫn qua sanitizeNoteHtml ở nơi render.
  */
 export function parseNoteData(rawData: unknown): NoteData {
-  if (!rawData || typeof rawData !== 'object') {
-    return { body: EMPTY_BODY, color: null, heightMode: 'auto' };
-  }
-  const obj = rawData as Record<string, unknown>;
+  // Data thiếu / sai kiểu → đọc như object rỗng: mọi trường về mặc định.
+  // `parseNoteData(null)` là nguồn chuẩn của note mới (note-type `defaultData`).
+  const obj: Record<string, unknown> =
+    rawData && typeof rawData === 'object' ? (rawData as Record<string, unknown>) : {};
   const body = typeof obj.body === 'string' && obj.body.trim() !== '' ? obj.body : EMPTY_BODY;
-  const color = typeof obj.color === 'string' ? obj.color : null;
+  const color = stringOrNull(obj.color);
+  const background = stringOrNull(obj.background);
+  const textColor = stringOrNull(obj.textColor);
   const heightMode: NoteData['heightMode'] = obj.heightMode === 'fixed' ? 'fixed' : 'auto';
-  return { body, color, heightMode };
+  const locked = obj.locked === true;
+  return { body, color, background, textColor, heightMode, locked };
+}
+
+/**
+ * Object có đang bị khoá vị trí không (note + board tile có `data.locked`). Dùng ở
+ * hook kéo + resize để chặn di chuyển / đổi cỡ. Type khác → luôn false.
+ */
+export function isObjectLocked(type: string, data: unknown): boolean {
+  if (type === 'note') return parseNoteData(data).locked;
+  if (type === 'board') {
+    return !!data && typeof data === 'object' && (data as Record<string, unknown>).locked === true;
+  }
+  return false;
+}
+
+function stringOrNull(v: unknown): string | null {
+  return typeof v === 'string' && v !== '' ? v : null;
 }
