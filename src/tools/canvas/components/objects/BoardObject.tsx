@@ -8,6 +8,9 @@ import { useInteractionStore } from '../../store/interaction-store';
 import { useCanvasDragStore } from '../../store/canvas-drag-store';
 import { renameBoard } from '../../engine/actions';
 import { ObjectShell } from './ObjectShell';
+import { BoardIconGlyph } from './BoardIconGlyph';
+import { boardInkColor, resolveBoardColor } from '../../lib/board-colors';
+import { useResolvedTheme } from '@/stores/theme-store';
 import { SelectionBox } from '../SelectionBox';
 import { useI18n } from '@/lib/i18n';
 import { editKeyHandler } from '@/lib/dom';
@@ -23,6 +26,7 @@ import { editKeyHandler } from '@/lib/dom';
  *   - Hover khi drop cross-board: ring primary + số đếm cộng số object đang kéo.
  */
 export function BoardRenderer({ object, isSelected, isEditing, onEditEnd }: ObjectRendererProps) {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const parsed = boardDataSchema.safeParse(object.data);
   const linkedBoardId = parsed.success ? parsed.data.linkedBoardId : '';
@@ -42,7 +46,11 @@ export function BoardRenderer({ object, isSelected, isEditing, onEditEnd }: Obje
   const dropCount = useCanvasDragStore((s) => s.drag?.ids.length ?? 1);
 
   const name = board?.name || 'New Board';
-  const color = board?.color ?? '#71717a';
+  const theme = useResolvedTheme();
+  // 'theme' = nền theo giao diện → đổi ra hex thật để vẽ.
+  const color = resolveBoardColor(board?.color ?? '#71717a', theme);
+  // Board cũ trong IndexedDB không có field icon (loadBoards không qua schema) → undefined.
+  const icon = board?.icon ?? null;
   const previewCount = hoveredForDrop ? cardCount + dropCount : cardCount;
 
   const onIconDoubleClick = (e: ReactMouseEvent<HTMLDivElement>) => {
@@ -66,8 +74,14 @@ export function BoardRenderer({ object, isSelected, isEditing, onEditEnd }: Obje
             hoveredForDrop ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''
           }`}
           style={{ backgroundColor: color }}
-          aria-label={`Vào board ${name}`}
+          aria-label={t('CANVAS.BOARD_TILE.OPEN', { name })}
         >
+          {/* Icon board (spec canvas-board-icon): giữa khối vuông, màu tương phản nền. */}
+          {icon ? (
+            <div className="pointer-events-none absolute inset-0 grid place-items-center">
+              <BoardIconGlyph icon={icon} color={boardInkColor(color)} />
+            </div>
+          ) : null}
           {/* Milanote parity: viền chọn + chấm QuickLine gắn vào khối vuông, không
               bọc tên/"N cards". Board size cố định nên không có icon resize.
               Đặt trong icon → vị trí lấy từ layout thật, không hard-code 13/8. */}
@@ -84,7 +98,7 @@ export function BoardRenderer({ object, isSelected, isEditing, onEditEnd }: Obje
               {name}
             </div>
             <div className="mt-0.5 text-[10px] text-muted-foreground">
-              {previewCount} card{previewCount === 1 ? '' : 's'}
+              {t('CANVAS.COUNT.CARD', { count: previewCount })}
             </div>
           </div>
         )}
