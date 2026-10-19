@@ -21,6 +21,9 @@ import { useInterfaceScale } from '@/stores/interface-store';
  * Co dãn: breadcrumb `flex-1 min-w-0` co tới 0 và tự ẩn bớt cấp; cụm bên phải
  * không co (`shrink-0`) nên không bao giờ mất nút.
  *
+ * Kiểu đảo nổi (Cài đặt → Canvas → Kiểu header) ở CanvasHeaderIslands, dùng lại
+ * các cụm export ở đây + mảnh của BoardTitleRow.
+ *
  * Các cụm subscribe store riêng (UndoRedoCluster / ObjectCountBadge / ZoomBadge ở HeaderPopups)
  * để cô lập re-render — push history hay zoom 60Hz không đụng cả header.
  */
@@ -50,7 +53,7 @@ export function CanvasHeader({
         {/* shrink-0: breadcrumb co trước, cụm bên phải không bao giờ bị ép mất. */}
         <div className="flex shrink-0 items-center gap-1">
           <ObjectCountBadge />
-          <div className="mx-1 h-4 w-px bg-border" />
+          <HeaderDivider />
           <ToolsCluster />
         </div>
       </div>
@@ -103,16 +106,30 @@ function IconButton({
 // Theme + phong cách đã chuyển vào modal Cài đặt (avatar → Cài đặt → Giao diện).
 // Trợ giúp mở popup (HelpMenu). Tìm kiếm / Thông báo: chỉ là nút, chưa có tính năng.
 function ToolsCluster() {
-  const { t } = useI18n();
   return (
     <div className="flex shrink-0 items-center gap-1">
       <UndoRedoCluster />
-      <div className="mx-1 h-4 w-px bg-border" />
+      <HeaderDivider />
+      <HelpSearchNotify />
+      <AccountMenu />
+    </div>
+  );
+}
+
+/** Vạch ngăn dọc giữa các cụm nút. Dùng chung với header đảo nổi. */
+export function HeaderDivider() {
+  return <div className="mx-1 h-4 w-px bg-border" />;
+}
+
+/** Trợ giúp + Tìm kiếm + Thông báo. Dùng chung với header đảo nổi. */
+export function HelpSearchNotify() {
+  const { t } = useI18n();
+  return (
+    <>
       <HelpMenu />
       <SoonIconButton icon={Search} label={t('CANVAS.HEADER.SEARCH')} />
       <SoonIconButton icon={Bell} label={t('CANVAS.HEADER.NOTIFICATIONS')} />
-      <AccountMenu />
-    </div>
+    </>
   );
 }
 
@@ -135,7 +152,7 @@ function SoonIconButton({ icon: Icon, label }: { icon: LucideIcon; label: string
   );
 }
 
-function UndoRedoCluster() {
+export function UndoRedoCluster() {
   const undoCount = useHistoryStore((s) => s.undoStack.length);
   const redoCount = useHistoryStore((s) => s.redoStack.length);
   const undo = useHistoryStore((s) => s.undo);

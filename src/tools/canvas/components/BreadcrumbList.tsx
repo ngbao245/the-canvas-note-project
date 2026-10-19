@@ -1,9 +1,15 @@
 import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronRight, MoreHorizontal } from 'lucide-react';
 import { useBoardsStore } from '../store/boards-store';
 import { useBreadcrumbFit } from '../hooks/useBreadcrumbFit';
 import { usePopup } from '../hooks/usePopup';
-import type { Board } from '../types';
+import { renameBoard } from '../engine/actions';
+import { editKeyHandler } from '@/lib/dom';
+import { useI18n } from '@/lib/i18n';
+import { isRootBoard, type Board } from '../types';
+import { resolveBoardColor } from '../lib/board-colors';
+import { useResolvedTheme } from '@/stores/theme-store';
 
 /**
  * BreadcrumbList — đường dẫn các cấp board ở header-left (Milanote parity).
@@ -19,7 +25,17 @@ import type { Board } from '../types';
  *  cha (giống DOM Milanote). */
 const CRUMB_MAX_CLS = 'max-w-[300px]';
 
-export function BreadcrumbList({ board }: { board: Board }) {
+export function BreadcrumbList({
+  board,
+  grow = true,
+  editableCurrent = false,
+}: {
+  board: Board;
+  grow?: boolean;
+  /** Mắt xích cuối double-click đổi tên (header đảo nổi, không có hàng tên riêng). */
+  editableCurrent?: boolean;
+}) {
+  const { t } = useI18n();
   const boards = useBoardsStore((s) => s.boards);
   const chain = buildChain(board, boards);
   const fitKey = chain.map((b) => `${b.id}:${b.name}:${b.color}`).join('|');
@@ -29,31 +45,47 @@ export function BreadcrumbList({ board }: { board: Board }) {
   const hiddenBoards = chain.slice(1, 1 + hidden);
 
   return (
+    // Lớp đo đặt `absolute` nên KHÔNG góp chiều rộng vào `nav`: khung chỉ rộng bằng
+    // chuỗi đang hiện → đảo nổi bó sát nội dung (grow=false), header 2 hàng vẫn lấp
+    // hết hàng nhờ flex-1 (grow=true). Hook đo đọc getBoundingClientRect từng item
+    // nên lớp đo absolute vẫn đo đúng.
     <nav
       ref={containerRef}
-      aria-label="Breadcrumb"
-      className="relative flex min-w-0 flex-1 items-center text-xs"
+      aria-label={t('CANVAS.BREADCRUMB.LABEL')}
+      className={`relative flex min-w-0 items-center text-xs ${grow ? 'flex-1' : ''}`}
     >
-      {/* Lớp đo: đủ mọi mục ở bề rộng tự nhiên, ẩn và không nhận chuột/focus. */}
-      <div aria-hidden="true" className="pointer-events-none invisible absolute inset-0 overflow-hidden">
-        <div ref={measureRef} className="absolute left-0 top-0 flex w-max items-center">
-          {chain.map((b, i) => (
-            <Crumb key={b.id} board={b} index={i} isCurrent={i === last} measure />
-          ))}
-          <div data-crumb-ellipsis className="flex items-center">
-            <Separator />
-            <EllipsisButtonShape />
-          </div>
+      {/* Lớp đo: đủ mọi mục ở bề rộng tự nhiên, absolute + ẩn, không nhận chuột/focus. */}
+      <div
+        ref={measureRef}
+        aria-hidden="true"
+        className="pointer-events-none invisible absolute left-0 top-0 flex w-max items-center"
+      >
+        {chain.map((b, i) => (
+          <Crumb key={b.id} board={b} index={i} isCurrent={i === last} measure />
+        ))}
+        <div data-crumb-ellipsis className="flex items-center">
+          <Separator />
+          <EllipsisButtonShape />
         </div>
       </div>
 
-      {chain.map((b, i) => {
-        if (i > 0 && i <= hidden) {
-          // Cấp ẩn: chỉ render nút "..." 1 lần, tại vị trí cấp ẩn đầu tiên.
-          return i === 1 ? <EllipsisMenu key="ellipsis" boards={hiddenBoards} /> : null;
-        }
-        return <Crumb key={b.id} board={b} index={i} isCurrent={i === last} />;
-      })}
+      <div className="flex min-w-0 items-center">
+        {chain.map((b, i) => {
+          if (i > 0 && i <= hidden) {
+            // Cấp ẩn: chỉ render nút "..." 1 lần, tại vị trí cấp ẩn đầu tiên.
+            return i === 1 ? <EllipsisMenu key="ellipsis" boards={hiddenBoards} /> : null;
+          }
+          return (
+            <Crumb
+              key={b.id}
+              board={b}
+              index={i}
+              isCurrent={i === last}
+              editableCurrent={editableCurrent}
+            />
+          );
+        })}
+      </div>
     </nav>
   );
 }
@@ -63,11 +95,15 @@ function Crumb({
   index,
   isCurrent,
   measure = false,
+  editableCurrent = false,
 }: {
   board: Board;
   index: number;
   isCurrent: boolean;
   measure?: boolean;
+  /** Mắt xích cuối (board đang xem) double-click để đổi tên tại chỗ. Dùng ở header
+   *  đảo nổi, nơi không còn hàng/đảo tên riêng. Home không đổi tên được. */
+  editableCurrent?: boolean;
 }) {
   const content = (
     <>
@@ -78,6 +114,7 @@ function Crumb({
   // Mọi mục cùng max-width + cùng font → lớp đo khớp bản thật. Mục hiện tại
   // thêm min-w-0 (co được) → khi ẩn hết cấp giữa vẫn thiếu chỗ, nó cắt "…" cuối.
   const itemCls = `flex min-w-0 items-center gap-1.5 ${CRUMB_MAX_CLS}`;
+  const canRename = editableCurrent && !isRootBoard(board);
 
   return (
     <div
@@ -87,6 +124,8 @@ function Crumb({
       {index > 0 ? <Separator /> : null}
       {measure ? (
         <span className={itemCls}>{content}</span>
+      ) : isCurrent && canRename ? (
+        <CurrentCrumbEditable board={board} itemCls={itemCls} />
       ) : isCurrent ? (
         // Milanote parity: board đang xem là chữ mờ, không phải link (đang ở đó
         // rồi, bấm không có tác dụng). aria-current cho trình đọc màn hình.
@@ -111,12 +150,100 @@ function Crumb({
   );
 }
 
+/**
+ * Mắt xích cuối đổi tên tại chỗ (header đảo nổi). Xem = chữ như breadcrumb thường
+ * (double-click vào sửa); sửa = input giãn theo chữ. Tái dùng renameBoard + editKeyHandler
+ * như TitleEditable của header 2 hàng.
+ */
+function CurrentCrumbEditable({ board, itemCls }: { board: Board; itemCls: string }) {
+  const { t } = useI18n();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(board.name);
+  // Bề rộng ô = đúng bề rộng chữ tên lúc đang xem (đo DOM), nên chuyển xem ↔ sửa
+  // đảo không nhảy rộng. Chốt 1 lần khi double-click, giữ nguyên khi gõ.
+  const [lockedWidth, setLockedWidth] = useState<number | null>(null);
+  const nameRef = useRef<HTMLSpanElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const startEditing = () => {
+    // Đo trước khi đổi sang input: lấy đúng bề rộng chữ đang hiện trên màn.
+    setLockedWidth(nameRef.current?.getBoundingClientRect().width ?? null);
+    setEditing(true);
+  };
+
+  useEffect(() => {
+    if (!editing) return;
+    setValue(board.name);
+    const id = setTimeout(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }, 0);
+    return () => clearTimeout(id);
+  }, [editing, board.name]);
+
+  const commit = () => {
+    const next = value.trim() || 'New Board';
+    if (next !== board.name) renameBoard(board.id, next);
+    setEditing(false);
+  };
+
+  // Click ra ngoài (kể cả xuống canvas) → lưu + thoát. Canvas surface gọi
+  // preventDefault ở pointerdown nên input không tự blur → onBlur không fire;
+  // bắt pointerdown toàn trang (capture) để tự commit. Esc/Enter qua editKeyHandler.
+  useEffect(() => {
+    if (!editing) return;
+    const onDown = (ev: PointerEvent) => {
+      if (ev.target instanceof Node && inputRef.current?.contains(ev.target)) return;
+      commit();
+    };
+    window.addEventListener('pointerdown', onDown, true);
+    return () => window.removeEventListener('pointerdown', onDown, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing, value, board.name]);
+
+  if (!editing) {
+    return (
+      <span
+        aria-current="page"
+        onDoubleClick={startEditing}
+        title={`${board.name} (${t('CANVAS.HEADER.RENAME_HINT')})`}
+        className={`${itemCls} cursor-text text-foreground hover:text-primary`}
+      >
+        <BoardIcon board={board} />
+        <span ref={nameRef} className="truncate">
+          {board.name}
+        </span>
+      </span>
+    );
+  }
+
+  // Ô sửa = đúng bề rộng chữ lúc xem (đo DOM, chốt khi double-click), KHÔNG giãn khi
+  // gõ (bạn chốt 2026-10-14) → chuyển xem ↔ sửa đảo không nhảy rộng. Gõ dài hơn thì
+  // chữ cuộn trong ô. Chưa đo được (null) → tối thiểu 6rem.
+  return (
+    <span className={`${itemCls}`}>
+      <BoardIcon board={board} />
+      <input
+        ref={inputRef}
+        value={value}
+        style={{ width: lockedWidth ?? undefined }}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={commit}
+        onKeyDown={editKeyHandler({ onCommit: commit, onCancel: () => setEditing(false) })}
+        aria-label={t('CANVAS.HEADER.BOARD_NAME')}
+        className="min-w-[6rem] max-w-full bg-transparent p-0 text-foreground outline-none"
+      />
+    </span>
+  );
+}
+
 function Separator() {
   return <ChevronRight className="mx-1 h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />;
 }
 
 /** Icon đầu mục: Home = logo tạm tròn đen, board = ô màu của board đó. */
 function BoardIcon({ board }: { board: Board }) {
+  const theme = useResolvedTheme();
   if (board.parentId === null) {
     // Màu logo là nhận diện, không theo theme. Viền mờ để thấy trên nền tối.
     return (
@@ -127,12 +254,12 @@ function BoardIcon({ board }: { board: Board }) {
       />
     );
   }
-  // Board.color là data user (palette), không phải theme → inline style.
+  // Board.color là data user (palette) → inline style; 'theme' đổi ra trắng / đen.
   return (
     <span
       aria-hidden="true"
       className="h-4 w-4 shrink-0 rounded-[4px] ring-1 ring-border/60"
-      style={{ backgroundColor: board.color }}
+      style={{ backgroundColor: resolveBoardColor(board.color, theme) }}
     />
   );
 }
@@ -151,6 +278,7 @@ function EllipsisButtonShape() {
 
 /** Nút "..." + menu các cấp bị ẩn. Đóng khi bấm ngoài, Esc, hoặc chọn 1 cấp. */
 function EllipsisMenu({ boards }: { boards: Board[] }) {
+  const { t } = useI18n();
   // Bấm ngoài / Esc đóng (Esc không lọt xuống canvas) — xem usePopup.
   const { open, ref, close, toggle } = usePopup();
 
@@ -161,7 +289,7 @@ function EllipsisMenu({ boards }: { boards: Board[] }) {
         type="button"
         onClick={toggle}
         className={ELLIPSIS_BTN_CLS}
-        aria-label={`Hiện ${boards.length} cấp bị ẩn`}
+        aria-label={t('CANVAS.BREADCRUMB.SHOW_HIDDEN', { count: boards.length })}
         aria-haspopup="menu"
         aria-expanded={open}
       >

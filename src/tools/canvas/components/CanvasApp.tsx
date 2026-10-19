@@ -24,6 +24,8 @@ import {
 import { scaledFillStyle } from '../lib/scaled-box';
 import { useI18n } from '@/lib/i18n';
 import { useInterfaceScale } from '@/stores/interface-store';
+import { useHeaderStyle } from '@/stores/canvas-settings-store';
+import { islandsTopInset } from '../lib/header-islands';
 
 /** Bề rộng panel Unsort ở mức Lớn (tỉ lệ 1). */
 const UNSORT_PANEL_WIDTH = 260;
@@ -56,6 +58,7 @@ export function CanvasApp({ boardId }: { boardId: string }) {
   const [pending, setPending] = useState<PendingKind | null>(null);
   const unsortOpen = useUnsortStore((s) => s.panelOpen);
   const uiScale = useInterfaceScale();
+  const islands = useHeaderStyle() === 'islands';
   const { t } = useI18n();
   // Tổ hợp Undo chèn vào câu "Undo được (...)" của dialog xoá, lấy từ bảng phím.
   // Tính trong component để đổi Kiểu bàn phím là câu đổi theo.
@@ -180,11 +183,15 @@ export function CanvasApp({ boardId }: { boardId: string }) {
        * Kích thước giao diện: khung ngoài rộng 260 × tỉ lệ (chiếm đúng chỗ trên màn hình), panel bên
        * trong vẫn layout ở 260px rồi scale xuống. Chiều cao chia tỉ lệ để sau khi scale vẫn cao bằng canvas.
        */}
+      {/* Header đảo nổi: panel bắt đầu dưới hàng đảo (không đè đảo phải), sát đáy như cũ. */}
       <div
-        className={`absolute right-0 top-0 h-full z-toolbar transition-transform duration-normal ease-standard ${
+        className={`absolute bottom-0 right-0 z-toolbar transition-transform duration-normal ease-standard ${
           unsortOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
-        style={{ width: UNSORT_PANEL_WIDTH * uiScale }}
+        style={{
+          width: UNSORT_PANEL_WIDTH * uiScale,
+          top: islands ? islandsTopInset(uiScale) : 0,
+        }}
       >
         <div style={{ width: UNSORT_PANEL_WIDTH, ...scaledFillStyle(uiScale) }}>
           <UnsortPanel boardId={boardId} />

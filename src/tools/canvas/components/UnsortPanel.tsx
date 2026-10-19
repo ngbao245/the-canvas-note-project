@@ -16,6 +16,9 @@ import { FloatingObjectPreview } from './FloatingObjectPreview';
 import { CANVAS_SHORTCUT_DEFS } from '../shortcuts';
 import { bindShortcuts, useShortcutLayer } from '@/lib/shortcuts';
 import { useI18n } from '@/lib/i18n';
+import { useHeaderStyle } from '@/stores/canvas-settings-store';
+import { useInterfaceScale } from '@/stores/interface-store';
+import { ISLANDS_EDGE, islandsTopInset } from '../lib/header-islands';
 
 function useHoveredUnsortDropTarget(): boolean {
   return useInteractionStore((s) => s.hoveredUnsortDropTarget);
@@ -60,7 +63,7 @@ function UnsortDragPreview({ items }: { items: CanvasObject[] }) {
   if (!item) return null;
 
   // Grab offset scale: source Unsort item size (232 × ~140) khác preview canvas
-  // size (Note 338 × 180). Scale để cursor giữ đúng grab point trong preview.
+  // size (VD Note 300 × 180). Scale để cursor giữ đúng grab point trong preview.
   const previewW = item.geometry.width * zoom;
   const previewH = item.geometry.height * zoom;
   const scaleX = previewW / drag.sourceWidth;
@@ -272,6 +275,8 @@ export function UnsortToggle({ boardId }: { boardId: string }) {
   const objectsMap = useObjectsStore((s) => s.objects);
   const loading = useObjectsStore((s) => s.loadedBoardId !== boardId);
   const hoveredDropTarget = useHoveredUnsortDropTarget();
+  const islands = useHeaderStyle() === 'islands';
+  const uiScale = useInterfaceScale();
 
   const count = useMemo(() => {
     let n = 0;
@@ -290,7 +295,14 @@ export function UnsortToggle({ boardId }: { boardId: string }) {
       data-unsort-drop-target="true"
       onClick={toggle}
       aria-label={t('CANVAS.UNSORT.TOGGLE', { count })}
-      className={`absolute right-0 top-0 z-toolbar flex items-center gap-2 rounded-bl-lg border-b border-l bg-card/90 px-3 py-2 text-xs backdrop-blur transition-colors duration-fast ${
+      // Header đảo nổi: nút thành 1 đảo nhỏ dưới đảo phải, cùng ngôn ngữ với các đảo trên
+      // (bo xl, viền, bóng, nền mờ như Island), không dính góc màn.
+      style={islands ? { top: islandsTopInset(uiScale), right: ISLANDS_EDGE } : undefined}
+      className={`absolute z-toolbar flex items-center gap-2 bg-card/90 px-3 py-2 text-xs backdrop-blur transition-colors duration-fast ${
+        islands
+          ? 'rounded-xl border shadow-lg'
+          : 'right-0 top-0 rounded-bl-lg border-b border-l'
+      } ${
         hoveredDropTarget
           ? 'border-primary text-primary ring-2 ring-primary'
           : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground'
