@@ -4,11 +4,12 @@ import { useShallow } from 'zustand/react/shallow';
 import type { CanvasObject } from '../types';
 import { useObjectsStore } from '../store/objects-store';
 import { useSelectionStore } from '../store/selection-store';
-import { useInteractionStore } from '../store/interaction-store';
+import { shownHeight, useInteractionStore } from '../store/interaction-store';
 import { isLockedElsewhere, useRemoteLockStore } from '../store/remote-lock-store';
 import { showNotice } from '../store/notice-store';
 import { getObjectTypeDefinition } from '../hooks/useObjectRegistry';
 import { useObjectDrag } from '../hooks/useObjectDrag';
+import { isObjectLocked } from '../lib/note-data';
 import { SelectionBox } from './SelectionBox';
 import { RemoteEditBadge } from './RemoteEditBadge';
 
@@ -36,6 +37,9 @@ const ObjectView = memo(function ObjectView({ id }: { id: string }) {
   const obj = useObjectsStore((s) => s.objects.get(id));
   const selected = useSelectionStore((s) => s.selectedIds.has(id));
   const editing = useInteractionStore((s) => s.editingId === id);
+  // Chiều cao tạm lúc sửa (note fixed dài ra cho thấy hết chữ). Object không sửa
+  // nhận null → không render lại khi note khác gõ.
+  const editingHeight = useInteractionStore((s) => (s.editingId === id ? s.editingHeight : null));
   const def = obj ? getObjectTypeDefinition(obj.type) : undefined;
   const { onPointerDown } = useObjectDrag(id);
 
@@ -72,25 +76,29 @@ const ObjectView = memo(function ObjectView({ id }: { id: string }) {
   // Object vừa bị xoá (danh sách id chưa kịp đổi) hoặc type lạ → bỏ qua, không crash.
   if (!obj || !def) return null;
   const Renderer = def.renderer;
+  // Khoá vị trí (note Lock Position): không kéo (useObjectDrag chặn) → bỏ
+  // cursor-move; không resize → SelectionBox ẩn góc kéo.
+  const locked = isObjectLocked(obj.type, obj.data);
 
   return (
     <div
       data-object-id={obj.id}
       onPointerDown={onPointerDown}
       onDoubleClick={onDoubleClick}
-      className={editing ? 'absolute' : 'absolute cursor-move'}
+      className={editing || locked ? 'absolute' : 'absolute cursor-move'}
       style={{
         left: obj.geometry.x,
         top: obj.geometry.y,
         width: obj.geometry.width,
-        height: obj.geometry.height,
+        height: shownHeight({ editingId: editing ? id : null, editingHeight }, id, obj.geometry.height),
         zIndex: obj.geometry.zIndex,
       }}
     >
       <Renderer object={obj} isSelected={selected} isEditing={editing} onEditEnd={onEditEnd} />
       {/* Viền chọn nằm trong khối card → cùng lớp với card (xem SelectionBox).
-          Type có ownSelectionFrame tự đặt viền quanh vùng thân bên trong Renderer. */}
-      {selected && !def.ownSelectionFrame ? <SelectionBox id={id} /> : null}
+          Type có ownSelectionFrame tự đặt viền quanh vùng thân bên trong Renderer.
+          Note khoá: ẩn góc resize (resizable=false). */}
+      {selected && !def.ownSelectionFrame ? <SelectionBox id={id} resizable={!locked} /> : null}
       {lockedElsewhere ? <RemoteEditBadge id={id} /> : null}
     </div>
   );

@@ -107,6 +107,20 @@
         "SLOW": "Slow",
         "NORMAL": "Normal",
         "FAST": "Fast"
+      },
+      "SELECTION_COLOR": {
+        "TITLE": "Selection color",
+        "DESCRIPTION": "Color of the outline and dot around selected objects.",
+        "CONTRAST": "Black and white",
+        "PRIMARY": "Blue",
+        "SUCCESS": "Green",
+        "WARNING": "Yellow"
+      },
+      "HEADER_STYLE": {
+        "TITLE": "Header style",
+        "DESCRIPTION": "Two rows above the canvas, or floating islands over a full-screen canvas.",
+        "BAR": "Two rows",
+        "ISLANDS": "Islands"
       }
     },
     "LOCALIZATION": {
@@ -253,7 +267,14 @@
       "SUB_BOARD": {
         "one": "{count} sub-board",
         "other": "{count} sub-boards"
+      },
+      "CARD": {
+        "one": "{count} card",
+        "other": "{count} cards"
       }
+    },
+    "BOARD_TILE": {
+      "OPEN": "Open board {name}"
     },
     "UNSORT": {
       "TITLE": "Unsort",
@@ -264,6 +285,23 @@
       "EMPTY": "Nothing here yet",
       "HINT": "Drag an item onto the canvas to place it."
     },
+    "TOOLBAR": {
+      "CREATE": "Create {label}",
+      "DESELECT": "Deselect",
+      "EXIT_EDIT": "Exit editing",
+      "TRASH": "Delete selected object (or drag here)",
+      "TRASH_LABEL": "Delete selected object",
+      "TRASH_SHORT": "Delete",
+      "COLOR": "Color",
+      "TILE": {
+        "LINK": "Link",
+        "IMAGE": "Image",
+        "TODO": "To-do",
+        "TABLE": "Table",
+        "FILE": "File",
+        "LINE": "Line"
+      }
+    },
     "NOTE_LOCK": {
       "BUSY": "This note is being edited in another tab. Click × on the tag to take over.",
       "OTHER_TAB": "You",
@@ -272,13 +310,145 @@
     },
     "NOTE_COLOR": {
       "PICK": "Pick color",
-      "DEFAULT": "Default",
-      "RED": "Red",
-      "ORANGE": "Orange",
-      "YELLOW": "Yellow",
+      "TAB_BACKGROUND": "Background",
+      "TAB_TOP_STRIP": "Top strip",
+      "NONE": "No color",
+      "REMOVE": "Remove color",
+      "TRANSPARENT": "Transparent",
+      "CUSTOM": "Custom color…",
+      "GREY": "Grey",
+      "CYAN": "Cyan",
       "GREEN": "Green",
+      "BROWN": "Brown",
+      "YELLOW": "Yellow",
+      "ORANGE": "Orange",
+      "RED": "Red",
+      "PINK": "Pink",
+      "PURPLE": "Purple",
       "BLUE": "Blue",
-      "PURPLE": "Purple"
+      "DEEP_BLUE": "Deep blue"
+    },
+    "NOTE_TOOLBAR": {
+      "PLACEHOLDER": "Start typing...",
+      "BOLD": "Bold",
+      "ITALIC": "Italic",
+      "UNDERLINE": "Underline",
+      "STRIKE": "Strikethrough",
+      "CODE": "Inline code",
+      "BULLET_LIST": "Bulleted list",
+      "NUMBERED_LIST": "Numbered list",
+      "TEXT_STYLE": "Text style",
+      "LINK": "Link",
+      "LINK_SAVE": "Save",
+      "LINK_REMOVE": "Remove",
+      "LINK_CANCEL": "Cancel",
+      "LABELS": "Labels",
+      "REACTIONS": "Reactions",
+      "COMMENT": "Comment",
+      "MORE": "More",
+      "ALIGN": "Align",
+      "ALIGN_LEFT": "Align left",
+      "ALIGN_CENTER": "Align center",
+      "ALIGN_RIGHT": "Align right",
+      "SOON_LABELS": "Labels coming soon",
+      "SOON_REACTIONS": "Reactions need sign-in, coming soon",
+      "SOON_COMMENT": "Comments need sign-in, coming soon",
+      "STYLE": {
+        "TITLE": "Title",
+        "HEADING": "Heading",
+        "SUBHEADING": "Subheading",
+        "BODY": "Body",
+        "SMALL": "Small text",
+        "CODE_BLOCK": "Code block",
+        "CALLOUT": "Callout",
+        "QUOTE": "Quote",
+        "COLOR": "Color",
+        "HIGHLIGHT": "Highlight"
+      },
+      "TEXT_COLOR": {
+        "DEFAULT": "Default",
+        "BLUE": "Blue",
+        "GREEN": "Green",
+        "ORANGE": "Orange",
+        "RED": "Red",
+        "GRAY": "Gray"
+      },
+      "HIGHLIGHT_COLOR": {
+        "NONE": "No highlight",
+        "BLUE": "Blue highlight",
+        "GREEN": "Green highlight",
+        "YELLOW": "Yellow highlight",
+        "PINK": "Pink highlight",
+        "GRAY": "Gray highlight"
+      },
+      "MENU": {
+        "CONVERT_TO_DOCUMENT": "Convert to Document",
+        "LOCK_POSITION": "Lock Position",
+        "UNLOCK_POSITION": "Unlock Position",
+        "BRING_TO_FRONT": "Bring to Front",
+        "SEND_TO_BACK": "Send to Back",
+        "CONVERT_SOON": "Convert to Document coming soon"
+      }
+    },
+    "BOARD_TOOLBAR": {
+      "RENAME": "Rename",
+      "THEME_COLOR": "Match theme (white / black)",
+      "DEFAULT_COLOR": "Default",
+      "LINK_COPIED": "Board link copied",
+      "LINK_COPY_FAILED": "Couldn't copy the link",
+      "MENU": {
+        "OPEN_NEW_TAB": "Open in New Tab",
+        "CREATE_SHORTCUT": "Create a Shortcut to This Board",
+        "SHORTCUT_SOON": "Shortcuts coming soon",
+        "COPY_LINK": "Copy a Link to This Board",
+        "CONVERT_TO_TEMPLATE": "Convert to Template",
+        "TEMPLATE_SOON": "Templates coming soon"
+      }
+    },
+    "BREADCRUMB": {
+      "LABEL": "Board path",
+      "SHOW_HIDDEN": {
+        "one": "Show {count} hidden level",
+        "other": "Show {count} hidden levels"
+      }
+    },
+    "CARD_CLIPPER": {
+      "TITLE": "Drag to split paragraph into a new note (Alt = copy)",
+      "LABEL": "Split paragraph into a new note"
+    },
+    "ICON_PICKER": {
+      "PICK": "Choose icon",
+      "SEARCH_PLACEHOLDER": "Search icons...",
+      "SOURCE_LIBRARY": "Library",
+      "SOURCE_TEXT": "Custom text",
+      "SOURCE_UPLOAD": "Upload image",
+      "UPLOAD_SOON": "Image upload coming soon",
+      "REMOVE": "Remove icon",
+      "NO_RESULTS": "No icons found",
+      "TEXT_LABEL": "Enter characters (max {max})",
+      "TEXT_PLACEHOLDER": "AB",
+      "TEXT_APPLY": "Use these characters",
+      "TEXT_PREVIEW": "Preview",
+      "GROUP_CATEGORY": "Categories",
+      "SECTION_RECENT": "Recently used",
+      "SECTION_BY_NAME": "Matching board name",
+      "SECTION_POPULAR": "Popular",
+      "CATEGORY": {
+        "RECOMMENDED": "Recommended",
+        "ARROWS": "Arrows",
+        "FILES": "Files",
+        "COMMUNICATION": "Communication",
+        "MEDIA": "Media",
+        "DEVICES": "Devices",
+        "WEATHER": "Weather",
+        "PEOPLE": "People",
+        "COMMERCE": "Commerce",
+        "EDITING": "Editing",
+        "NATURE": "Nature",
+        "SHAPES": "Shapes",
+        "TOOLS": "Tools",
+        "OTHER": "Other"
+      }
     },
     "HEADER": {
       "UNDO": "Undo",

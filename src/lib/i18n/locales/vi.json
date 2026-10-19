@@ -96,7 +96,7 @@
     },
     "CANVAS": {
       "TITLE": "Canvas",
-      "DESCRIPTION": "Lưới nền và cách cuộn trên canvas. Lưu trên trình duyệt này.",
+      "DESCRIPTION": "Lưới nền, cách cuộn và màu viền chọn trên canvas. Lưu trên trình duyệt này.",
       "GRID": {
         "TITLE": "Lưới nền",
         "DESCRIPTION": "Hiện các chấm trên nền canvas."
@@ -107,6 +107,20 @@
         "SLOW": "Chậm",
         "NORMAL": "Bình thường",
         "FAST": "Nhanh"
+      },
+      "SELECTION_COLOR": {
+        "TITLE": "Màu viền chọn",
+        "DESCRIPTION": "Màu viền và chấm tròn quanh object đang chọn.",
+        "CONTRAST": "Trắng đen",
+        "PRIMARY": "Xanh",
+        "SUCCESS": "Lục",
+        "WARNING": "Vàng"
+      },
+      "HEADER_STYLE": {
+        "TITLE": "Kiểu header",
+        "DESCRIPTION": "2 hàng phía trên canvas, hoặc các đảo nổi trên canvas tràn màn hình.",
+        "BAR": "2 hàng",
+        "ISLANDS": "Đảo nổi"
       }
     },
     "LOCALIZATION": {
@@ -251,7 +265,13 @@
       },
       "SUB_BOARD": {
         "other": "{count} board con"
+      },
+      "CARD": {
+        "other": "{count} thẻ"
       }
+    },
+    "BOARD_TILE": {
+      "OPEN": "Vào board {name}"
     },
     "UNSORT": {
       "TITLE": "Khay chờ",
@@ -261,6 +281,23 @@
       "EMPTY": "Chưa có mục nào",
       "HINT": "Kéo một mục ra canvas để đặt lên."
     },
+    "TOOLBAR": {
+      "CREATE": "Tạo {label}",
+      "DESELECT": "Bỏ chọn",
+      "EXIT_EDIT": "Thoát sửa",
+      "TRASH": "Xoá object đang chọn (kéo vào đây cũng được)",
+      "TRASH_LABEL": "Xoá object đang chọn",
+      "TRASH_SHORT": "Xoá",
+      "COLOR": "Màu",
+      "TILE": {
+        "LINK": "Liên kết",
+        "IMAGE": "Ảnh",
+        "TODO": "Việc cần làm",
+        "TABLE": "Bảng",
+        "FILE": "Tệp",
+        "LINE": "Đường nối"
+      }
+    },
     "NOTE_LOCK": {
       "BUSY": "Note này đang được sửa ở tab khác. Bấm × trên nhãn để lấy quyền sửa.",
       "OTHER_TAB": "Bạn",
@@ -269,13 +306,145 @@
     },
     "NOTE_COLOR": {
       "PICK": "Chọn màu",
-      "DEFAULT": "Mặc định",
-      "RED": "Đỏ",
-      "ORANGE": "Cam",
-      "YELLOW": "Vàng",
+      "TAB_BACKGROUND": "Nền",
+      "TAB_TOP_STRIP": "Thanh trên",
+      "NONE": "Không màu",
+      "REMOVE": "Bỏ màu",
+      "TRANSPARENT": "Trong suốt",
+      "CUSTOM": "Màu tuỳ chỉnh…",
+      "GREY": "Xám",
+      "CYAN": "Xanh ngọc",
       "GREEN": "Xanh lá",
+      "BROWN": "Nâu",
+      "YELLOW": "Vàng",
+      "ORANGE": "Cam",
+      "RED": "Đỏ",
+      "PINK": "Hồng",
+      "PURPLE": "Tím",
       "BLUE": "Xanh dương",
-      "PURPLE": "Tím"
+      "DEEP_BLUE": "Xanh đậm"
+    },
+    "NOTE_TOOLBAR": {
+      "PLACEHOLDER": "Bắt đầu gõ...",
+      "BOLD": "Đậm",
+      "ITALIC": "Nghiêng",
+      "UNDERLINE": "Gạch chân",
+      "STRIKE": "Gạch ngang",
+      "CODE": "Code trong dòng",
+      "BULLET_LIST": "Danh sách chấm",
+      "NUMBERED_LIST": "Danh sách số",
+      "TEXT_STYLE": "Kiểu chữ",
+      "LINK": "Liên kết",
+      "LINK_SAVE": "Lưu",
+      "LINK_REMOVE": "Gỡ",
+      "LINK_CANCEL": "Huỷ",
+      "LABELS": "Nhãn",
+      "REACTIONS": "Biểu cảm",
+      "COMMENT": "Bình luận",
+      "MORE": "Thêm",
+      "ALIGN": "Căn lề",
+      "ALIGN_LEFT": "Căn trái",
+      "ALIGN_CENTER": "Căn giữa",
+      "ALIGN_RIGHT": "Căn phải",
+      "SOON_LABELS": "Nhãn sắp ra mắt",
+      "SOON_REACTIONS": "Biểu cảm cần đăng nhập, sắp ra mắt",
+      "SOON_COMMENT": "Bình luận cần đăng nhập, sắp ra mắt",
+      "STYLE": {
+        "TITLE": "Tiêu đề lớn",
+        "HEADING": "Tiêu đề",
+        "SUBHEADING": "Tiêu đề phụ",
+        "BODY": "Văn bản",
+        "SMALL": "Chữ nhỏ",
+        "CODE_BLOCK": "Khối code",
+        "CALLOUT": "Ghi chú nổi bật",
+        "QUOTE": "Trích dẫn",
+        "COLOR": "Màu chữ",
+        "HIGHLIGHT": "Tô nền"
+      },
+      "TEXT_COLOR": {
+        "DEFAULT": "Mặc định",
+        "BLUE": "Xanh dương",
+        "GREEN": "Xanh lá",
+        "ORANGE": "Cam",
+        "RED": "Đỏ",
+        "GRAY": "Xám"
+      },
+      "HIGHLIGHT_COLOR": {
+        "NONE": "Không nền",
+        "BLUE": "Nền xanh dương",
+        "GREEN": "Nền xanh lá",
+        "YELLOW": "Nền vàng",
+        "PINK": "Nền hồng",
+        "GRAY": "Nền xám"
+      },
+      "MENU": {
+        "CONVERT_TO_DOCUMENT": "Chuyển thành tài liệu",
+        "LOCK_POSITION": "Khoá vị trí",
+        "UNLOCK_POSITION": "Mở khoá vị trí",
+        "BRING_TO_FRONT": "Đưa lên trên cùng",
+        "SEND_TO_BACK": "Đưa xuống dưới cùng",
+        "CONVERT_SOON": "Chuyển thành tài liệu sắp ra mắt"
+      }
+    },
+    "BOARD_TOOLBAR": {
+      "RENAME": "Đổi tên",
+      "THEME_COLOR": "Theo giao diện (trắng / đen)",
+      "DEFAULT_COLOR": "Mặc định",
+      "LINK_COPIED": "Đã sao chép liên kết tới board",
+      "LINK_COPY_FAILED": "Không sao chép được liên kết",
+      "MENU": {
+        "OPEN_NEW_TAB": "Mở trong tab mới",
+        "CREATE_SHORTCUT": "Tạo lối tắt tới board này",
+        "SHORTCUT_SOON": "Lối tắt sắp ra mắt",
+        "COPY_LINK": "Sao chép liên kết tới board này",
+        "CONVERT_TO_TEMPLATE": "Chuyển thành mẫu",
+        "TEMPLATE_SOON": "Mẫu sắp ra mắt"
+      }
+    },
+    "BREADCRUMB": {
+      "LABEL": "Đường dẫn board",
+      "SHOW_HIDDEN": {
+        "one": "Hiện {count} cấp bị ẩn",
+        "other": "Hiện {count} cấp bị ẩn"
+      }
+    },
+    "CARD_CLIPPER": {
+      "TITLE": "Kéo để tách đoạn thành note mới (Alt = sao chép)",
+      "LABEL": "Tách đoạn thành note mới"
+    },
+    "ICON_PICKER": {
+      "PICK": "Chọn biểu tượng",
+      "SEARCH_PLACEHOLDER": "Tìm biểu tượng...",
+      "SOURCE_LIBRARY": "Thư viện",
+      "SOURCE_TEXT": "Tự nhập",
+      "SOURCE_UPLOAD": "Tải ảnh",
+      "UPLOAD_SOON": "Tải ảnh làm biểu tượng sắp ra mắt",
+      "REMOVE": "Bỏ biểu tượng",
+      "NO_RESULTS": "Không tìm thấy biểu tượng",
+      "TEXT_LABEL": "Nhập ký tự (tối đa {max})",
+      "TEXT_PLACEHOLDER": "AB",
+      "TEXT_APPLY": "Dùng ký tự này",
+      "TEXT_PREVIEW": "Xem trước",
+      "GROUP_CATEGORY": "Danh mục",
+      "SECTION_RECENT": "Dùng gần đây",
+      "SECTION_BY_NAME": "Theo tên board",
+      "SECTION_POPULAR": "Phổ biến",
+      "CATEGORY": {
+        "RECOMMENDED": "Gợi ý",
+        "ARROWS": "Mũi tên",
+        "FILES": "Tập tin",
+        "COMMUNICATION": "Liên lạc",
+        "MEDIA": "Đa phương tiện",
+        "DEVICES": "Thiết bị",
+        "WEATHER": "Thời tiết",
+        "PEOPLE": "Con người",
+        "COMMERCE": "Mua sắm",
+        "EDITING": "Chỉnh sửa",
+        "NATURE": "Thiên nhiên",
+        "SHAPES": "Hình khối",
+        "TOOLS": "Công cụ",
+        "OTHER": "Khác"
+      }
     },
     "HEADER": {
       "UNDO": "Hoàn tác",

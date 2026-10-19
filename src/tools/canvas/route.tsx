@@ -13,6 +13,8 @@ import { computeContentBounds } from './lib/content-bounds';
 import { getCameraEngine } from './engine/camera-engine';
 import { CanvasApp } from './components/CanvasApp';
 import { CanvasHeader } from './components/CanvasHeader';
+import { CanvasHeaderIslands } from './components/CanvasHeaderIslands';
+import { useHeaderStyle } from '@/stores/canvas-settings-store';
 
 /**
  * Canvas route: hỗ trợ 3 pattern URL (từ nested-boards spec):
@@ -35,6 +37,7 @@ export default function CanvasRoute() {
   const hasSlug = params.slug !== undefined;
 
   const bootstrap = useCanvasBootstrap();
+  const headerStyle = useHeaderStyle();
   const rootBoard = bootstrap.state.phase === 'ready' ? bootstrap.state.rootBoard : null;
 
   // URL `/canvas` = Home, nhưng board đang xem luôn là id thật (Home cũng vậy).
@@ -111,10 +114,18 @@ export default function CanvasRoute() {
     );
   }
 
+  // Kiểu header (Cài đặt → Canvas): 2 hàng chiếm chỗ phía trên, hoặc đảo nổi đè lên
+  // canvas phủ cả màn. CanvasApp giữ nguyên ở cả 2 kiểu (không mount lại khi đổi).
+  const islands = headerStyle === 'islands';
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
-      <CanvasHeader board={currentBoard} onFit={handleFit} onReset={resetCamera} />
+    <div className="relative flex h-screen flex-col overflow-hidden bg-background text-foreground">
+      {islands ? null : (
+        <CanvasHeader board={currentBoard} onFit={handleFit} onReset={resetCamera} />
+      )}
       <CanvasApp boardId={currentBoard.id} />
+      {islands ? (
+        <CanvasHeaderIslands board={currentBoard} onFit={handleFit} onReset={resetCamera} />
+      ) : null}
     </div>
   );
 }

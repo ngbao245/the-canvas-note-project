@@ -14,7 +14,7 @@
 <!-- Font cho concept G–L + Tự phối (Kiro đề xuất). Tách link riêng cho dễ đọc. -->
 <link
   rel="stylesheet"
-  href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Literata:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Fraunces:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&family=Nunito:ital,wght@0,400;0,600;0,700;1,400&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Newsreader:ital,wght@0,400;0,600;1,400&display=swap"
+  href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Literata:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Fraunces:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&family=Nunito:ital,wght@0,400;0,600;0,700;1,400&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Newsreader:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;500;600;700&family=Onest:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=Hanken+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
 />
 <style>
   :root {
@@ -263,6 +263,7 @@
   <nav class="jump" aria-label="Đi tới concept">
     <a href="#A">A</a><a href="#B">B</a><a href="#C">C</a><a href="#D">D</a><a href="#E">E</a><a href="#F">F</a>
     <a href="#G">G</a><a href="#H">H</a><a href="#I">I</a><a href="#J">J</a><a href="#K">K</a><a href="#L">L</a>
+    <a href="#M">M</a><a href="#N">N</a><a href="#O">O</a><a href="#P">P</a><a href="#Q">Q</a>
     <a href="#mix">Tự phối</a><a href="#table">Bảng</a>
   </nav>
 </div>
@@ -473,6 +474,55 @@ async function syncBoard(id: string) {
     <div data-slot></div>
   </section>
 
+  <div class="group-title">Kiro bổ sung — font ngoài danh sách cũ (đều có dấu tiếng Việt)</div>
+
+  <section class="concept" id="M" style="--ui: Outfit, system-ui, sans-serif; --heading: Outfit, system-ui, sans-serif;">
+    <div class="concept-label">
+      <h2>M — Outfit</h2>
+      <div class="stack">Outfit + Outfit + JetBrains Mono</div>
+      <div class="goal">Geometric sans dáng tròn đều, gọn hơn Plus Jakarta. Hợp block bo góc. Một font cho cả body lẫn heading, nhịp đều, sạch.</div>
+    </div>
+    <div data-slot></div>
+  </section>
+
+  <section class="concept" id="N" style="--ui: Onest, system-ui, sans-serif; --heading: 'Instrument Serif', Georgia, serif;">
+    <div class="concept-label">
+      <h2>N — Onest + Instrument Serif</h2>
+      <div class="stack">Onest + Instrument Serif + JetBrains Mono</div>
+      <div class="goal">Onest là sans mới (2023), trung tính kiểu Inter nhưng ấm hơn, thiết kế cho đọc dài. Instrument Serif nét mảnh thanh thoát, title nhẹ nhàng (khác Fraunces đậm cá tính).</div>
+    </div>
+    <div data-slot></div>
+  </section>
+
+  <section class="concept" id="O" style="--ui: 'Be Vietnam Pro', system-ui, sans-serif; --heading: Spectral, Georgia, serif;">
+    <div class="concept-label">
+      <h2>O — Be Vietnam Pro + Spectral</h2>
+      <div class="stack">Be Vietnam Pro + Spectral + JetBrains Mono</div>
+      <div class="goal">Body tối ưu tiếng Việt (Be Vietnam Pro). Spectral là serif Google thiết kế riêng cho màn hình, dấu tiếng Việt chuẩn, đọc dài tốt — giữa Source Serif và Literata.</div>
+    </div>
+    <div data-slot></div>
+  </section>
+
+  <div class="group-title">Thử body phủ nhiều ngôn ngữ (heading giữ Fraunces như setup đề xuất)</div>
+
+  <section class="concept" id="P" style="--ui: 'Hanken Grotesk', system-ui, sans-serif; --heading: Fraunces, Georgia, serif;">
+    <div class="concept-label">
+      <h2>P — Hanken Grotesk + Fraunces</h2>
+      <div class="stack">Hanken Grotesk + Fraunces + JetBrains Mono</div>
+      <div class="goal">Body phủ Latin ext + Cyrillic ext + tiếng Việt, grotesk hiện đại dáng riêng (khác Inter nên không đụng Milanote). Heading Fraunces giữ như code hiện tại.</div>
+    </div>
+    <div data-slot></div>
+  </section>
+
+  <section class="concept" id="Q" style="--ui: 'Noto Sans', system-ui, sans-serif; --heading: Fraunces, Georgia, serif;">
+    <div class="concept-label">
+      <h2>Q — Noto Sans + Fraunces</h2>
+      <div class="stack">Noto Sans + Fraunces + JetBrains Mono</div>
+      <div class="goal">Noto Sans phủ gần như mọi ngôn ngữ (mục tiêu "no tofu" của Google). Trung tính, an toàn tối đa về ký tự, đổi lại ít cá tính. Heading Fraunces.</div>
+    </div>
+    <div data-slot></div>
+  </section>
+
   <section class="concept" id="mix">
     <div class="concept-label">
       <h2>Tự phối</h2>
@@ -503,6 +553,11 @@ async function syncBoard(id: string) {
         <tr><td>J</td><td>Nunito</td><td>Nunito</td><td>JetBrains Mono</td><td class="eval">[My evaluation]</td></tr>
         <tr><td>K</td><td>Inter</td><td>Space Grotesk</td><td>Space Mono</td><td class="eval">[My evaluation]</td></tr>
         <tr><td>L</td><td>Be Vietnam Pro</td><td>Newsreader</td><td>JetBrains Mono</td><td class="eval">[My evaluation]</td></tr>
+        <tr><td>M</td><td>Outfit</td><td>Outfit</td><td>JetBrains Mono</td><td class="eval">[My evaluation]</td></tr>
+        <tr><td>N</td><td>Onest</td><td>Instrument Serif</td><td>JetBrains Mono</td><td class="eval">[My evaluation]</td></tr>
+        <tr><td>O</td><td>Be Vietnam Pro</td><td>Spectral</td><td>JetBrains Mono</td><td class="eval">[My evaluation]</td></tr>
+        <tr><td>P</td><td>Hanken Grotesk</td><td>Fraunces</td><td>JetBrains Mono</td><td class="eval">[My evaluation]</td></tr>
+        <tr><td>Q</td><td>Noto Sans</td><td>Fraunces</td><td>JetBrains Mono</td><td class="eval">[My evaluation]</td></tr>
       </tbody>
     </table>
   </section>
@@ -517,8 +572,8 @@ async function syncBoard(id: string) {
 
   // Tự phối: 3 dropdown → biến CSS của riêng section #mix.
   const FONT_GROUPS = {
-    Sans: ['Inter', 'Be Vietnam Pro', 'Plus Jakarta Sans', 'Geist', 'IBM Plex Sans', 'Nunito', 'Space Grotesk'],
-    Serif: ['Source Serif 4', 'Literata', 'Fraunces', 'Newsreader', 'Lora', 'Merriweather', 'IBM Plex Serif', 'Tiempos Headline'],
+    Sans: ['Inter', 'Be Vietnam Pro', 'Plus Jakarta Sans', 'Geist', 'IBM Plex Sans', 'Nunito', 'Space Grotesk', 'Outfit', 'Onest', 'Hanken Grotesk', 'Noto Sans'],
+    Serif: ['Source Serif 4', 'Literata', 'Fraunces', 'Newsreader', 'Lora', 'Merriweather', 'IBM Plex Serif', 'Spectral', 'Instrument Serif', 'Tiempos Headline'],
     Mono: ['JetBrains Mono', 'Roboto Mono', 'Geist Mono', 'IBM Plex Mono', 'Space Mono'],
   };
   const GENERIC_OF = { Sans: 'sans-serif', Serif: 'serif', Mono: 'monospace' };

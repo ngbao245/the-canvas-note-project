@@ -21,9 +21,21 @@ const config: Config = {
           '0%': { boxShadow: '0 0 0 0 color-mix(in srgb, var(--warning) 80%, transparent)' },
           '100%': { boxShadow: '0 0 0 16px transparent' },
         },
+        // Chấm trạng thái lưu "thở" nhẹ. idle (đã lưu) biên độ nhỏ, đang lưu rõ hơn.
+        'save-breathe': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.55' },
+        },
+        'save-breathe-strong': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.3' },
+        },
       },
       animation: {
         'presence-pulse': 'presence-pulse 1.5s var(--easing-standard) infinite',
+        // idle thở chậm nhè nhẹ; đang lưu thở nhanh + sâu hơn (báo "đang chạy").
+        'save-breathe': 'save-breathe 2.8s var(--easing-standard) infinite',
+        'save-breathe-strong': 'save-breathe-strong 1.1s var(--easing-standard) infinite',
       },
       colors: {
         border: token('border'),
@@ -93,13 +105,12 @@ const config: Config = {
         tooltip: 'var(--z-tooltip)',
         dev: 'var(--z-dev)',
       },
+      // 3 vai trò chữ, font web import ở index.css. Fallback stack để lúc font
+      // chưa tải xong vẫn hiện bằng system font cùng loại (tránh nhảy layout thô).
       fontFamily: {
-        serif: [
-          'Fraunces',
-          'Georgia',
-          'Times New Roman',
-          'serif',
-        ],
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        serif: ['Fraunces', 'Georgia', 'Times New Roman', 'serif'],
+        mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       transitionTimingFunction: {
         standard: 'var(--easing-standard)',

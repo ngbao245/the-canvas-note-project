@@ -8,6 +8,7 @@ import { useDevPanelStore } from './dev-panel-store';
 import { DevSection, DevSegmented } from './DevControls';
 import { WriteQueueSection } from './WriteQueueSection';
 import { OutboxSection } from './OutboxSection';
+import { CanvasCoordsReadout } from './CanvasCoordsReadout';
 import {
   ensureWriteMetrics,
   getRunningSession,
@@ -81,6 +82,8 @@ export default function DevPanel() {
           {collapsed ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
         </button>
       </div>
+      {/* Luôn hiện, kể cả khi thu gọn: nhìn toạ độ lúc thử pan / zoom. */}
+      <CanvasCoordsReadout />
       {!collapsed && (
         <div className="overflow-y-auto border-t border-border">
           {SECTIONS.map(({ id, title, Component }) => (

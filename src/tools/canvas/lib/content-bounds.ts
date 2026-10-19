@@ -47,21 +47,3 @@ export function computeDynamicZoomMin(
   if (!bounds) return ZOOM_OUT_BASELINE;
   return Math.min(ZOOM_OUT_BASELINE, computeFitZoom(bounds, viewport) / interfaceScale);
 }
-
-/**
- * Pan bounds = content bounds + margin. Camera clamp để viewport center
- * luôn nằm trong bounds → không pan thoát khỏi content.
- * Empty → null (không clamp).
- */
-export function computePanBounds(bounds: Bounds | null): Bounds | null {
-  if (!bounds) return null;
-  // Thêm margin 30% mỗi phía để user vẫn kéo ra chút không gian ngoài rìa.
-  const marginX = bounds.width * 0.3;
-  const marginY = bounds.height * 0.3;
-  return {
-    x: bounds.x - marginX,
-    y: bounds.y - marginY,
-    width: bounds.width + marginX * 2,
-    height: bounds.height + marginY * 2,
-  };
-}

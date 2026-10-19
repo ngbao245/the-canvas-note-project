@@ -4,6 +4,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { applyUiStyleAttr, useUiStyleStore } from '@/stores/ui-style-store';
 import { applyThemeAttr, useResolvedTheme } from '@/stores/theme-store';
+import { applySelectionColorAttr, useCanvasSettingsStore } from '@/stores/canvas-settings-store';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 import { ShortcutsModal } from '@/components/shortcuts/ShortcutsModal';
 import { applyLangAttr, useLocaleStore } from '@/lib/i18n';
@@ -30,6 +31,13 @@ export default function App() {
   useEffect(() => {
     applyThemeAttr(theme);
   }, [theme]);
+
+  // Màu viền chọn object canvas lên <html data-canvas-selection>. Gắn ở gốc vì
+  // preview kéo được portal ra body, nằm ngoài canvas.
+  const selectionColor = useCanvasSettingsStore((s) => s.selectionColor);
+  useEffect(() => {
+    applySelectionColorAttr(selectionColor);
+  }, [selectionColor]);
 
   // Đồng bộ ngôn ngữ lên <html lang> để trình đọc màn hình phát âm đúng tiếng.
   const locale = useLocaleStore((s) => s.locale);

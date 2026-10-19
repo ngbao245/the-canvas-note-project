@@ -19,6 +19,7 @@ import {
   moveToUnsortHere,
 } from '../engine/actions';
 import { hitZone, isInvalidZone } from '../lib/hit-test';
+import { isObjectLocked } from '../lib/note-data';
 import { boardDataSchema, type CanvasObject } from '../types';
 import { createEdgePanLoop } from './useEdgePan';
 import { isMacSecondaryClick, isPrimaryModifier } from '@/lib/shortcuts';
@@ -200,7 +201,6 @@ export function useObjectDrag(objectId: string) {
     const loop = createEdgePanLoop({
       isDragging: () => draggingRef.current,
       getCursor: () => lastClientRef.current,
-      getDraggingIds: () => startRef.current?.ids ?? [],
       reposition,
     });
     edgePanRef.current = loop;
@@ -447,13 +447,24 @@ export function useObjectDrag(objectId: string) {
         sel.select(objectId);
       }
 
-      const ids = Array.from(useSelectionStore.getState().selectedIds);
-      if (ids.length === 0 || !ids.includes(objectId)) return;
+      const allIds = Array.from(useSelectionStore.getState().selectedIds);
+      if (allIds.length === 0 || !allIds.includes(objectId)) return;
+
+      const objects = useObjectsStore.getState().objects;
+      // Note khoá vị trí: không di chuyển. Object chính khoá → chỉ chọn, không
+      // kéo. Kéo cụm → bỏ note khoá khỏi danh sách dời (các object khác vẫn
+      // kéo, note khoá đứng yên).
+      const primary = objects.get(objectId);
+      if (!primary) return;
+      if (isObjectLocked(primary.type, primary.data)) return;
+      const ids = allIds.filter((id) => {
+        const o = objects.get(id);
+        return o ? !isObjectLocked(o.type, o.data) : false;
+      });
+      if (ids.length === 0) return;
 
       // Grab offset canvas-space = cursor_canvas - primary.geometry (top-left).
       // Absolute logic → cursor luôn giữ đúng grab point suốt drag.
-      const primary = useObjectsStore.getState().objects.get(objectId);
-      if (!primary) return;
       const p = clientToCanvas(e.clientX, e.clientY, useCameraStore.getState().camera);
       if (!p) return;
 

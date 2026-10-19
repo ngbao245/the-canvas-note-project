@@ -62,10 +62,12 @@ export default defineConfig({
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          // lucide-react KHÔNG gom vào đây: popup icon board (spec canvas-board-icon)
+          // import cả bộ icon trong chunk lazy. Gom vào vendor (tải ngay) thì vendor
+          // phình ~700 KB. Để Rollup tự chia: icon dùng sẵn đi theo chunk dùng nó.
           vendor: [
             'zustand',
             '@tanstack/react-query',
-            'lucide-react',
             'clsx',
             'tailwind-merge',
             'class-variance-authority',

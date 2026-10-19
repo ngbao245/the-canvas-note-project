@@ -1,16 +1,17 @@
 import type { PointerEvent as ReactPointerEvent } from 'react';
+import { ArrowUpRight } from 'lucide-react';
 import { useObjectsStore } from '../store/objects-store';
 import { useSelectionStore } from '../store/selection-store';
 import { useCameraStore } from '../store/camera-store';
-import { useInteractionStore, type ResizeHandle } from '../store/interaction-store';
+import { shownHeight, useInteractionStore, type ResizeHandle } from '../store/interaction-store';
 import { commitResize, previewResize } from '../engine/actions';
-import { getObjectTypeDefinition } from '../hooks/useObjectRegistry';
-import { MIN_OBJECT_SIZE } from '../types';
+import { getObjectMinSize, getObjectTypeDefinition } from '../hooks/useObjectRegistry';
 
 /**
  * SelectionBox — viền chọn Milanote-style, render BÊN TRONG khối card
  * (ObjectView), không phải tầng riêng. Gồm:
- *   - Outline quanh card (primary, bù zoom → luôn 2px màn hình)
+ *   - Outline quanh card (`--canvas-selection`, mặc định đen / trắng theo theme,
+ *     đổi trong Cài đặt → Canvas; bù zoom → luôn 2px màn hình)
  *   - QuickLineDot top-right (visual placeholder — drag logic Phase C, xem
  *     `.kiro/notes/canvas-backlog.md` mục 1)
  *   - Corner resize handle SVG bottom-right (SE only, Milanote parity).
@@ -34,6 +35,20 @@ import { MIN_OBJECT_SIZE } from '../types';
  */
 /** Bo góc card mặc định = rounded-sm của ObjectShell. */
 const DEFAULT_RADIUS = 'calc(var(--radius) - 4px)';
+
+/** Cỡ gốc (canvas-px ở zoom 1) + khoảng kẹp trên màn của chấm và góc resize. */
+const DOT_SIZE = { base: 12, min: 8, max: 16 };
+const HANDLE_SIZE = { base: 20, min: 14, max: 26 };
+
+/**
+ * Cỡ theo canvas (to nhỏ theo zoom như Milanote) nhưng kẹp trên màn trong
+ * [min, max]: zoom nhỏ không teo tới mức không bấm được, zoom to không phình.
+ * Trả canvas-px vì phần tử nằm trong lớp đã scale theo zoom.
+ */
+function zoomedSize({ base, min, max }: typeof DOT_SIZE, zoom: number): number {
+  const screen = Math.min(max, Math.max(min, base * zoom));
+  return screen / zoom;
+}
 
 export function SelectionBox({
   id,
@@ -69,7 +84,7 @@ export function SelectionBox({
         // trong viền và mép phần tử cha làm tròn khác nhau → hở 1 đường mảnh ở
         // vài cạnh, trông lệch. Box-shadow mọc từ chính mép hộp nên luôn khít,
         // bo góc ngoài tự = radius + border.
-        boxShadow: `0 0 0 ${border}px var(--primary)`,
+        boxShadow: `0 0 0 ${border}px var(--canvas-selection)`,
         borderRadius: cornerRadius,
       }}
     >
@@ -77,7 +92,7 @@ export function SelectionBox({
       {single ? (
         <>
           <QuickLineDot zoom={zoom} border={border} radius={cornerRadius} />
-          {resizable ? <CornerResizeHandle objectId={id} zoom={zoom} border={border} /> : null}
+          {resizable ? <CornerResizeHandle objectId={id} zoom={zoom} /> : null}
         </>
       ) : null}
     </div>
@@ -87,7 +102,7 @@ export function SelectionBox({
 /**
  * QuickLineDot — chấm nhỏ top-right, hint kéo tạo line/arrow (Milanote pattern).
  * Phase B: visual only. Drag logic + LineObject → Phase C (xem backlog).
- * White circle 12px screen-space, subtle drop shadow. pointer-events-none.
+ * Chấm đặc màu viền chọn, cỡ theo `DOT_SIZE`, bóng nhẹ. Hover to 1.75 + hiện mũi tên + crosshair.
  */
 function QuickLineDot({
   zoom,
@@ -98,7 +113,7 @@ function QuickLineDot({
   border: number;
   radius: string;
 }) {
-  const size = 12 / zoom;
+  const size = zoomedSize(DOT_SIZE, zoom);
   // Milanote khối vuông nên chấm đặt ở góc hộp là nằm trên viền. Bibo bo góc:
   // góc hộp là khoảng trống ngoài đường cong → chấm lơ lửng. Đặt tâm chấm lên
   // đường giữa viền, tại điểm 45° của cung bo góc:
@@ -109,17 +124,34 @@ function QuickLineDot({
   const inset = `calc(${radius} - (${radius} + ${border / 2}px) * 0.70711 - ${size / 2}px)`;
   return (
     <div
-      className="pointer-events-none absolute rounded-full bg-card"
+      // Chấm đặc, không viền: tô màu viền chọn (đổi trong Cài đặt → Canvas).
+      // Hover: chấm to lên thành nút tròn có mũi tên chéo lên phải (gợi ý kéo ra
+      // mũi tên nối, backlog Line). Con trỏ giữ con trỏ thường. Bấm không lọt
+      // xuống card (không chọn / kéo / vào sửa).
+      className="group pointer-events-auto absolute flex items-center justify-center rounded-full transition-transform duration-fast ease-standard hover:scale-[1.75]"
+      onPointerDown={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
       style={{
         top: inset,
         right: inset,
         width: size,
         height: size,
-        border: `${2 / zoom}px solid var(--primary)`,
+        background: 'var(--canvas-selection)',
         boxShadow: 'var(--shadow-elevation-1)',
       }}
       aria-hidden="true"
-    />
+    >
+      {/* Icon vẽ trong khung chấm rồi scale cùng chấm; ẩn tới khi hover. */}
+      <ArrowUpRight
+        className="opacity-0 transition-opacity duration-fast ease-standard group-hover:opacity-100"
+        style={{
+          width: size * 0.75,
+          height: size * 0.75,
+          color: 'var(--canvas-selection-foreground)',
+        }}
+        strokeWidth={3}
+      />
+    </div>
   );
 }
 
@@ -130,18 +162,10 @@ function QuickLineDot({
  *
  * SVG: 3 đường chéo dark 50% + 3 đường trắng 70% offset → hiệu ứng grip 3D.
  */
-function CornerResizeHandle({
-  objectId,
-  zoom,
-  border,
-}: {
-  objectId: string;
-  zoom: number;
-  border: number;
-}) {
-  const size = 16 / zoom;
-  // Giữ vị trí cũ: 4px screen tính từ mép ngoài viền → trong hộp còn 4 - 2 = 2px.
-  const offset = 4 / zoom - border;
+function CornerResizeHandle({ objectId, zoom }: { objectId: string; zoom: number }) {
+  const size = zoomedSize(HANDLE_SIZE, zoom);
+  // Khoảng cách tới góc đổi cùng tỉ lệ với cỡ (2 / 16 ở cỡ gốc).
+  const offset = size / 8;
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.stopPropagation();
@@ -156,12 +180,16 @@ function CornerResizeHandle({
     if (!start) return;
     const g0 = start.geometry;
     const def = getObjectTypeDefinition(start.type);
+    const { width: minW, height: minH } = getObjectMinSize(start.type);
+    // Note đang sửa có thể đang dài hơn cao đã lưu (chiều cao tạm): kéo từ đúng
+    // khung đang thấy, không nhảy về cao cũ. Undo vẫn trả về g0 (cao đã lưu).
+    const baseH = shownHeight(useInteractionStore.getState(), objectId, g0.height);
 
     const onMove = (ev: PointerEvent) => {
       const dx = (ev.clientX - startClientX) / zoom;
       const dy = (ev.clientY - startClientY) / zoom;
-      const w = Math.max(MIN_OBJECT_SIZE, g0.width + dx);
-      const h = Math.max(MIN_OBJECT_SIZE, g0.height + dy);
+      const w = Math.max(minW, g0.width + dx);
+      const h = Math.max(minH, baseH + dy);
       previewResize(objectId, { x: g0.x, y: g0.y, width: w, height: h });
     };
     const onUp = (ev: PointerEvent) => {
@@ -170,12 +198,12 @@ function CornerResizeHandle({
       useInteractionStore.getState().setResizeHandle(null);
       const end = useObjectsStore.getState().objects.get(objectId);
       if (end) {
-        commitResize(objectId, g0, end.geometry);
-        // Type-specific post-processing (VD Note lock heightMode='fixed' sau
-        // drag). Chỉ gọi nếu geometry thực sự đổi để tránh side effect thừa.
+        // Type-specific side-effect (VD Note lock heightMode='fixed') gộp vào
+        // cùng bước undo với resize. Chỉ gọi nếu geometry thực sự đổi.
         const changed =
           g0.width !== end.geometry.width || g0.height !== end.geometry.height;
-        if (changed) def?.onResizeCommit?.(objectId, g0, end.geometry);
+        const extra = changed ? def?.onResizeCommit?.(objectId, g0, end.geometry) : undefined;
+        commitResize(objectId, g0, end.geometry, extra);
       }
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);

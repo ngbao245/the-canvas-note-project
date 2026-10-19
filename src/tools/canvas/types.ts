@@ -70,12 +70,17 @@ export type CanvasObject = z.infer<typeof canvasObjectSchema>;
  * Đọc qua `lib/note-data.ts::parseNoteData` (chỉ điền mặc định, không chuyển
  * dạng cũ).
  *
- * `color`: hex ColorBar top (user chọn qua toolbar element mode), null = default
- * primary/60 theme-aware. Palette ở `lib/note-colors.ts`.
+ * Màu (`color` thanh, `background` nền, `textColor` chữ đi kèm): chọn qua popup
+ * Màu toolbar element mode. Bảng màu ở `lib/note-colors.ts`.
  */
 export const noteDataSchema = z.object({
   body: z.string().default('<p></p>'),
+  /** Màu thanh trên đầu note (tab Top strip). Hex hoặc null. */
   color: z.string().nullable().default(null),
+  /** Màu nền cả note (tab Background). Hex, 'transparent' hoặc null (nền card). */
+  background: z.string().nullable().default(null),
+  /** Màu chữ đi kèm khi chọn ô cặp "A". null = chữ tự tương phản theo nền. */
+  textColor: z.string().nullable().default(null),
   /**
    * Height mode (Milanote parity):
    *   - 'auto': RO auto-grow theo content khi content vượt geometry (mặc định
@@ -88,6 +93,11 @@ export const noteDataSchema = z.object({
    * lại thì tự kéo corner).
    */
   heightMode: z.enum(['auto', 'fixed']).default('auto'),
+  /**
+   * Khoá vị trí (Milanote "Lock Position"): true → không kéo di chuyển, không
+   * kéo góc đổi cỡ. Vẫn chọn / mở sửa / đổi màu được. Toggle qua menu More.
+   */
+  locked: z.boolean().default(false),
 });
 export type NoteData = z.infer<typeof noteDataSchema>;
 
@@ -109,12 +119,30 @@ export const linkDataSchema = z.object({
 export type LinkData = z.infer<typeof linkDataSchema>;
 
 /**
+ * Icon của board (spec canvas-board-icon): hiển thị giữa ô vuông board tile.
+ *   - kind 'lucide': `value` là tên icon lucide dạng kebab-case ('star', 'arrow-up').
+ *     Lúc render chuyển sang PascalCase tra component từ lucide-react.
+ *   - kind 'text': `value` là ký tự người dùng tự nhập (tối đa 2 ký tự).
+ * Không icon → field `icon` = null (board cũ không có field cũng về null).
+ */
+export const boardIconSchema = z.object({
+  kind: z.enum(['lucide', 'text']),
+  value: z.string(),
+});
+export type BoardIcon = z.infer<typeof boardIconSchema>;
+
+/** Giới hạn ký tự khi tự nhập icon chữ (giữ chữ đủ to trong ô 72x72). */
+export const BOARD_ICON_TEXT_MAX = 2;
+
+/**
  * Board object (type='board' trên canvas cha): tile đại diện board con.
  * Chỉ giữ ref sang Board entity — name/color/count đọc từ Board + objects store
  * lúc render, không duplicate.
  */
 export const boardDataSchema = z.object({
   linkedBoardId: z.string(),
+  /** Khoá vị trí tile (Milanote "Lock Position"), như note. Toggle qua menu More. */
+  locked: z.boolean().default(false),
 });
 export type BoardData = z.infer<typeof boardDataSchema>;
 
@@ -139,6 +167,8 @@ export const boardSchema = z.object({
   name: z.string(),
   parentId: z.string().nullable().default(null),
   color: z.string().default('#71717a'),
+  // Icon board tile (spec canvas-board-icon). Board cũ không có field → null (không icon).
+  icon: boardIconSchema.nullable().default(null),
   camera: cameraSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -185,6 +215,7 @@ export function makeDefaultBoard(): Board {
     name: 'Home',
     parentId: null,
     color: BOARD_COLOR_PALETTE[0],
+    icon: null,
     camera: { x: 0, y: 0, zoom: 1 },
     createdAt: now,
     updatedAt: now,

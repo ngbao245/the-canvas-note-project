@@ -13,15 +13,15 @@
 // ghi, không push history).
 // ============================================================
 
-import type { Board, BoardData, CanvasObject, Geometry } from '../types';
-import { MIN_OBJECT_SIZE, boardColorForIndex } from '../types';
+import type { Board, BoardData, BoardIcon, CanvasObject, Geometry } from '../types';
+import { boardColorForIndex } from '../types';
 import { getCanvasRepository } from '../api';
 import { useObjectsStore } from '../store/objects-store';
 import { useBoardsStore } from '../store/boards-store';
 import { useSelectionStore } from '../store/selection-store';
 import { beginHistoryGroup, endHistoryGroup, useHistoryStore } from '../store/history-store';
 import { useCurrentBoardStore } from '../store/current-board-store';
-import { getObjectTypeDefinition } from '../hooks/useObjectRegistry';
+import { getObjectMinSize, getObjectTypeDefinition } from '../hooks/useObjectRegistry';
 import { extractBlockHtml, removeBlock } from '../lib/note-clip';
 import type { BlockTarget } from '../lib/note-block-keys';
 import { parseNoteData } from '../lib/note-data';
@@ -174,6 +174,7 @@ export function createBoardAt(
     name: 'New Board',
     parentId,
     color: boardColorForIndex(siblingCount),
+    icon: null,
     camera: { x: 0, y: 0, zoom: 1 },
     createdAt: now,
     updatedAt: now,
@@ -194,7 +195,7 @@ export function createBoardAt(
       rotation,
       zIndex,
     },
-    data: { linkedBoardId: board.id } satisfies BoardData,
+    data: { linkedBoardId: board.id, locked: false } satisfies BoardData,
     unsortIndex: null,
     version: 0,
     createdAt: now,
@@ -258,6 +259,130 @@ export function renameBoard(id: string, newName: string): void {
     },
   });
 }
+
+// --- Board color ---
+
+type BoardStyle = Pick<Board, 'color' | 'icon'>;
+
+/**
+ * Đổi các trường giao diện của Board (màu nền, icon): ghi store + lưu, 1 bước undo.
+ * `same(before)` trả true thì bỏ qua (không ghi, không thêm bước undo).
+ */
+function setBoardStyle<K extends keyof BoardStyle>(
+  id: string,
+  next: Pick<BoardStyle, K>,
+  label: string,
+  same: (before: Pick<BoardStyle, K>) => boolean,
+): void {
+  // Mọi lần ghi giao diện board (màu, icon) trả màu đang xem trước về gốc trước:
+  // không lưu nhầm màu chưa chốt, `before` của bước undo là màu thật.
+  restoreBoardColorPreview(id);
+  const cur = useBoardsStore.getState().boards.get(id);
+  if (!cur) return;
+  // Board cũ trong IndexedDB thiếu field icon → undefined, coi như null.
+  const keys = Object.keys(next) as K[];
+  const before = Object.fromEntries(keys.map((k) => [k, cur[k] ?? null])) as Pick<BoardStyle, K>;
+  if (same(before)) return;
+  const repo = getCanvasRepository();
+  const apply = (v: Pick<BoardStyle, K>) => {
+    useBoardsStore.getState().update(id, v);
+    const u = useBoardsStore.getState().boards.get(id);
+    if (u) void repo.saveBoard(u);
+  };
+  apply(next);
+  useHistoryStore.getState().push({ label, undo: () => apply(before), redo: () => apply(next) });
+}
+
+// --- Xem trước màu tuỳ chỉnh (kéo trong bảng màu) ---
+// Kéo trong bảng màu bắn liên tục: chỉ đổi store để vẽ ngay, KHÔNG lưu, KHÔNG undo.
+// Giữ giá trị gốc của ĐÚNG các trường bị xem trước (màu), không chụp cả `data`. Lần
+// ghi thật kế tiếp trả các trường đó về gốc rồi mới ghi → `before` đúng, cả lần kéo
+// chỉ ra 1 bước undo, và thay đổi khác xen giữa (khoá, sync) không bị đè.
+const boardColorOrigin = new Map<string, string>();
+/** id → giá trị gốc của từng trường đã xem trước. */
+const objectDataOrigin = new Map<string, Map<string, unknown>>();
+
+/** Xem trước màu nền board (không lưu, không undo). */
+export function previewBoardColor(id: string, color: string): void {
+  const cur = useBoardsStore.getState().boards.get(id);
+  if (!cur) return;
+  if (!boardColorOrigin.has(id)) boardColorOrigin.set(id, cur.color);
+  useBoardsStore.getState().update(id, { color });
+}
+
+/**
+ * Xem trước `data` của object (không lưu, không undo). Chỉ áp các trường khác bản
+ * hiện tại lên `data` đang có, không thay cả object bằng `nextData` của caller.
+ */
+export function previewObjectData(id: string, nextData: unknown): void {
+  const cur = useObjectsStore.getState().objects.get(id);
+  const curData = asRecord(cur?.data);
+  const next = asRecord(nextData);
+  if (!cur || !curData || !next) return;
+  let origin = objectDataOrigin.get(id);
+  const changed: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(next)) {
+    if (Object.is(curData[k], v)) continue;
+    if (!origin) {
+      origin = new Map();
+      objectDataOrigin.set(id, origin);
+    }
+    // Chỉ nhớ gốc ở lần đầu trường đó bị đổi.
+    if (!origin.has(k)) origin.set(k, curData[k]);
+    changed[k] = v;
+  }
+  if (Object.keys(changed).length === 0) return;
+  useObjectsStore.getState().updateData(id, { ...curData, ...changed });
+}
+
+/** Object đang có bản xem trước chưa ghi (caller bỏ qua so "trùng màu đang áp"). */
+export function hasObjectPreview(id: string): boolean {
+  return objectDataOrigin.has(id);
+}
+
+function restoreBoardColorPreview(id: string): void {
+  const origin = boardColorOrigin.get(id);
+  if (origin === undefined) return;
+  boardColorOrigin.delete(id);
+  useBoardsStore.getState().update(id, { color: origin });
+}
+
+function restoreObjectDataPreview(id: string): void {
+  const origin = objectDataOrigin.get(id);
+  if (!origin) return;
+  objectDataOrigin.delete(id);
+  const curData = asRecord(useObjectsStore.getState().objects.get(id)?.data);
+  if (!curData) return;
+  useObjectsStore.getState().updateData(id, { ...curData, ...Object.fromEntries(origin) });
+}
+
+function asRecord(v: unknown): Record<string, unknown> | null {
+  return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+}
+
+/**
+ * Đổi màu Board (khối vuông của tile). Màu chữ / icon tự tính theo nền, không lưu.
+ * So màu không phân biệt hoa thường.
+ */
+export function setBoardColor(id: string, color: string): void {
+  setBoardStyle(id, { color }, 'Board color', (b) => b.color.toLowerCase() === color.toLowerCase());
+}
+
+// --- Board icon ---
+
+/**
+ * Đặt / gỡ icon board tile (spec canvas-board-icon). `icon = null` = gỡ. Icon là
+ * thuộc tính Board entity (như color), mọi tile trỏ tới board hiện cùng icon.
+ */
+export function setBoardIcon(id: string, icon: BoardIcon | null): void {
+  setBoardStyle(
+    id,
+    { icon },
+    'Board icon',
+    (b) => b.icon?.kind === icon?.kind && b.icon?.value === icon?.value,
+  );
+}
+
 
 // --- Move objects cross-board vào Unsort ---
 
@@ -741,6 +866,8 @@ export async function deleteSelectionWithBoards(ids: string[]): Promise<void> {
 // --- Update data (edit inline, undo-able) ---
 /** Cập nhật `data` của object + push command. Skip nếu data không đổi (deep-ish qua JSON). */
 export function updateObjectData(id: string, nextData: unknown): void {
+  // Đang xem trước màu tuỳ chỉnh → về bản gốc để `before` đúng (1 bước undo).
+  restoreObjectDataPreview(id);
   const cur = useObjectsStore.getState().objects.get(id);
   if (!cur) return;
   const before = cur.data;
@@ -769,6 +896,19 @@ export function updateObjectData(id: string, nextData: unknown): void {
       if (u) void repo.saveObject(u);
     },
   });
+}
+
+/**
+ * Ghi `data` object + persist, KHÔNG push undo. Dùng cho side-effect cần gộp
+ * vào bước undo khác (VD Note đổi heightMode cùng bước resize — xem
+ * `commitResize` extra). Caller tự lo history.
+ */
+export function setObjectDataSilently(id: string, nextData: unknown): void {
+  const s = useObjectsStore.getState();
+  if (!s.objects.get(id)) return;
+  s.updateData(id, nextData);
+  const updated = useObjectsStore.getState().objects.get(id);
+  if (updated) void getCanvasRepository().saveObject(updated);
 }
 
 // --- Note tự lưu (spec canvas-note-autosave) ---
@@ -871,8 +1011,10 @@ function clampedGeometry(id: string, geometry: Partial<Geometry>): Geometry | nu
   const cur = useObjectsStore.getState().objects.get(id);
   if (!cur) return null;
   const next = { ...cur.geometry, ...geometry };
-  if (next.width < MIN_OBJECT_SIZE) next.width = MIN_OBJECT_SIZE;
-  if (next.height < MIN_OBJECT_SIZE) next.height = MIN_OBJECT_SIZE;
+  // Min theo loại (VD Note rộng ≥ 160), không chỉ MIN_OBJECT_SIZE chung.
+  const min = getObjectMinSize(cur.type);
+  if (next.width < min.width) next.width = min.width;
+  if (next.height < min.height) next.height = min.height;
   return next;
 }
 
@@ -888,8 +1030,21 @@ export function previewResize(id: string, geometry: Partial<Geometry>): void {
   if (next) mutateGeometry(id, next);
 }
 
-/** Commit resize sau drag end: ghi kích thước mới + push ResizeCommand. */
-export function commitResize(id: string, before: Geometry, after: Geometry): void {
+/**
+ * Commit resize sau drag end: ghi kích thước mới + push ResizeCommand.
+ *
+ * `extra` cho type-specific side-effect gộp VÀO CÙNG bước undo (VD Note đổi
+ * `heightMode` 'auto' → 'fixed' khi kéo góc lần đầu). `extra.apply()` chạy ngay
+ * lúc commit; `undo`/`redo` của entry chạy cả geometry lẫn extra để Ctrl+Z 1
+ * lần trả về đúng trạng thái trước kéo (không tách 2 bước). Không có extra →
+ * hành vi như cũ.
+ */
+export function commitResize(
+  id: string,
+  before: Geometry,
+  after: Geometry,
+  extra?: { apply: () => void; undo: () => void; redo: () => void },
+): void {
   if (
     before.x === after.x &&
     before.y === after.y &&
@@ -899,10 +1054,17 @@ export function commitResize(id: string, before: Geometry, after: Geometry): voi
     return;
   }
   persistObject(id);
+  extra?.apply();
   useHistoryStore.getState().push({
     label: 'Resize object',
-    undo: () => mutateGeometryAndPersist(id, before),
-    redo: () => mutateGeometryAndPersist(id, after),
+    undo: () => {
+      mutateGeometryAndPersist(id, before);
+      extra?.undo();
+    },
+    redo: () => {
+      mutateGeometryAndPersist(id, after);
+      extra?.redo();
+    },
   });
 }
 
@@ -1201,7 +1363,14 @@ export function clipParagraphToNewNote(
       rotation,
       zIndex,
     },
-    data: { body: paragraphHtml, color: parsedData.color, heightMode: 'auto' },
+    // Giữ đủ màu note gốc: thanh, nền, màu chữ đi kèm (spec canvas-note-color US-8).
+    data: {
+      body: paragraphHtml,
+      color: parsedData.color,
+      background: parsedData.background,
+      textColor: parsedData.textColor,
+      heightMode: 'auto',
+    },
     unsortIndex: null,
     version: 0,
     createdAt: now,

@@ -1,5 +1,12 @@
-/* Fraunces — modern serif free, dùng cho title canvas card (Milanote parity thay Tiempos proprietary). */
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap');
+/*
+ * Font app — 3 vai trò, map sang token fontFamily trong tailwind.config.ts
+ * (sans / serif / mono). Đổi font ở đây + bảng fontFamily, không rải tên font
+ * trong component.
+ *   - Inter: thân note + UI/label. Phủ Latin/Cyrillic/Greek/Việt (quốc tế).
+ *   - Fraunces: heading note + title card (Milanote parity thay Tiempos trả phí).
+ *   - JetBrains Mono: code trong note.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -37,6 +44,29 @@
     --drawably-fill: var(--primary);
     --drawably-paper: var(--background);
     --drawably-width: 2;
+
+    /*
+     * Màu viền chọn object trên canvas (viền, chấm tròn, viền nút). Mặc định
+     * tương phản theo theme: đen trên nền sáng, trắng trên nền tối. Cài đặt →
+     * Canvas đổi qua <html data-canvas-selection> (App.tsx).
+     */
+    --canvas-selection: var(--foreground);
+    /* Màu nét vẽ trên nền --canvas-selection (mũi tên trong chấm QuickLine khi hover). */
+    --canvas-selection-foreground: var(--background);
+  }
+  [data-canvas-selection='primary'] {
+    --canvas-selection: var(--primary);
+    --canvas-selection-foreground: var(--primary-foreground);
+  }
+  [data-canvas-selection='success'] {
+    --canvas-selection: var(--success);
+    --canvas-selection-foreground: var(--success-foreground);
+  }
+  [data-canvas-selection='warning'] {
+    --canvas-selection: var(--warning);
+    --canvas-selection-foreground: var(--warning-foreground);
+  }
+  :root {
 
     /*
      * Z-index scale — đặt tên tầng thay magic number.
@@ -176,9 +206,7 @@
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
-      sans-serif;
+    @apply bg-background text-foreground font-sans;
     -webkit-font-smoothing: antialiased;
   }
 

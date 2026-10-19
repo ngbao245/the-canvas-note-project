@@ -26,6 +26,10 @@ interface InteractionState {
    *  không phải nhảy về cuối doc). Null khi edit trigger từ nguồn khác (VD
    *  keyboard shortcut) → renderer fallback focus end. */
   editingClickPoint: { x: number; y: number } | null;
+  /** Chiều cao chữ của object đang sửa (canvas-px), chỉ để VẼ: note fixed lúc
+   *  sửa dài ra cho thấy hết chữ, thoát sửa về đúng cao đã lưu. Không ghi
+   *  geometry, không vào undo. Đổi editingId thì tự về null. */
+  editingHeight: number | null;
   /** Object.id của BoardObject đang bị hover khi drag object khác qua nó (drop-onto-tile).
    *  BoardObject subscribe để render ring highlight + count preview +1. */
   hoveredBoardTileId: string | null;
@@ -41,10 +45,27 @@ interface InteractionState {
   setMarqueeRect: (rect: InteractionState['marqueeRect']) => void;
   setResizeHandle: (h: ResizeHandle | null) => void;
   setEditingId: (id: string | null, clickPoint?: { x: number; y: number } | null) => void;
+  /** Ghi chiều cao tạm cho `id`. Bỏ qua nếu `id` không còn là object đang sửa
+   *  (editor cũ gỡ trễ không đè lên note mới). */
+  setEditingHeight: (id: string, height: number | null) => void;
   setHoveredBoardTileId: (id: string | null) => void;
   setHoveredUnsortDropTarget: (hover: boolean) => void;
   setPasteCounter: (n: number) => void;
   reset: () => void;
+}
+
+/**
+ * Chiều cao đang hiện của object: lúc sửa có chiều cao tạm lớn hơn thì lấy
+ * chiều cao tạm, còn lại lấy chiều cao đã lưu. Dùng chung cho lớp vẽ và góc
+ * resize để kéo góc bắt đầu từ đúng khung đang thấy.
+ */
+export function shownHeight(
+  s: Pick<InteractionState, 'editingId' | 'editingHeight'>,
+  id: string,
+  storedHeight: number,
+): number {
+  if (s.editingId !== id || s.editingHeight === null) return storedHeight;
+  return Math.max(storedHeight, s.editingHeight);
 }
 
 export const useInteractionStore = create<InteractionState>((set) => ({
@@ -53,6 +74,7 @@ export const useInteractionStore = create<InteractionState>((set) => ({
   resizeHandle: null,
   editingId: null,
   editingClickPoint: null,
+  editingHeight: null,
   hoveredBoardTileId: null,
   hoveredUnsortDropTarget: false,
   pasteCounter: 0,
@@ -60,8 +82,11 @@ export const useInteractionStore = create<InteractionState>((set) => ({
   setMode: (mode) => set({ mode }),
   setMarqueeRect: (marqueeRect) => set({ marqueeRect }),
   setResizeHandle: (resizeHandle) => set({ resizeHandle }),
+  // Đổi object đang sửa → bỏ chiều cao tạm của object cũ.
   setEditingId: (editingId, clickPoint) =>
-    set({ editingId, editingClickPoint: clickPoint ?? null }),
+    set({ editingId, editingClickPoint: clickPoint ?? null, editingHeight: null }),
+  setEditingHeight: (id, height) =>
+    set((s) => (s.editingId === id && s.editingHeight !== height ? { editingHeight: height } : s)),
   setHoveredBoardTileId: (hoveredBoardTileId) => set({ hoveredBoardTileId }),
   setHoveredUnsortDropTarget: (hoveredUnsortDropTarget) =>
     set({ hoveredUnsortDropTarget }),
@@ -74,6 +99,7 @@ export const useInteractionStore = create<InteractionState>((set) => ({
       resizeHandle: null,
       editingId: null,
       editingClickPoint: null,
+      editingHeight: null,
       hoveredBoardTileId: null,
       hoveredUnsortDropTarget: false,
       pasteCounter: 0,

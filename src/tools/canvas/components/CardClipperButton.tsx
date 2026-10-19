@@ -1,4 +1,5 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { ArrowRight } from 'lucide-react';
 import { getCameraEngine } from '../engine/camera-engine';
 import { clientToCanvas } from '../engine/coord';
 import { hitZone, isInvalidZone, isSecondaryZone } from '../lib/hit-test';
@@ -8,7 +9,9 @@ import type { BlockTarget } from '../lib/note-block-keys';
 import { getObjectTypeDefinition } from '../hooks/useObjectRegistry';
 import { setCursorOverride } from '@/lib/cursor-override';
 import type { CanvasObject } from '../types';
+import type { NoteColorFields } from '../lib/note-colors';
 import { FloatingObjectPreview } from './FloatingObjectPreview';
+import { useI18n } from '@/lib/i18n';
 
 /**
  * CardClipper button — Milanote parity. Icon Card nhỏ ở bên phải Note khi user
@@ -55,8 +58,10 @@ export function CardClipperButton({
   target,
   top,
   sourceBody,
-  sourceColor,
+  sourceColors,
   boardId,
+  onBeforeClip,
+  onAfterClip,
 }: {
   sourceId: string;
   /** Khối cần tách: theo mã, note cũ chưa có mã thì theo vị trí. */
@@ -66,9 +71,14 @@ export function CardClipperButton({
   /** Body HTML hiện tại của Note gốc — dùng extract paragraph khi drag start. */
   sourceBody: string;
   /** Color hex của Note gốc (inherit cho note mới). */
-  sourceColor: string | null;
+  sourceColors: NoteColorFields;
   boardId: string | null;
+  /** Ngay trước khi cắt / chép (editor chốt chữ đã gõ). */
+  onBeforeClip?: (target: BlockTarget) => void;
+  /** Ngay sau khi cắt / chép. `newId` = note mới, null khi khối đã mất (không tạo gì). */
+  onAfterClip?: (newId: string | null) => void;
 }) {
+  const { t } = useI18n();
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const startRef = useRef<{ x: number; y: number } | null>(null);
   const draggingRef = useRef(false);
@@ -78,6 +88,9 @@ export function CardClipperButton({
     const paragraphHtml = extractBlockHtml(sourceBody, target);
     if (!paragraphHtml) return;
     e.stopPropagation();
+    // Chặn sự kiện chuột đi kèm (mousedown) → nút không lấy focus, editor không
+    // blur, vẫn ở chế độ sửa trong lúc kéo.
+    e.preventDefault();
     // Chụp khối lúc bấm: hover đổi trong lúc kéo không đổi khối sẽ tách.
     const grabbed: BlockTarget = { ...target };
 
@@ -105,7 +118,7 @@ export function CardClipperButton({
         rotation: 0,
         zIndex: 0,
       },
-      data: { body: paragraphHtml, color: sourceColor },
+      data: { body: paragraphHtml, ...sourceColors },
       unsortIndex: null,
     } as CanvasObject;
 
@@ -148,7 +161,9 @@ export function CardClipperButton({
       if (!c || !boardId) return;
       // Milanote parity: default Cut, Alt = Copy.
       const cut = !ev.altKey;
-      clipParagraphToNewNote(sourceId, grabbed, c.x, c.y, boardId, cut);
+      onBeforeClip?.(grabbed);
+      const created = clipParagraphToNewNote(sourceId, grabbed, c.x, c.y, boardId, cut);
+      onAfterClip?.(created?.id ?? null);
     };
 
     const onCancel = () => cleanup();
@@ -169,12 +184,19 @@ export function CardClipperButton({
         type="button"
         data-card-clipper-button="true"
         onPointerDown={onPointerDown}
-        title="Kéo để tách paragraph thành note mới (Alt = copy)"
-        aria-label="Tách paragraph thành note mới"
-        style={{ top, right: -32 }}
-        className="absolute grid h-6 w-6 cursor-grab place-items-center rounded-md border border-border bg-card shadow-md transition-transform duration-fast hover:scale-110 active:cursor-grabbing"
+        onMouseDown={(e) => e.preventDefault()}
+        tabIndex={-1}
+        title={t('CANVAS.CARD_CLIPPER.TITLE')}
+        aria-label={t('CANVAS.CARD_CLIPPER.LABEL')}
+        style={{ top, left: 'calc(100% + 8px)' }}
+        // Hover: to lên chút + hiện mũi tên (Milanote). Mọc sang phải nên không đè note.
+        className="group absolute flex h-6 origin-left cursor-grab items-center gap-0.5 rounded-md border border-border bg-card px-0.5 shadow-md transition-transform duration-fast ease-standard hover:scale-110"
       >
         <CardIcon />
+        <ArrowRight
+          aria-hidden="true"
+          className="hidden h-3 w-3 text-muted-foreground group-hover:block"
+        />
       </button>
       {preview && paragraphHtmlForPreview ? (
         <FloatingObjectPreview
@@ -186,12 +208,12 @@ export function CardClipperButton({
               geometry: {
                 x: 0,
                 y: 0,
-                width: getObjectTypeDefinition('note')?.defaultGeometry.width ?? 338,
+                width: getObjectTypeDefinition('note')?.defaultGeometry.width ?? 300,
                 height: getObjectTypeDefinition('note')?.defaultGeometry.height ?? 68,
                 rotation: 0,
                 zIndex: 0,
               },
-              data: { body: paragraphHtmlForPreview, color: sourceColor },
+              data: { body: paragraphHtmlForPreview, ...sourceColors },
               unsortIndex: null,
             } as CanvasObject
           }

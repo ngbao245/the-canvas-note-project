@@ -14,6 +14,7 @@
 
 import type { ComponentType, ReactNode } from 'react';
 import type { CanvasObject, Geometry } from '../types';
+import { MIN_OBJECT_SIZE } from '../types';
 
 /** Props truyền vào renderer của mỗi object type. */
 export interface ObjectRendererProps {
@@ -49,12 +50,24 @@ export interface ObjectTypeDefinition {
    */
   ownSelectionFrame?: boolean;
   /**
-   * Callback sau khi commitResize xong. Type-specific post-processing hook —
-   * VD Note dùng để chuyển heightMode 'auto' → 'fixed' khi user kéo corner.
-   * Gọi với snapshot geometry before + after drag. Không fire nếu geometry
-   * không đổi (CornerResizeHandle trong SelectionBox.tsx đã filter).
+   * Hook type-specific chạy khi user kéo góc xong (geometry có đổi). VD Note
+   * chuyển heightMode 'auto' → 'fixed'. Trả `extra` để gộp side-effect VÀO
+   * CÙNG bước undo với resize (Ctrl+Z 1 lần trả cả geometry lẫn data). Trả
+   * `undefined` → không có side-effect, chỉ resize. SelectionBox gọi trước
+   * `commitResize` rồi truyền `extra` vào đó.
    */
-  onResizeCommit?: (objectId: string, before: Geometry, after: Geometry) => void;
+  onResizeCommit?: (
+    objectId: string,
+    before: Geometry,
+    after: Geometry,
+  ) => { apply: () => void; undo: () => void; redo: () => void } | undefined;
+
+  /**
+   * Kích thước tối thiểu, canvas-px. Thiếu field nào → MIN_OBJECT_SIZE chung.
+   * Áp cho MỌI đường đổi cỡ (kéo góc, tự cao, undo/redo) qua `getObjectMinSize`,
+   * không đọc field này trực tiếp. VD Note: rộng ≥ 160, cao ≥ 68.
+   */
+  minSize?: { width?: number; height?: number };
   /**
    * Lọc `data` của object đến từ nguồn không tin được (clipboard). Trả data đã
    * sạch, hoặc null để bỏ object đó. Không đăng ký → giữ nguyên data. Type nào
@@ -73,11 +86,10 @@ export interface ObjectTypeDefinition {
   renderElementActions?: (object: CanvasObject) => ReactNode;
   /**
    * Render buttons contextual cho editing mode (user vào edit content). Không
-   * bao gồm Dismiss (Toolbar tự render). Fallback null → Toolbar dùng
-   * GenericEditingActions (TextStyle/Bold/Italic/List/Link/... placeholder).
+   * bao gồm Dismiss (Toolbar tự render).
    *
-   * Type không có edit content (VD Board) không đăng ký field này → Toolbar
-   * không chuyển sang editing mode cho type đó.
+   * Type không đăng ký field này (VD Board: chỉ sửa tên tại chỗ) → Toolbar
+   * không chuyển sang editing mode, giữ nút element mode.
    */
   renderEditingActions?: (object: CanvasObject) => ReactNode;
 }
@@ -91,6 +103,19 @@ export function registerObjectType(def: ObjectTypeDefinition): void {
 
 export function getObjectTypeDefinition(type: string): ObjectTypeDefinition | undefined {
   return registry.get(type);
+}
+
+/**
+ * Kích thước tối thiểu của 1 loại object: `minSize` của loại đó, thiếu thì
+ * MIN_OBJECT_SIZE. Nguồn duy nhất cho mọi chỗ kẹp cỡ, để loại mới (Image, Link)
+ * chỉ cần khai `minSize` là được giữ ở mọi đường đổi cỡ.
+ */
+export function getObjectMinSize(type: string): { width: number; height: number } {
+  const min = registry.get(type)?.minSize;
+  return {
+    width: min?.width ?? MIN_OBJECT_SIZE,
+    height: min?.height ?? MIN_OBJECT_SIZE,
+  };
 }
 
 export function getAllObjectTypes(): ObjectTypeDefinition[] {
