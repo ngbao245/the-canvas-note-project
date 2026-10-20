@@ -10,7 +10,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { EmptyState } from '@/components/shared';
+import { EmptyState, OverlayScroll } from '@/components/shared';
 import { useSettingsModalStore, type SettingsSection } from '@/stores/settings-modal-store';
 import { Row, Section, SoonBadge } from './SettingsBlocks';
 import { AppearanceSection } from './sections/AppearanceSection';
@@ -151,13 +151,14 @@ export function SettingsModal() {
 }
 
 /**
- * Vùng cuộn + khối căn giữa (menu trái | nội dung phải).
+ * Bố cục: menu trái CỐ ĐỊNH (không cuộn), chỉ cột nội dung phải cuộn. Grid 2 cột
+ * đặt NGOÀI vùng cuộn để menu đứng yên khi lăn bên phải; lăn bên phải không kéo
+ * cả modal. Màn hẹp (dưới md) thì xếp dọc, nội dung vẫn là phần cuộn.
  *
- * Chống co dãn khi chuyển mục (3 chỗ):
- *   - scrollbar-gutter: stable → luôn chừa chỗ thanh cuộn, mục dài/ngắn cùng bề rộng,
- *     khối căn giữa không nhích ngang.
+ * Chống co dãn khi chuyển mục:
  *   - w-full max-w-4xl → khối luôn rộng bằng nhau, không theo độ dài nội dung.
  *   - cột nội dung minmax(0,1fr) → chữ/ô dài không đẩy cột rộng ra.
+ *   - OverlayScroll: tay cuộn nổi đè, không chiếm chỗ.
  * Chuyển mục thì cuộn về đầu bằng scrollTop (không remount, giữ focus nút menu).
  */
 function SettingsBody() {
@@ -170,14 +171,21 @@ function SettingsBody() {
   }, [section]);
 
   return (
-    <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
-      {/* Zoom trên khối nội dung (không trên vùng cuộn) → vùng cuộn vẫn cao bằng phần còn lại của màn hình. */}
-      <div style={{ zoom: uiScale }}>
-        <div className="mx-auto grid w-full max-w-4xl grid-cols-1 gap-7 px-6 py-8 md:grid-cols-[200px_minmax(0,1fr)]">
+    // Zoom trên cả cụm (không trên khung fixed) → nền vẫn phủ kín, cụm vẫn cao bằng màn hình.
+    // px/py: cả cụm cách header + mép modal. Cả 2 panel dùng nền `settings-panel`, khác nền modal.
+    <div style={{ zoom: uiScale }} className="flex min-h-0 flex-1 justify-center px-6 py-5">
+      <div className="grid h-full min-h-0 w-full max-w-4xl grid-cols-1 gap-5 md:grid-cols-[240px_minmax(0,1fr)]">
+        {/* Menu: cố định (cuộn riêng nếu quá cao), không trôi theo nội dung bên phải. */}
+        <div className="no-scrollbar overflow-y-auto rounded-xl bg-settings-panel p-2">
           <SettingsNav />
-          <div className="min-w-0">
-            <SettingsContent />
-          </div>
+        </div>
+        {/* Panel nội dung. Vùng cuộn đệm py-5 để tay cuộn không chạm mép trên / dưới panel. */}
+        <div className="min-h-0 overflow-hidden rounded-xl bg-settings-panel">
+          <OverlayScroll ref={scrollRef} className="h-full" viewportClassName="px-6 py-5">
+            <div className="min-w-0">
+              <SettingsContent />
+            </div>
+          </OverlayScroll>
         </div>
       </div>
     </div>
@@ -191,7 +199,7 @@ function SettingsNav() {
   return (
     <nav
       aria-label={t('SETTINGS.NAV')}
-      className="flex gap-1 md:sticky md:top-0 md:flex-col md:self-start"
+      className="flex gap-1 md:flex-col"
     >
       {SECTIONS.map(({ id, labelKey, icon: Icon }) => {
         const active = id === section;

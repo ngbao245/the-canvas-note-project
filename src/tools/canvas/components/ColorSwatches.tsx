@@ -16,7 +16,7 @@ const SWATCH_IDLE = 'hover:ring-1 hover:ring-border hover:ring-offset-1 hover:ri
 export function SwatchRow({ divided, children }: { divided?: boolean; children: ReactNode }) {
   return (
     <div
-      className={`grid grid-cols-[repeat(5,28px)] justify-center gap-1.5 px-3 py-3 ${divided ? 'border-t border-border' : ''}`}
+      className={`grid grid-cols-[repeat(5,28px)] justify-center gap-1.5 px-3 py-4 ${divided ? 'border-t border-border' : ''}`}
     >
       {children}
     </div>

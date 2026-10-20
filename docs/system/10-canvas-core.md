@@ -128,6 +128,10 @@ route.tsx (bootstrap, URL → board, useBoardSync, useCanvasPersistence, useCanv
   3. Neo của hiệu ứng zoom giải ngược từ camera đang vẽ tới đích (`solveZoomAnchor`) → camera đi thẳng 1 đường, tới nơi trùng đích, không bẻ hướng ở mép giới hạn, lăn dồn nhiều nấc không nhảy cuối. Từng khung vẫn chặn giới hạn pan để chắc không ra ngoài.
 - Khung nội dung (`computeContentBounds`) chỉ tính object trên canvas, bỏ item Unsort (từ 2026-10-13). Số "N mục" ở header vẫn đếm cả Unsort (tổng của board). Lúc kéo / resize bỏ các object đang chọn ra để khung không chạy theo. Tính lại qua `subscribe` store khi object đổi, khi đổi mode, khi đổi kích thước giao diện, khi viewport đổi (`ResizeObserver`).
 
+### Thanh cuộn (`components/CanvasScrollbars.tsx`)
+
+Chỉ báo vẽ tay (canvas cuộn bằng camera, không bằng DOM). Tay cuộn dọc / ngang cho biết màn đang ở đâu trong vùng tài liệu (`engine.getDocBounds()`, cùng vùng giới hạn pan), dài theo tỉ lệ màn / tài liệu × zoom; tài liệu × zoom vừa màn thì ẩn trục đó. Mờ khi rảnh, hiện khi camera dời hoặc trỏ vào. Kéo tay cuộn = `engine.pan` (chặn cứng, không lố); đang lố thì tay cuộn kẹp ở đầu rãnh. Engine báo listener cả khi vùng tài liệu giãn hoặc màn đổi cỡ, để tay cuộn co lại dù camera đứng yên. Màu theo token `--scrollbar-thumb`.
+
 ### Lưới (`engine/grid-lod.ts`)
 
 2 lớp chấm (dày + thưa) cùng `radial-gradient` (màu `foreground` 9%). Bước gốc 32px. `t = log2(1/zoom)`: lớp dày `32 × 2^floor(t)`, lớp thưa gấp đôi, mờ chéo theo phần lẻ → khoảng chấm trên màn luôn trong 16–64px. Zoom < 20% mờ dần, < 15% tắt. Ẩn / hiện theo Cài đặt (chỉ ẩn 2 lớp chấm).

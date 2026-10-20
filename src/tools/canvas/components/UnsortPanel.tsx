@@ -18,6 +18,7 @@ import { bindShortcuts, useShortcutLayer } from '@/lib/shortcuts';
 import { useI18n } from '@/lib/i18n';
 import { useHeaderStyle } from '@/stores/canvas-settings-store';
 import { useInterfaceScale } from '@/stores/interface-store';
+import { OverlayScroll } from '@/components/shared';
 import { ISLANDS_EDGE, islandsTopInset } from '../lib/header-islands';
 
 function useHoveredUnsortDropTarget(): boolean {
@@ -246,7 +247,8 @@ function UnsortList({
 }) {
   const { t } = useI18n();
   return (
-    <div ref={containerRef} className="no-scrollbar relative flex-1 overflow-y-auto p-3">
+    // relative ở vùng cuộn: vạch chèn đặt theo offsetTop của item trong chính vùng này.
+    <OverlayScroll ref={containerRef} className="min-h-0 flex-1" viewportClassName="relative p-3">
       {items.map((obj, index) => (
         <UnsortItem
           key={obj.id}
@@ -260,7 +262,7 @@ function UnsortList({
       <div className="mt-2 rounded-lg border border-dashed border-border p-3 text-center text-[10.5px] text-muted-foreground">
         {t('CANVAS.UNSORT.HINT')}
       </div>
-    </div>
+    </OverlayScroll>
   );
 }
 
@@ -299,9 +301,7 @@ export function UnsortToggle({ boardId }: { boardId: string }) {
       // (bo xl, viền, bóng, nền mờ như Island), không dính góc màn.
       style={islands ? { top: islandsTopInset(uiScale), right: ISLANDS_EDGE } : undefined}
       className={`absolute z-toolbar flex items-center gap-2 bg-card/90 px-3 py-2 text-xs backdrop-blur transition-colors duration-fast ${
-        islands
-          ? 'rounded-xl border shadow-lg'
-          : 'right-0 top-0 rounded-bl-lg border-b border-l'
+        islands ? 'rounded-xl border shadow-lg' : 'right-0 top-0 rounded-bl-lg border-b border-l'
       } ${
         hoveredDropTarget
           ? 'border-primary text-primary ring-2 ring-primary'

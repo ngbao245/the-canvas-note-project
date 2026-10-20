@@ -22,6 +22,7 @@ import { MarqueeOverlay } from './MarqueeOverlay';
 import { ContextMenu } from './ContextMenu';
 import { Toolbar } from './Toolbar';
 import { UnsortToggle } from './UnsortPanel';
+import { CanvasScrollbars } from './CanvasScrollbars';
 import { CanvasObjectDragPreview } from './CanvasObjectDragPreview';
 import { CanvasNotice } from './CanvasNotice';
 import './objects'; // side-effect: register mọi object type vào registry
@@ -279,6 +280,7 @@ export function CanvasSurface({ boardId }: { boardId: string }) {
 
       {/* Screen space overlays */}
       <MarqueeOverlay />
+      <CanvasScrollbars />
       <Toolbar boardId={boardId} />
       <UnsortToggle boardId={boardId} />
       <CanvasNotice />

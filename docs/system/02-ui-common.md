@@ -86,6 +86,8 @@ Preview kéo dùng `drag-layer`, không dùng `canvas-drag-preview`: phải nổ
 | `EmptyState` | `icon` (lucide), `title`, `description`, `action`, `compact` | |
 | `ErrorState` | `message`, `onRetry`, `compact` | Tiêu đề + nút thử lại qua bộ dịch |
 
+`OverlayScroll` (cùng folder): vùng cuộn dọc có tay cuộn tự vẽ (kiểu Milanote). Giấu thanh cuộn gốc, tay cuộn nổi đè mép phải, hiện khi hover / cuộn / kéo. Lý do: thanh cuộn hệ thống Windows còn mũi tên, CSS không gỡ chắc được. `className` = khung ngoài, `viewportClassName` = vùng cuộn; `ref` + prop khác gắn vào vùng cuộn. Đang dùng ở Cài đặt, Phím tắt, Unsort, popup icon board, popup Text style của note. Màu tay cuộn: token `--scrollbar-thumb` / `--scrollbar-thumb-hover` trong `index.css` (riêng sáng / tối, class `bg-scrollbar-thumb`), dùng chung cho `OverlayScroll`, thanh cuộn canvas và thanh cuộn trình duyệt.
+
 Chờ dữ liệu: skeleton theo đúng hình nội dung thật. Spinner chỉ cho nút đang lưu, fallback chuyển trang, nội dung chưa biết hình. Mặt canvas trống dùng chữ gợi ý mờ thay `EmptyState`. Cùng folder còn `UpdateBanner`, `OfflineBadge` (tạm), xem `01`.
 
 ## Không được phá
@@ -117,7 +119,7 @@ Chờ dữ liệu: skeleton theo đúng hình nội dung thật. Spinner chỉ c
 | `src/stores/interface-store.ts` | Kích thước giao diện |
 | `src/App.tsx` | Gắn `data-theme`, `data-ui-style` lên `<html>` |
 | `src/components/style/` | Vỏ Button / Card / Badge theo phong cách |
-| `src/components/shared/` | Skeleton, Loading / Empty / ErrorState |
+| `src/components/shared/` | Skeleton, Loading / Empty / ErrorState, OverlayScroll |
 | `src/components/settings/sections/AppearanceSection.tsx` | Chọn theme, phong cách, kích thước |
 | `src/lib/focus-ring.ts`, `cursor-override.ts`, `css-token.ts` | Viền focus, con trỏ tạm, đọc token lúc chạy |
 | `src/tools/canvas/lib/scaled-box.ts` | `scaledFillStyle` cho toolbar + Unsort |

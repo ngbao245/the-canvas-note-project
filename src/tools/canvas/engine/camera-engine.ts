@@ -241,6 +241,10 @@ export class CameraEngine {
   getViewport(): { width: number; height: number } {
     return this.viewportRef;
   }
+  /** Vùng tài liệu board đang xem (null = chưa biết). Thanh cuộn canvas đọc để vẽ tay cuộn. */
+  getDocBounds(): Bounds | null {
+    return this.docBounds;
+  }
 
   // --- Config ---
   setElements(el: EngineElements): void {
@@ -299,6 +303,8 @@ export class CameraEngine {
     const next = prev ? unionBounds(prev, region) : region;
     if (prev && sameBounds(prev, next)) return;
     this.docBounds = next;
+    // Vùng giãn mà camera đứng yên → không có render nào báo, thanh cuộn phải biết để co tay cuộn.
+    this.notifyListeners();
 
     if (this.gestureRaw) {
       this.retargetGesture();
@@ -319,6 +325,8 @@ export class CameraEngine {
     this.viewportRef = { width, height };
     if (this.gestureRaw) this.retargetGesture();
     else this.clampTarget();
+    // Màn đổi cỡ đổi luôn tỉ lệ tay cuộn dù camera không dời.
+    this.notifyListeners();
   }
 
   /**

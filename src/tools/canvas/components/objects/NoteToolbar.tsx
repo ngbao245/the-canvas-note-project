@@ -47,10 +47,15 @@ import {
   BOARD_LIGHT_COLORS,
   type BoardSwatch,
 } from '../../lib/board-colors';
-import { NOTE_TEXT_COLORS, NOTE_HIGHLIGHT_COLORS, type NoteSwatch } from '../../lib/note-text-colors';
+import {
+  NOTE_TEXT_COLORS,
+  NOTE_HIGHLIGHT_COLORS,
+  type NoteSwatch,
+} from '../../lib/note-text-colors';
 import { useNoteEditorStore } from '../../store/note-editor-store';
 import { useI18n, type MessageKey } from '@/lib/i18n';
 import { editKeyHandler } from '@/lib/dom';
+import { OverlayScroll } from '@/components/shared';
 
 /**
  * Note-specific toolbar actions cho element + editing mode.
@@ -77,9 +82,24 @@ export function NoteElementActions({ object }: { object: CanvasObject }) {
       <ColorButton selectedObject={object} />
       {/* Labels/Reactions/Comment chưa làm được → vô hiệu, tooltip báo lý do.
           Labels sắp làm (spec riêng), Reactions/Comment cần đăng nhập. */}
-      <ActionButton icon={Tag} label={t('CANVAS.NOTE_TOOLBAR.LABELS')} disabled title={t('CANVAS.NOTE_TOOLBAR.SOON_LABELS')} />
-      <ActionButton icon={Smile} label={t('CANVAS.NOTE_TOOLBAR.REACTIONS')} disabled title={t('CANVAS.NOTE_TOOLBAR.SOON_REACTIONS')} />
-      <ActionButton icon={MessageSquare} label={t('CANVAS.NOTE_TOOLBAR.COMMENT')} disabled title={t('CANVAS.NOTE_TOOLBAR.SOON_COMMENT')} />
+      <ActionButton
+        icon={Tag}
+        label={t('CANVAS.NOTE_TOOLBAR.LABELS')}
+        disabled
+        title={t('CANVAS.NOTE_TOOLBAR.SOON_LABELS')}
+      />
+      <ActionButton
+        icon={Smile}
+        label={t('CANVAS.NOTE_TOOLBAR.REACTIONS')}
+        disabled
+        title={t('CANVAS.NOTE_TOOLBAR.SOON_REACTIONS')}
+      />
+      <ActionButton
+        icon={MessageSquare}
+        label={t('CANVAS.NOTE_TOOLBAR.COMMENT')}
+        disabled
+        title={t('CANVAS.NOTE_TOOLBAR.SOON_COMMENT')}
+      />
       <MoreButton selectedObject={object} />
     </>
   );
@@ -262,47 +282,49 @@ function TextStylePopup({ editor, onClose }: { editor: Editor; onClose: () => vo
   };
 
   return (
-    <ToolbarPopup ref={popupRef} className="flex max-h-[70vh] w-52 flex-col gap-2 overflow-y-auto p-1">
-      {/* Nhóm kiểu khối */}
-      <div className="flex flex-col gap-0.5">
-        {TEXT_STYLE_OPTIONS.map((opt) => {
-          const active = opt.isActive(editor);
-          return (
-            <button
-              key={opt.id}
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
-                opt.apply(editor);
-                onClose();
-              }}
-              className={`flex h-8 items-center rounded-md px-2 text-left transition-colors duration-fast hover:bg-muted ${
-                active ? 'bg-muted text-foreground' : 'text-muted-foreground'
-              }`}
-            >
-              {opt.withQuoteIcon ? <Quote className="mr-2 h-3.5 w-3.5 shrink-0" /> : null}
-              <span className={opt.previewClass}>{t(opt.labelKey)}</span>
-            </button>
-          );
-        })}
-      </div>
+    <ToolbarPopup ref={popupRef} className="w-52">
+      <OverlayScroll viewportClassName="flex max-h-[70vh] flex-col gap-2 p-1">
+        {/* Nhóm kiểu khối */}
+        <div className="flex flex-col gap-0.5">
+          {TEXT_STYLE_OPTIONS.map((opt) => {
+            const active = opt.isActive(editor);
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  opt.apply(editor);
+                  onClose();
+                }}
+                className={`flex h-8 items-center rounded-md px-2 text-left transition-colors duration-fast hover:bg-muted ${
+                  active ? 'bg-muted text-foreground' : 'text-muted-foreground'
+                }`}
+              >
+                {opt.withQuoteIcon ? <Quote className="mr-2 h-3.5 w-3.5 shrink-0" /> : null}
+                <span className={opt.previewClass}>{t(opt.labelKey)}</span>
+              </button>
+            );
+          })}
+        </div>
 
-      <MarkSwatchGroup
-        title={t('CANVAS.NOTE_TOOLBAR.STYLE.COLOR')}
-        swatches={NOTE_TEXT_COLORS}
-        current={currentColor}
-        onPick={applyColor}
-        faceStyle={(hex) => ({ color: hex ?? 'var(--foreground)' })}
-      />
-      <MarkSwatchGroup
-        title={t('CANVAS.NOTE_TOOLBAR.STYLE.HIGHLIGHT')}
-        swatches={NOTE_HIGHLIGHT_COLORS}
-        current={currentHighlight}
-        onPick={applyHighlight}
-        clearAsIcon
-        // Nền tô là màu nhạt (data) → chữ mẫu tối cố định cho đọc được.
-        faceStyle={(hex) => (hex ? { backgroundColor: hex, color: '#1f2937' } : undefined)}
-      />
+        <MarkSwatchGroup
+          title={t('CANVAS.NOTE_TOOLBAR.STYLE.COLOR')}
+          swatches={NOTE_TEXT_COLORS}
+          current={currentColor}
+          onPick={applyColor}
+          faceStyle={(hex) => ({ color: hex ?? 'var(--foreground)' })}
+        />
+        <MarkSwatchGroup
+          title={t('CANVAS.NOTE_TOOLBAR.STYLE.HIGHLIGHT')}
+          swatches={NOTE_HIGHLIGHT_COLORS}
+          current={currentHighlight}
+          onPick={applyHighlight}
+          clearAsIcon
+          // Nền tô là màu nhạt (data) → chữ mẫu tối cố định cho đọc được.
+          faceStyle={(hex) => (hex ? { backgroundColor: hex, color: '#1f2937' } : undefined)}
+        />
+      </OverlayScroll>
     </ToolbarPopup>
   );
 }
@@ -327,7 +349,9 @@ function MarkSwatchGroup({
   const { t } = useI18n();
   return (
     <div className="border-t border-border pt-2">
-      <div className="px-1 pb-1 text-[10px] font-medium uppercase text-muted-foreground">{title}</div>
+      <div className="px-1 pb-1 text-[10px] font-medium uppercase text-muted-foreground">
+        {title}
+      </div>
       <div className="flex gap-1 px-1">
         {swatches.map((c) => {
           const label = t(c.labelKey);
@@ -380,7 +404,8 @@ function MoreEditingPopup({ editor, onClose }: { editor: Editor; onClose: () => 
     onRefocus: () => editor.chain().focus().run(),
   });
 
-  const align = (side: 'left' | 'center' | 'right') => editor.chain().focus().setTextAlign(side).run();
+  const align = (side: 'left' | 'center' | 'right') =>
+    editor.chain().focus().setTextAlign(side).run();
 
   return (
     <ToolbarPopup ref={popupRef} className="flex w-44 flex-col gap-0.5 p-1">
@@ -470,7 +495,9 @@ function MorePopup({
       <ToolbarMenuItem
         icon={locked ? LockOpen : Lock}
         label={t(
-          locked ? 'CANVAS.NOTE_TOOLBAR.MENU.UNLOCK_POSITION' : 'CANVAS.NOTE_TOOLBAR.MENU.LOCK_POSITION',
+          locked
+            ? 'CANVAS.NOTE_TOOLBAR.MENU.UNLOCK_POSITION'
+            : 'CANVAS.NOTE_TOOLBAR.MENU.LOCK_POSITION',
         )}
         onClick={run(() => updateObjectData(selectedObject.id, { ...parsed, locked: !locked }))}
       />
@@ -634,7 +661,10 @@ function ColorPreviewIcon({ fields }: { fields: NoteColorFields }) {
         <span className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: fields.color }} />
       ) : null}
       {fields.textColor ? (
-        <span className="text-[10px] font-semibold leading-none" style={{ color: fields.textColor }}>
+        <span
+          className="text-[10px] font-semibold leading-none"
+          style={{ color: fields.textColor }}
+        >
           A
         </span>
       ) : null}
@@ -834,10 +864,22 @@ function PlainSwatch({
 }) {
   if (mode === 'background') {
     // Nền ra chữ đen vẽ chia chéo (nửa nền, nửa mực đen), như popup Màu board.
-    return <Swatch label={label} active={active} onClick={onClick} style={{ background: boardSwatchBackground(hex) }} />;
+    return (
+      <Swatch
+        label={label}
+        active={active}
+        onClick={onClick}
+        style={{ background: boardSwatchBackground(hex) }}
+      />
+    );
   }
   return (
-    <Swatch label={label} active={active} onClick={onClick} className="overflow-hidden border border-border bg-card">
+    <Swatch
+      label={label}
+      active={active}
+      onClick={onClick}
+      className="overflow-hidden border border-border bg-card"
+    >
       <span className="absolute inset-x-0 top-0 h-1.5" style={{ backgroundColor: hex }} />
     </Swatch>
   );

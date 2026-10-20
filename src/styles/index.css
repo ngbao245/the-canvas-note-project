@@ -154,6 +154,15 @@
     --input: #cfd2da;
     --ring: #007acc;
 
+    /* Nền 2 panel trong modal Cài đặt. Sáng: đậm hơn nền chút để thấy (muted gần
+       background nên 40% vô hình). Tối đặt riêng ở khối dark nhạt hơn kẻo chói. */
+    --settings-panel: #eceef2;
+
+    /* Tay cuộn (OverlayScroll, thanh cuộn canvas, thanh cuộn trình duyệt). Muốn nhạt
+       hơn thì giảm số cuối (độ đậm 0–1). */
+    --scrollbar-thumb: rgba(86, 89, 99, 0.3);
+    --scrollbar-thumb-hover: rgba(86, 89, 99, 0.5);
+
     --shadow: 0 16px 36px rgba(28, 33, 45, 0.11);
     --shadow-soft: 0 8px 20px rgba(28, 33, 45, 0.07);
   }
@@ -196,6 +205,13 @@
     --input: #3e3e42;
     --ring: #48a9e8;
 
+    /* Nền panel Cài đặt — tối nhạt hơn muted để đỡ chói (chỉ nhỉnh hơn background). */
+    --settings-panel: #262627;
+
+    /* Tay cuộn */
+    --scrollbar-thumb: rgba(161, 161, 170, 0.45);
+    --scrollbar-thumb-hover: rgba(161, 161, 170, 0.65);
+
     /* Hình khối phụ thuộc màu */
     --shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
     --shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.18);
@@ -234,6 +250,51 @@
 .drawably-badge {
   padding: 3px 10px;
   color: var(--foreground);
+}
+
+/* ============================================================
+   Scrollbar toàn app — mảnh, màu nhẹ (token --scrollbar-thumb*).
+
+   2 nhánh, bọc @supports theo mẫu của Chrome:
+   - scrollbar-width / scrollbar-color (chuẩn): Chrome 121+, Firefox. Từ Chrome 121, hễ
+     có 1 trong 2 thuộc tính này thì ::-webkit-scrollbar* bị bỏ qua, nên nhánh chuẩn
+     thắng ở trình duyệt mới. Màu cố định, không đổi theo hover.
+   - ::-webkit-scrollbar* (cũ): Safari, Chrome trước 121. Tay cuộn ẩn lúc nghỉ, hiện
+     khi rê vào vùng cuộn, đậm hơn khi rê lên tay cuộn.
+   KHÔNG khai báo ::-webkit-scrollbar-button: chỉ cần 1 rule button là Chrome bật chế độ
+   vẽ nút → hiện mũi tên lên / xuống. Bỏ hẳn thì mặc định không mũi tên.
+   Vùng ẩn hẳn thanh cuộn dùng class .no-scrollbar bên dưới.
+   ============================================================ */
+@supports (scrollbar-width: auto) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+}
+@supports selector(::-webkit-scrollbar) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 999px;
+    /* Đệm trong suốt để tay cuộn trông mảnh hơn chiều rộng rãnh. */
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    transition: background-color var(--duration-normal) var(--easing-standard);
+  }
+  /* Hover vào vùng cuộn → tay cuộn hiện màu nhẹ. */
+  :hover::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+  }
+  /* Hover ngay trên tay cuộn → đậm hơn chút để biết kéo được. */
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
 }
 
 /* Con trỏ tạm thời lúc thao tác (tầng 3). Bật / tắt qua setCursorOverride

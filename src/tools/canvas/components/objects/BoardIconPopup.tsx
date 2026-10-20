@@ -34,6 +34,7 @@ import {
 import { BOARD_ICON_TEXT_MAX, type BoardIcon } from '../../types';
 import { useI18n, type MessageKey } from '@/lib/i18n';
 import { FOCUS_RING } from '@/lib/focus-ring';
+import { OverlayScroll } from '@/components/shared';
 
 type Source = 'library' | 'text';
 type Section = 'recommended' | IconCategoryId;
@@ -251,7 +252,7 @@ function RecommendedView({
 
   // Ít icon (tối đa ~70) → không cần ảo hoá.
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto p-2">
+    <OverlayScroll className="min-h-0 flex-1" viewportClassName="p-2">
       {sections
         .filter((s) => s.items.length > 0)
         .map((s) => (
@@ -271,7 +272,7 @@ function RecommendedView({
             </div>
           </section>
         ))}
-    </div>
+    </OverlayScroll>
   );
 }
 
@@ -313,7 +314,7 @@ function IconGrid({
   const currentName = current?.kind === 'lucide' ? current.value : null;
 
   return (
-    <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto p-2">
+    <OverlayScroll ref={scrollRef} className="min-h-0 flex-1" viewportClassName="p-2">
       <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
         {virtualizer.getVirtualItems().map((row) => {
           const rowItems = items.slice(row.index * GRID_COLS, row.index * GRID_COLS + GRID_COLS);
@@ -335,7 +336,7 @@ function IconGrid({
           );
         })}
       </div>
-    </div>
+    </OverlayScroll>
   );
 }
 
@@ -371,7 +372,8 @@ function IconCell({
 // Đang tìm → lọc xuyên mọi danh mục theo tên + tag. Không tìm → theo danh mục.
 function filterIcons(query: string, section: Section): IconCatalogEntry[] {
   const q = query.trim().toLowerCase();
-  if (q !== '') return ICON_CATALOG.filter((e) => e.n.includes(q) || e.t.some((tag) => tag.includes(q)));
+  if (q !== '')
+    return ICON_CATALOG.filter((e) => e.n.includes(q) || e.t.some((tag) => tag.includes(q)));
   if (section === 'recommended') return [];
   return ICON_CATALOG.filter((e) => e.c === section);
 }
@@ -401,7 +403,10 @@ function TextSource({
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center gap-3 overflow-y-auto p-4">
+    <OverlayScroll
+      className="min-h-0 flex-1"
+      viewportClassName="flex flex-col items-center gap-3 p-4"
+    >
       <span className="select-none self-start text-xs text-muted-foreground">
         {t('CANVAS.ICON_PICKER.TEXT_PREVIEW')}
       </span>
@@ -420,7 +425,9 @@ function TextSource({
           autoFocus
           value={value}
           // Cắt theo ký tự hiển thị (emoji 2 code unit vẫn tính 1).
-          onChange={(e) => setValue(Array.from(e.target.value).slice(0, BOARD_ICON_TEXT_MAX).join(''))}
+          onChange={(e) =>
+            setValue(Array.from(e.target.value).slice(0, BOARD_ICON_TEXT_MAX).join(''))
+          }
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.nativeEvent.isComposing) apply();
           }}
@@ -436,6 +443,6 @@ function TextSource({
       >
         {t('CANVAS.ICON_PICKER.TEXT_APPLY')}
       </button>
-    </div>
+    </OverlayScroll>
   );
 }

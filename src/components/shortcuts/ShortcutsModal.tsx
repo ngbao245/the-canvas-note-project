@@ -12,7 +12,7 @@ import {
   type ShortcutDef,
 } from '@/lib/shortcuts';
 import type { KeyboardPlatform } from '@/stores/keyboard-platform-store';
-import { EmptyState } from '@/components/shared';
+import { EmptyState, OverlayScroll } from '@/components/shared';
 import { useShortcutsModalStore } from '@/stores/shortcuts-modal-store';
 import { useInterfaceScale } from '@/stores/interface-store';
 import { ShortcutWays } from './ShortcutKeys';
@@ -133,7 +133,8 @@ function ShortcutsDialog() {
   const visibleGroups =
     terms.length === 0
       ? groups
-      : groups.filter((g) => g.key !== ESSENTIAL)
+      : groups
+          .filter((g) => g.key !== ESSENTIAL)
           .map((g) => ({
             key: g.key,
             rows: g.rows.filter((row) => {
@@ -286,11 +287,13 @@ function ShortcutsDialog() {
             </p>
           </nav>
 
-          <div
+          <OverlayScroll
             id="shortcuts-list"
             ref={scrollRef}
             onScroll={onScroll}
-            className="relative min-w-0 flex-1 overflow-y-auto px-5 pb-6"
+            className="min-w-0 flex-1"
+            // relative: tiêu đề nhóm lấy offsetTop theo chính vùng cuộn (scrollToGroup / onScroll).
+            viewportClassName="relative px-5 pb-6"
           >
             {visibleGroups.length === 0 ? (
               <EmptyState
@@ -347,7 +350,7 @@ function ShortcutsDialog() {
                 </section>
               );
             })}
-          </div>
+          </OverlayScroll>
         </div>
       </div>
     </div>

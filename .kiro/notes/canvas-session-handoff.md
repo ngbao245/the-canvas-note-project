@@ -194,3 +194,10 @@ Chi tiết ở mục "Câu còn mở" của từng phần. Ưu tiên theo mức 
   - `05`: dòng backlog Chia sẻ / Xuất thuộc header canvas, không phải Cài đặt.
   - `10`: lăn = pan, resize 1 góc, URL chỉ id (xoá được `lib/slug.ts`), tab Unsort ẩn khi panel mở.
   - `30`: card demo dùng thẳng `DrawablyCard`; landing luôn sáng; landing là bản build riêng.
+
+## Chờ test: thanh cuộn tự vẽ (2026-10-19)
+
+- SB1: Cài đặt, Phím tắt, Unsort, popup icon, popup Text style → không còn mũi tên, tay cuộn mờ khi rảnh, hiện khi rê / cuộn, kéo được.
+- SB2: Phím tắt → bấm nhóm trái cuộn tới đúng, nhóm đang xem tô theo vị trí cuộn. Unsort → kéo sắp xếp, vạch chèn đúng chỗ, chọn vùng vẫn chạy.
+- SB3: canvas có nhiều note, zoom vào → hiện tay cuộn dọc / ngang khi pan; kéo tay cuộn → màn dời theo, không lố; zoom ra vừa màn → tay cuộn ẩn.
+- SB4: đổi màu ở `--scrollbar-thumb` (index.css) → cả 3 loại thanh cuộn đổi theo, sáng / tối riêng.

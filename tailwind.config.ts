@@ -45,6 +45,13 @@ const config: Config = {
         background: token('background'),
         foreground: token('foreground'),
         'subtle-foreground': token('subtle-foreground'),
+        // Nền 2 panel modal Cài đặt (riêng sáng / tối). Dùng: bg-settings-panel.
+        'settings-panel': token('settings-panel'),
+        // Tay cuộn: bg-scrollbar-thumb / bg-scrollbar-thumb-hover. Giá trị ở index.css.
+        scrollbar: {
+          thumb: token('scrollbar-thumb'),
+          'thumb-hover': token('scrollbar-thumb-hover'),
+        },
         primary: {
           DEFAULT: token('primary'),
           foreground: token('primary-foreground'),

@@ -12,13 +12,13 @@ Không gồm: token theme, phong cách shadcn / drawably (`02`), bộ dịch (`0
 
 ### Khung
 
-- `SettingsModal` mount 1 lần ở `App`, ngoài router. Phủ toàn màn hình (`z-modal`): header (tiêu đề + nút X) + vùng cuộn (menu trái 200px | nội dung). Màn hẹp: menu thành hàng ngang trên cùng.
+- `SettingsModal` mount 1 lần ở `App`, ngoài router. Phủ toàn màn hình (`z-modal`): header (tiêu đề + nút X) + 2 panel nền `settings-panel` (token riêng sáng / tối trong `index.css`, không viền): menu trái 240px cố định, nội dung phải là `OverlayScroll` (chỉ bên phải cuộn). Màn hẹp: menu thành hàng ngang trên cùng.
 - Mở / đóng qua `useSettingsModalStore` (`stores/settings-modal-store.ts`, không persist): `openSettings(section?)` (không truyền thì giữ mục lần trước), `setSection`, `close`. Mục mặc định lúc tải trang: `appearance`.
 - Chỗ mở hiện có: menu tài khoản → "Cài đặt". Chưa có phím tắt mở Cài đặt.
 - Đóng: nút X, Esc. `useModalLayer`: phím canvas không chạy ngầm, Tab xoay vòng trong modal, phím toàn app (Ctrl+Shift+D, Ctrl+Shift+< >) vẫn chạy. Đang mở Cài đặt thì `/` không mở modal phím tắt.
 - Mở: focus nút X; đóng: trả focus về chỗ cũ. Đổi mục: cuộn về đầu, không remount.
-- Chống co dãn khi đổi mục: `scrollbar-gutter: stable`, khối `max-w-4xl` cố định, cột nội dung `minmax(0,1fr)`.
-- Theo Kích thước giao diện: CSS `zoom` đặt lên header + khối nội dung, khung fixed không zoom để nền vẫn phủ kín.
+- Chống co dãn khi đổi mục: tay cuộn nổi đè (không chiếm chỗ), khối `max-w-4xl` cố định, cột nội dung `minmax(0,1fr)`.
+- Theo Kích thước giao diện: CSS `zoom` đặt lên header + cả cụm 2 panel, khung fixed không zoom để nền vẫn phủ kín.
 
 ### Khối dựng chung (`SettingsBlocks.tsx`)
 
