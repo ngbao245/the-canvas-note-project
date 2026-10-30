@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { useCustomColorStore } from '../store/custom-color-store';
 import { sameColor } from '../lib/note-colors';
+import { HOVER_MOTION } from '@/lib/motion';
 
 /**
  * Mảnh dùng chung của popup Màu trên toolbar (note, board): hàng ô
@@ -9,7 +10,8 @@ import { sameColor } from '../lib/note-colors';
  */
 
 /** Ô màu 28×24, 5 ô / hàng (mỗi loại 10 màu → tự xuống 2 hàng). Popup hẹp vừa 5 ô. */
-const SWATCH_CLASS = 'relative h-6 w-7 rounded-[4px] transition-shadow duration-fast';
+// Hover chỉ hiện viền (ring = box-shadow), ô không phóng to.
+const SWATCH_CLASS = 'relative h-6 w-7 rounded-[4px] transition-shadow duration-quick ease-standard';
 const SWATCH_ACTIVE = 'ring-2 ring-foreground ring-offset-1 ring-offset-card';
 const SWATCH_IDLE = 'hover:ring-1 hover:ring-border hover:ring-offset-1 hover:ring-offset-card';
 
@@ -155,7 +157,7 @@ export function CustomColorButton({
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="flex h-10 w-full items-center gap-3 whitespace-nowrap rounded-md border border-border px-3 text-left text-sm text-foreground transition-colors duration-fast hover:bg-muted"
+        className={`flex h-10 w-full items-center gap-3 whitespace-nowrap rounded-md border border-border px-3 text-left text-sm text-foreground hover:bg-muted ${HOVER_MOTION}`}
       >
         {/* Vòng màu: hiển thị trang trí, màu cố định (không phải theme). */}
         <span

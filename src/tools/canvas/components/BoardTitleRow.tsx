@@ -139,6 +139,8 @@ export function SaveStatusDot() {
       aria-live="polite"
       aria-label={text}
       title={text}
+      // Vòng lặp trang trí: giảm chuyển động thì đứng yên (motion.css).
+      data-motion-loop
       className={`h-2 w-2 shrink-0 rounded-full ${DOT_COLOR[tone]} ${anim}`}
     />
   );

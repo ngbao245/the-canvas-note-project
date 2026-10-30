@@ -2,6 +2,7 @@ import { createPortal } from 'react-dom';
 import type { CanvasObject } from '../types';
 import { getObjectTypeDefinition } from '../hooks/useObjectRegistry';
 import { useCameraStore } from '../store/camera-store';
+import { prefersReducedMotion } from '@/lib/motion';
 
 /**
  * FloatingObjectPreview — visualizer chung cho kéo object canvas, item Unsort,
@@ -29,6 +30,7 @@ export function FloatingObjectPreview({
   grabOffsetY,
   dim,
   selected = false,
+  compactScale,
 }: {
   /** Object thật (Unsort drag / Canvas drag) hoặc mock (Toolbar drag chưa tạo). */
   object: CanvasObject;
@@ -42,11 +44,22 @@ export function FloatingObjectPreview({
    *  drag preview — không được để preview "trần" trong khi item thật có viền.
    *  Canvas drag + Unsort drag pass true. Toolbar drag (chưa tạo item) pass false. */
   selected?: boolean;
+  /** Toolbar drag: số = scale thay cho zoom (caller tính, giữ đúng hình dáng),
+   *  null = cỡ thật theo zoom.
+   *  Truyền prop (kể cả null) thì đổi qua lại có chuyển động bung / co. Bỏ prop
+   *  = cỡ thật, không chuyển động (kéo canvas, Unsort). */
+  compactScale?: number | null;
 }) {
   const zoom = useCameraStore((s) => s.camera.zoom);
   const def = getObjectTypeDefinition(object.type);
   if (!def) return null;
   const Renderer = def.renderer;
+  const scale = compactScale ?? zoom;
+  // Gốc scale đặt tại điểm con trỏ cầm (đổi grabOffset màn hình về canvas-space)
+  // → con trỏ đứng yên khi preview bung / co. Ở cỡ thật kết quả y như gốc 0 0.
+  const originX = grabOffsetX / zoom;
+  const originY = grabOffsetY / zoom;
+  const animated = compactScale !== undefined && !prefersReducedMotion();
 
   // Dùng transform: scale(zoom) thay vì set width/height × zoom. Lý do:
   // set explicit size scale container NHƯNG font (text-base=16px, text-sm=14px
@@ -62,12 +75,15 @@ export function FloatingObjectPreview({
     <div
       className="pointer-events-none fixed"
       style={{
-        left: clientX - grabOffsetX,
-        top: clientY - grabOffsetY,
+        left: clientX - originX,
+        top: clientY - originY,
         width: object.geometry.width,
         height: object.geometry.height,
-        transform: `scale(${zoom})`,
-        transformOrigin: '0 0',
+        transform: `scale(${scale})`,
+        transformOrigin: `${originX}px ${originY}px`,
+        transition: animated
+          ? 'transform var(--duration-normal) var(--easing-enter)'
+          : undefined,
         opacity: dim ? 0.5 : 1,
         // Shadow ở đây bị scale theo zoom cùng subtree — zoom out → shadow nhỏ,
         // khớp với item thật trong world (cũng bị scale). Không muốn shadow

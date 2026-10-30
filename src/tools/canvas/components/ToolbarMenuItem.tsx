@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
+import { ROW_MOTION } from '@/lib/motion';
 
 /**
  * Mục menu trong popup toolbar (More của note / board, More lúc sửa note).
@@ -31,7 +32,7 @@ export function ToolbarMenuItem({
       onClick={disabled ? undefined : onClick}
       aria-disabled={disabled || undefined}
       title={title}
-      className={`flex h-8 items-center gap-2 rounded-md px-2 text-left text-xs transition-colors duration-fast ${
+      className={`flex h-8 items-center gap-2 rounded-md px-2 text-left text-xs ${ROW_MOTION} ${
         disabled
           ? 'text-muted-foreground opacity-40'
           : `hover:bg-muted hover:text-foreground ${active ? 'bg-muted text-foreground' : 'text-muted-foreground'}`

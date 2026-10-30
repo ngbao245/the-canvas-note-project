@@ -21,6 +21,7 @@
 
 import type { Camera } from '../types';
 import { ZOOM_MIN, ZOOM_MAX } from '../types';
+import { prefersReducedMotion } from '@/lib/motion';
 import { screenToCanvas, type Point } from './coord';
 import {
   clampZoom,
@@ -737,7 +738,7 @@ export class CameraEngine {
       this.docBounds,
       this.viewportRef,
     );
-    this.scheduleRamp();
+    this.rampOrJump();
     this.schedulePersist();
   }
 
@@ -747,8 +748,25 @@ export class CameraEngine {
     const initial = resetCamera();
     initial.zoom = this.boardToEff(1);
     this.targetRef = clampCameraToBounds(initial, this.docBounds, this.viewportRef);
-    this.scheduleRamp();
+    this.rampOrJump();
     this.schedulePersist();
+  }
+
+  /**
+   * Fit / về 100% (lệnh bằng nút / phím, không bám tay): trượt tới đích, trừ khi
+   * bật giảm chuyển động thì nhảy thẳng (spec motion-system C3). Zoom bánh xe / pan
+   * vẫn ramp vì đó là thao tác trực tiếp.
+   */
+  private rampOrJump(): void {
+    if (!prefersReducedMotion()) {
+      this.scheduleRamp();
+      return;
+    }
+    this.cancelRamp();
+    this.currentRef = { ...this.targetRef };
+    this.rampAlpha = ZOOM_RAMP_ALPHA;
+    this.applyTransforms();
+    this.notifyListeners();
   }
 
   // --- Subscribe ---

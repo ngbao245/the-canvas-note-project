@@ -259,6 +259,9 @@
     }
   },
   "CANVAS": {
+    "CONTEXT_MENU": {
+      "ADD_NOTE": "Thêm Note"
+    },
     "COUNT": {
       "OBJECT": {
         "other": "{count} mục"

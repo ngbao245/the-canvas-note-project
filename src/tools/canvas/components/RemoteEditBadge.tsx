@@ -44,7 +44,11 @@ export function RemoteEditBadge({ id }: { id: string }) {
         className="absolute right-0 top-0 select-none"
         style={{ transform: `translate(${TAG_OUTSET}px, ${-TAG_OUTSET}px)` }}
       >
-        <div className="flex h-[30px] items-center gap-1.5 rounded-full bg-warning pl-1 pr-1.5 text-xs font-bold text-warning-foreground shadow-md motion-safe:animate-presence-pulse">
+        {/* Vòng lặp trang trí: giảm chuyển động thì tắt ở motion.css (data-motion-loop). */}
+        <div
+          data-motion-loop
+          className="flex h-[30px] items-center gap-1.5 rounded-full bg-warning pl-1 pr-1.5 text-xs font-bold text-warning-foreground shadow-md animate-presence-pulse"
+        >
           <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full bg-card text-muted-foreground">
             <User className="h-3.5 w-3.5" aria-hidden="true" />
           </span>

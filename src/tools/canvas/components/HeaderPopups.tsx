@@ -17,6 +17,8 @@ import { useCameraStore } from '../store/camera-store';
 import { useObjectsStore } from '../store/objects-store';
 import { ZOOM_MAX, ZOOM_MIN } from '../types';
 import { usePopup } from '../hooks/usePopup';
+import { FOCUS_RING } from '@/lib/focus-ring';
+import { HOVER_MOTION, PRESSABLE_MOTION, ROW_MOTION } from '@/lib/motion';
 import { shortcutKeys, useKeyboardPlatform } from '@/lib/shortcuts';
 import { CANVAS_SHORTCUT_DEFS } from '../shortcuts';
 
@@ -30,8 +32,9 @@ import { CANVAS_SHORTCUT_DEFS } from '../shortcuts';
  * Popup nằm trong header nên phóng theo Kích thước giao diện cùng header.
  */
 
+// Vị trí + hiệu ứng nằm ở lớp bọc trong HeaderMenu; đây chỉ là khung popup.
 const POPUP_CLS =
-  'absolute right-0 top-full z-tooltip mt-1 flex flex-col rounded-lg border border-border bg-popover text-popover-foreground shadow-elevation-2';
+  'flex flex-col rounded-lg border border-border bg-popover text-popover-foreground shadow-elevation-2';
 
 // ============================================================
 // View
@@ -84,7 +87,7 @@ function ViewPopup({ onFit, onReset }: { onFit: () => void; onReset: () => void 
         <button
           type="button"
           onClick={atDefault ? onFit : onReset}
-          className="mt-3 h-7 self-start rounded-md border border-border px-3 text-xs font-medium text-foreground transition-colors duration-normal hover:bg-muted"
+          className={`mt-3 h-7 self-start rounded-md border border-border px-3 text-xs font-medium text-foreground hover:bg-muted ${HOVER_MOTION} ${FOCUS_RING}`}
         >
           {atDefault ? t('CANVAS.VIEW_POPUP.SCALE_TO_FIT') : t('CANVAS.VIEW_POPUP.RESET_100')}
         </button>
@@ -244,7 +247,7 @@ function ExportItem({
       type="button"
       aria-disabled="true"
       title={muted ? label : `${label} (${t('COMMON.COMING_SOON')})`}
-      className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-xs transition-colors duration-normal ${
+      className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-xs ${ROW_MOTION} ${
         muted ? 'text-muted-foreground/60' : 'text-foreground hover:bg-muted'
       }`}
     >
@@ -273,7 +276,7 @@ function HeaderMenu({
   padding: string;
   children: (close: () => void) => ReactNode;
 }) {
-  const { open, ref, close, toggle } = usePopup();
+  const { open, ref, close, toggle, presence } = usePopup();
   return (
     <div ref={ref} className="relative">
       <button
@@ -281,14 +284,22 @@ function HeaderMenu({
         onClick={toggle}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className={`flex h-7 items-center gap-1 rounded-md text-xs font-medium transition-colors duration-normal hover:bg-muted hover:text-foreground ${padding} ${
+        className={`flex h-7 items-center gap-1 rounded-md text-xs font-medium hover:bg-muted hover:text-foreground ${HOVER_MOTION} ${FOCUS_RING} ${padding} ${
           open ? 'bg-muted text-foreground' : 'text-muted-foreground'
         }`}
       >
         {label}
         <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
-      {open ? children(close) : null}
+      {presence.mounted ? (
+        <div
+          data-motion="dropdown"
+          {...presence.props}
+          className="absolute right-0 top-full z-tooltip mt-1"
+        >
+          {children(close)}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -340,7 +351,7 @@ function SoonIconButton({ icon: Icon, label }: { icon: LucideIcon; label: string
       aria-disabled="true"
       aria-label={label}
       title={label}
-      className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted"
+      className={`grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted ${PRESSABLE_MOTION}`}
     >
       <Icon className="h-4 w-4" />
     </button>

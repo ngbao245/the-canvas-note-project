@@ -1,10 +1,12 @@
 import { Button } from '@/components/style';
 import { ESCAPE_COMBO, useShortcutLayer } from '@/lib/shortcuts';
 import { useI18n } from '@/lib/i18n';
+import { usePresence } from '@/lib/motion';
 
 /**
  * Confirm dialog tuỳ biến, tránh cài @radix-ui/react-dialog cho 1 use case.
- * Escape hoặc click overlay để cancel.
+ * Escape hoặc click overlay để cancel. Cha luôn render và đổi `open` (không tự
+ * gỡ) để dialog tan được: nền mờ + hộp chạy song song (motion `modal-backdrop`, `modal`).
  */
 
 interface ConfirmDialogProps {
@@ -55,17 +57,28 @@ export function ConfirmDialog({
     { enabled: open, blocking: true },
   );
 
-  if (!open) return null;
+  const presence = usePresence(open);
+  if (!presence.mounted) return null;
 
+  // Khung ngoài không bắt chuột; nền mờ và hộp tự bật lại (tan thì motion.css tắt)
+  // → lúc đang tan click đi thẳng xuống canvas.
   return (
-    <div
-      className="fixed inset-0 z-modal flex items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.4)' }}
-      onClick={onCancel}
-    >
+    <div className="pointer-events-none fixed inset-0 z-modal flex items-center justify-center">
       <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-80 rounded-lg border border-border bg-card p-5 shadow-lg"
+        aria-hidden="true"
+        data-motion="modal-backdrop"
+        data-state={presence.state}
+        className="pointer-events-auto absolute inset-0"
+        style={{ background: 'var(--backdrop)' }}
+        onClick={onCancel}
+      />
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-label={title}
+        data-motion="modal"
+        {...presence.props}
+        className="pointer-events-auto relative w-80 rounded-lg border border-border bg-card p-5 shadow-lg"
       >
         <h2 className="mb-1 text-base font-semibold">{title}</h2>
         {description ? (

@@ -25,6 +25,7 @@ import { createEdgePanLoop } from './useEdgePan';
 import { isMacSecondaryClick, isPrimaryModifier } from '@/lib/shortcuts';
 import { setCursorOverride } from '@/lib/cursor-override';
 import { readCssToken } from '@/lib/css-token';
+import { prefersReducedMotion } from '@/lib/motion';
 
 /**
  * Drag object trên canvas — Milanote pattern, unified visualize với toolbar/unsort:
@@ -521,8 +522,6 @@ function computeGroupSnap(ids: string[]): SnapDelta {
   return computeSnapDelta(group, others, SNAP_THRESHOLD_PX / camera.zoom);
 }
 
-/** Thời gian card trượt vào chỗ khớp sau khi thả. Ngắn để không thấy trễ. */
-const SETTLE_MS = 120;
 
 /**
  * Hiệu ứng trượt vào chỗ khớp sau khi thả. Store đã giữ vị trí khớp; đây chỉ
@@ -536,14 +535,17 @@ const SETTLE_MS = 120;
  */
 function settleIntoPlace(els: HTMLElement[], dx: number, dy: number): void {
   if (dx === 0 && dy === 0) return;
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (prefersReducedMotion()) return;
 
   const from = `${-dx}px ${-dy}px`;
   // el.animate không nhận var() → đọc token lúc chạy (1 lần mỗi lần thả).
+  // Thời gian = --duration-quick (ngắn để không thấy trễ). Easing giữ `standard`
+  // như trước: card đã ở trên màn, chỉ dịch tại chỗ, không phải xuất hiện.
+  const duration = parseFloat(readCssToken('--duration-quick', '120ms'));
   const easing = readCssToken('--easing-standard', 'ease');
   for (const el of els) {
     el.animate([{ translate: from }, { translate: '0px 0px' }], {
-      duration: SETTLE_MS,
+      duration,
       easing,
     });
   }

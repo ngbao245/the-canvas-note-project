@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { CanvasSurface } from './CanvasSurface';
 import { UnsortPanel } from './UnsortPanel';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -60,6 +60,11 @@ export function CanvasApp({ boardId }: { boardId: string }) {
   const uiScale = useInterfaceScale();
   const islands = useHeaderStyle() === 'islands';
   const { t } = useI18n();
+  const panelRef = useRef<HTMLDivElement>(null);
+  // React 18 chưa biết thuộc tính `inert` → gắn thẳng lên DOM.
+  useEffect(() => {
+    panelRef.current?.toggleAttribute('inert', !unsortOpen);
+  }, [unsortOpen]);
   // Tổ hợp Undo chèn vào câu "Undo được (...)" của dialog xoá, lấy từ bảng phím.
   // Tính trong component để đổi Kiểu bàn phím là câu đổi theo.
   const platform = useKeyboardPlatform();
@@ -168,6 +173,58 @@ export function CanvasApp({ boardId }: { boardId: string }) {
     };
   }, [pending]);
 
+  // Dialog tan dần sau khi đóng → giữ nội dung lần cuối cho tới khi gỡ hẳn.
+  const lastPendingRef = useRef(pending);
+  if (pending) lastPendingRef.current = pending;
+  const shownPending = pending ?? lastPendingRef.current;
+
+  // Nội dung dialog theo loại xoá. Xác nhận xong đóng dialog (dialog tự tan).
+  const confirmContent = (p: PendingKind) => {
+    const confirm = (run: () => void) => () => {
+      run();
+      setPending(null);
+    };
+    if (p.kind === 'multi') {
+      return {
+        title: t('CANVAS.CONFIRM.DELETE_MANY.TITLE'),
+        description: t('CANVAS.CONFIRM.DELETE_MANY.DESCRIPTION', {
+          items: t('CANVAS.COUNT.OBJECT', { count: p.ids.length }),
+          undo: undoKeys,
+        }),
+        confirmLabel: t('COMMON.DELETE'),
+        onConfirm: confirm(() => deleteObjects(p.ids)),
+      };
+    }
+    if (p.kind === 'mixed') {
+      return {
+        title: t('CANVAS.CONFIRM.DELETE_MANY.TITLE'),
+        description:
+          p.count === null
+            ? t('CANVAS.CONFIRM.DELETE_BOARD.COUNTING')
+            : t('CANVAS.CONFIRM.DELETE_MANY.DESCRIPTION', {
+                items: deleteBoardItems(t, p.count),
+                undo: undoKeys,
+              }),
+        confirmLabel: t('COMMON.DELETE'),
+        onConfirm: confirm(() => void deleteSelectionWithBoards(p.ids)),
+      };
+    }
+    return {
+      title: t('CANVAS.CONFIRM.DELETE_BOARD.TITLE', { name: p.boardName }),
+      description:
+        p.count === null
+          ? t('CANVAS.CONFIRM.DELETE_BOARD.COUNTING')
+          : p.count.objects === 0 && p.count.boards === 0
+            ? t('CANVAS.CONFIRM.DELETE_BOARD.EMPTY', { undo: undoKeys })
+            : t('CANVAS.CONFIRM.DELETE_BOARD.DESCRIPTION', {
+                items: deleteBoardItems(t, p.count),
+                undo: undoKeys,
+              }),
+      confirmLabel: t('CANVAS.CONFIRM.DELETE_BOARD.CONFIRM'),
+      onConfirm: confirm(() => void deleteBoardCascade(p.objectId)),
+    };
+  };
+
   return (
     <div className="relative flex flex-1 overflow-hidden">
       <div className="flex flex-1 flex-col">
@@ -184,10 +241,14 @@ export function CanvasApp({ boardId }: { boardId: string }) {
        * trong vẫn layout ở 260px rồi scale xuống. Chiều cao chia tỉ lệ để sau khi scale vẫn cao bằng canvas.
        */}
       {/* Header đảo nổi: panel bắt đầu dưới hàng đảo (không đè đảo phải), sát đáy như cũ. */}
+      {/* Trượt bằng motion `panel` (mở chậm dần, đóng tăng tốc, quay đầu được giữa
+          chừng). Đóng: inert → không nhận Tab / focus, phần tử trong panel không bấm được. */}
       <div
-        className={`absolute bottom-0 right-0 z-toolbar transition-transform duration-normal ease-standard ${
-          unsortOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
+        ref={panelRef}
+        data-motion="panel"
+        data-side="right"
+        data-state={unsortOpen ? 'open' : 'closed'}
+        className="absolute bottom-0 right-0 z-toolbar"
         style={{
           width: UNSORT_PANEL_WIDTH * uiScale,
           top: islands ? islandsTopInset(uiScale) : 0,
@@ -198,64 +259,11 @@ export function CanvasApp({ boardId }: { boardId: string }) {
         </div>
       </div>
 
-      {pending?.kind === 'multi' ? (
+      {shownPending ? (
         <ConfirmDialog
-          open
-          title={t('CANVAS.CONFIRM.DELETE_MANY.TITLE')}
-          description={t('CANVAS.CONFIRM.DELETE_MANY.DESCRIPTION', {
-            items: t('CANVAS.COUNT.OBJECT', { count: pending.ids.length }),
-            undo: undoKeys,
-          })}
-          confirmLabel={t('COMMON.DELETE')}
+          open={pending !== null}
+          {...confirmContent(shownPending)}
           destructive
-          onConfirm={() => {
-            deleteObjects(pending.ids);
-            setPending(null);
-          }}
-          onCancel={() => setPending(null)}
-        />
-      ) : null}
-      {pending?.kind === 'mixed' ? (
-        <ConfirmDialog
-          open
-          title={t('CANVAS.CONFIRM.DELETE_MANY.TITLE')}
-          description={
-            pending.count === null
-              ? t('CANVAS.CONFIRM.DELETE_BOARD.COUNTING')
-              : t('CANVAS.CONFIRM.DELETE_MANY.DESCRIPTION', {
-                  items: deleteBoardItems(t, pending.count),
-                  undo: undoKeys,
-                })
-          }
-          confirmLabel={t('COMMON.DELETE')}
-          destructive
-          onConfirm={() => {
-            void deleteSelectionWithBoards(pending.ids);
-            setPending(null);
-          }}
-          onCancel={() => setPending(null)}
-        />
-      ) : null}
-      {pending?.kind === 'board' ? (
-        <ConfirmDialog
-          open
-          title={t('CANVAS.CONFIRM.DELETE_BOARD.TITLE', { name: pending.boardName })}
-          description={
-            pending.count === null
-              ? t('CANVAS.CONFIRM.DELETE_BOARD.COUNTING')
-              : pending.count.objects === 0 && pending.count.boards === 0
-                ? t('CANVAS.CONFIRM.DELETE_BOARD.EMPTY', { undo: undoKeys })
-                : t('CANVAS.CONFIRM.DELETE_BOARD.DESCRIPTION', {
-                    items: deleteBoardItems(t, pending.count),
-                    undo: undoKeys,
-                  })
-          }
-          confirmLabel={t('CANVAS.CONFIRM.DELETE_BOARD.CONFIRM')}
-          destructive
-          onConfirm={() => {
-            void deleteBoardCascade(pending.objectId);
-            setPending(null);
-          }}
           onCancel={() => setPending(null)}
         />
       ) : null}

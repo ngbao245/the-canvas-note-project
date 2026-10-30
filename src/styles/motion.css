@@ -1,0 +1,182 @@
+/*
+ * Preset chuyển động vào / ra theo loại component (spec motion-system).
+ * Token (thời gian, easing, biên độ) ở :root trong index.css. Bảng loại → hiệu ứng:
+ * docs/system/02-ui-common.md mục Chuyển động.
+ *
+ * Cách dùng: phần tử gắn `data-motion="<loại>"` + `data-state="open|closed"`
+ * (từ hook usePresence, src/lib/motion). Mount với "open" → keyframes vào tự chạy;
+ * chuyển "closed" → keyframes ra chạy, hook gỡ phần tử khi `animationend`.
+ * Thêm loại mới: thêm 1 khối ở đây + 1 dòng trong bảng doc, không viết keyframes
+ * trong component.
+ *
+ * Dùng thuộc tính `translate` / `scale` riêng (không `transform`) để không đè
+ * transform sẵn có của phần tử (VD -translate-x-1/2 của banner căn giữa).
+ */
+
+/* Biên độ khởi đầu đọc từ biến cục bộ, mỗi loại tự đặt. Thiếu = không dịch, không scale. */
+@keyframes motion-enter {
+  from {
+    opacity: 0;
+    translate: var(--motion-from-x, 0) var(--motion-from-y, 0);
+    scale: var(--motion-from-scale, 1);
+  }
+}
+
+@keyframes motion-exit {
+  to {
+    opacity: 0;
+    scale: var(--motion-to-scale, 1);
+  }
+}
+
+/* Đang tan: không nhận click (click đi xuống phần bên dưới), không giữ hover. */
+[data-motion][data-state='closed'] {
+  pointer-events: none;
+}
+
+[data-motion][data-state='open'] {
+  animation: motion-enter var(--duration-normal) var(--easing-enter) both;
+}
+
+[data-motion][data-state='closed'] {
+  animation: motion-exit var(--duration-quick) var(--easing-exit) both;
+}
+
+/* ---------- popover: popup gắn nút toolbar (bung từ phía nút) ---------- */
+[data-motion='popover'] {
+  --motion-from-scale: var(--motion-scale-pop);
+  --motion-from-x: calc(var(--motion-shift) * -1);
+}
+[data-motion='popover'][data-side='left'] {
+  --motion-from-x: var(--motion-shift);
+}
+
+/* ---------- dropdown: menu thả xuống dưới nút ở header ---------- */
+[data-motion='dropdown'] {
+  --motion-from-scale: var(--motion-scale-pop);
+  --motion-from-y: calc(var(--motion-shift) * -1);
+  transform-origin: top right;
+}
+[data-motion='dropdown'][data-align='start'] {
+  transform-origin: top left;
+}
+/* Nhịp mở / đóng của dropdown header (View, Export, Help, Account, breadcrumb "..."). */
+[data-motion='dropdown'][data-state='open'] {
+  animation-duration: var(--duration-normal);
+}
+[data-motion='dropdown'][data-state='closed'] {
+  animation-duration: var(--duration-fast);
+}
+
+/* ---------- context-menu: menu chuột phải, nhanh hơn popup ---------- */
+[data-motion='context-menu'] {
+  --motion-from-scale: var(--motion-scale-pop);
+  transform-origin: top left;
+}
+[data-motion='context-menu'][data-state='open'] {
+  animation-duration: var(--duration-quick);
+}
+[data-motion='context-menu'][data-state='closed'] {
+  animation-duration: var(--duration-fast);
+}
+
+/* ---------- modal-backdrop: nền mờ, chỉ mờ dần ---------- */
+[data-motion='modal-backdrop'][data-state='open'] {
+  animation-timing-function: var(--easing-standard);
+}
+
+/* ---------- modal: hộp giữa màn hình ---------- */
+[data-motion='modal'] {
+  --motion-from-scale: var(--motion-scale-modal);
+  --motion-from-y: var(--motion-shift-lg);
+  --motion-to-scale: var(--motion-scale-modal);
+}
+
+/* ---------- sheet: modal toàn màn hình, scale như modal nhưng dịch ngắn hơn ---------- */
+[data-motion='sheet'] {
+  --motion-from-scale: var(--motion-scale-modal);
+  --motion-from-y: var(--motion-shift);
+  --motion-to-scale: var(--motion-scale-modal);
+}
+
+[data-motion='sheet'][data-state='open'] {
+  animation-duration: var(--duration-slow);
+}
+
+[data-motion='sheet'][data-state='closed'] {
+  animation-duration: var(--duration-fast);
+}
+
+/* ---------- tooltip: chỉ có vào, ra thì gỡ ngay ---------- */
+[data-motion='tooltip'][data-state='open'] {
+  animation-duration: var(--duration-quick);
+}
+[data-motion='tooltip'][data-side='right'] {
+  --motion-from-x: calc(var(--motion-shift) / -2);
+}
+[data-motion='tooltip'][data-side='left'] {
+  --motion-from-x: calc(var(--motion-shift) / 2);
+}
+[data-motion='tooltip'][data-side='bottom'] {
+  --motion-from-y: calc(var(--motion-shift) / -2);
+}
+[data-motion='tooltip'][data-side='top'] {
+  --motion-from-y: calc(var(--motion-shift) / 2);
+}
+
+/* ---------- toast: thông báo / banner gắn cạnh trên hoặc dưới ---------- */
+[data-motion='toast'][data-edge='top'] {
+  --motion-from-y: calc(var(--motion-shift-lg) * -1);
+}
+[data-motion='toast'][data-edge='bottom'] {
+  --motion-from-y: var(--motion-shift-lg);
+}
+
+/* ---------- fade: đổi chỗ tại chỗ, chỉ mờ chéo ---------- */
+[data-motion='fade'][data-state='open'] {
+  animation-duration: var(--duration-quick);
+  animation-timing-function: var(--easing-standard);
+}
+
+/*
+ * ---------- panel: luôn mount, dùng transition (quay đầu được giữa chừng) ----------
+ * Không qua keyframes nên loại bỏ animation chung ở trên.
+ */
+[data-motion='panel'][data-state] {
+  animation: none;
+  transition: translate var(--duration-slow) var(--easing-enter);
+}
+[data-motion='panel'][data-state='closed'] {
+  transition-duration: var(--duration-normal);
+  transition-timing-function: var(--easing-exit);
+}
+[data-motion='panel'][data-side='right'][data-state='closed'] {
+  translate: 100% 0;
+}
+[data-motion='panel'][data-side='left'][data-state='closed'] {
+  translate: -100% 0;
+}
+
+/*
+ * ---------- Giảm chuyển động: 1 nguồn cho cả app ----------
+ * Bỏ dịch chuyển + scale, giữ mờ dần (keyframes vẫn chạy → animationend vẫn đến,
+ * lifecycle không cần nhánh riêng). Panel hiện thẳng. Vòng lặp trang trí
+ * (`data-motion-loop`) đứng yên; spinner tải không gắn nên vẫn quay.
+ * Sau này thêm lựa chọn trong Settings: lặp khối này cho `:root[data-motion-pref='reduce']`
+ * và cho prefersReducedMotion() (src/lib/motion) đọc cùng thuộc tính.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-shift: 0px;
+    --motion-shift-lg: 0px;
+    --motion-scale-pop: 1;
+    --motion-scale-modal: 1;
+  }
+  [data-motion='panel'][data-state] {
+    transition: none;
+  }
+  [data-motion-loop],
+  [data-motion-loop]::before {
+    animation: none !important;
+  }
+}

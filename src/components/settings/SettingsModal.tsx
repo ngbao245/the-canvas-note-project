@@ -21,6 +21,8 @@ import { LocalizationSection } from './sections/LocalizationSection';
 import { useI18n, type MessageKey } from '@/lib/i18n';
 import { useInterfaceScale } from '@/stores/interface-store';
 import { ESCAPE_COMBO, formatCombo, useKeyboardPlatform, useModalLayer } from '@/lib/shortcuts';
+import { FOCUS_RING } from '@/lib/focus-ring';
+import { PRESSABLE_MOTION, usePresence } from '@/lib/motion';
 
 /**
  * SettingsModal — modal Cài đặt phủ toàn màn hình (Milanote /account/settings mở
@@ -112,8 +114,10 @@ export function SettingsModal() {
   // Lớp overlay chặn: phím canvas (Ctrl+Z, Delete, F, 0) không chạy ngầm sau modal.
   // Phím toàn app (Ctrl+Shift+D...) vẫn chạy vì lớp global nằm trên.
   useModalLayer(close, dialogRef, { enabled: open });
+  // Toàn màn hình → motion `sheet` (mờ + dịch nhẹ, không scale). Giữ tới khi tan xong.
+  const presence = usePresence(open);
 
-  if (!open) return null;
+  if (!presence.mounted) return null;
 
   return (
     <div
@@ -121,6 +125,8 @@ export function SettingsModal() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="settings-title"
+      data-motion="sheet"
+      {...presence.props}
       className="fixed inset-0 z-modal flex flex-col bg-background text-foreground"
     >
       {/* Kích thước giao diện: zoom đặt lên header + vùng cuộn, không lên khung fixed → nền vẫn phủ kín màn hình. */}
@@ -140,7 +146,7 @@ export function SettingsModal() {
             keys: formatCombo(ESCAPE_COMBO, platform),
           })}
           aria-label={t('SETTINGS.CLOSE')}
-          className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors duration-normal hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={`grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground ${PRESSABLE_MOTION} ${FOCUS_RING}`}
         >
           <X className="h-4 w-4" />
         </button>

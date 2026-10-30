@@ -5,6 +5,7 @@ import App from './App';
 // drawably nạp TRƯỚC để index.css của app override được (padding badge, ...)
 import 'drawably/style.css';
 import './styles/index.css';
+import './styles/motion.css';
 
 const root = document.getElementById('root');
 if (!root) {

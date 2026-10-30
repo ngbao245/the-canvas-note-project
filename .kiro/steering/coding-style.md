@@ -157,14 +157,18 @@ el.style.cursor = 'grabbing';                            // dùng setCursorOverr
 document.body.classList.add('drag-invalid');             // dùng setCursorOverride
 ```
 
-## Chuyển động (transition)
+## Chuyển động
 
-Nguồn chuẩn: `--duration-fast` (60ms), `--duration-normal` (200ms), `--easing-standard` trong `src/styles/index.css`. Tailwind map sang `duration-fast`, `duration-normal`, `ease-standard`.
+Nguồn chuẩn + bảng loại component: `docs/system/02-ui-common.md` mục Chuyển động. Token ở `src/styles/index.css`, preset vào / ra ở `src/styles/motion.css`, code dùng chung ở `@/lib/motion`.
 
-- `duration-normal`: hover, đổi màu ở chrome (header, settings, modal, menu) và mở / đóng panel.
-- `duration-fast`: thao tác trực tiếp trên canvas (toolbar type, popup note, object, nút thùng rác lúc kéo).
-- Cấm số cứng (`duration-200`, `duration-[60ms]`, `transition: ... 60ms`). Cần mức mới thì thêm token vào `index.css` + `tailwind.config.ts`, không viết số lẻ.
-- Web Animations API (`el.animate`) không nhận `var()`: đọc token lúc chạy bằng `readCssToken('--easing-standard', 'ease')` từ `@/lib/css-token`, không chép giá trị sang TS.
+- Nút icon / tile (toolbar, header): `PRESSABLE_MOTION` (hover `quick`, nhấn lún 0.96 `fast`). Nút chữ / pill: `HOVER_MOTION`. Dòng menu: `ROW_MOTION`. Không tự viết `transition-colors duration-*` cho các loại này.
+- Popup / menu / modal / toast mới: chọn loại `data-motion` có sẵn + `usePresence(open)` rồi spread `presence.props`. Esc, click ngoài, trả focus theo `open`, không theo `mounted`. Không viết keyframes trong component.
+- Panel cạnh: `data-motion="panel"` + `data-side` + `data-state`, luôn mount, đóng thì `inert`.
+- Tooltip ở toolbar / header: `<Tooltip label side>` từ `@/components/shared`, bỏ `title`, nút tắt dùng `aria-disabled`.
+- Vòng lặp trang trí (`animate-*` lặp vô hạn): gắn `data-motion-loop`. Spinner thì không.
+- Cấm số cứng (`duration-200`, `duration-[60ms]`, `cubic-bezier(`) — ESLint chặn. Cần mức mới thì thêm token vào `index.css` + `tailwind.config.ts`.
+- Không `hover:scale-*` cho nút / ô màu (hover chỉ đổi màu / viền).
+- `el.animate` / rAF: đọc token bằng `readCssToken('--duration-quick', '120ms')`, kiểm `prefersReducedMotion()` từ `@/lib/motion`, không gọi `matchMedia` tay.
 
 ## Icon
 

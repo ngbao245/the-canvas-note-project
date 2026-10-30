@@ -18,7 +18,7 @@ Cập nhật: 2026-10-13 · Đối chiếu code: 2026-10-13
 | Stack, lệnh, build, folder, ranh giới import, alias | `01-core.md` | `package.json`, `vite.config.ts`, `eslint.config.js`, `App.tsx`, `register-tools.ts` | — |
 | Mở app offline, service worker, thanh "bản mới" | `01-core.md` | `lib/pwa/index.ts`, `components/shared/UpdateBanner.tsx` | — |
 | Bảng dev, server giả | `01-core.md` | `dev/`, `../dev/fake-api/` | Kế hoạch đo: `docs/legacy/specs/dev-panel/` |
-| Theme, màu, chuyển động, lớp z, focus, con trỏ, chọn chữ | `02-ui-common.md` | `styles/index.css`, `tailwind.config.ts`, `lib/cursor-override.ts`, `lib/focus-ring.ts` | Luật từng dòng: `coding-style.md` |
+| Theme, màu, chuyển động, lớp z, focus, con trỏ, chọn chữ | `02-ui-common.md` | `styles/index.css`, `styles/motion.css`, `tailwind.config.ts`, `lib/motion/`, `lib/cursor-override.ts`, `lib/focus-ring.ts` | Luật từng dòng: `coding-style.md` |
 | Button / Card / Badge, phong cách phẳng ↔ vẽ tay, kích thước giao diện | `02-ui-common.md` | `components/style/`, `stores/ui-style-store.ts`, `stores/interface-store.ts` | — |
 | Loading / Empty / Error | `02-ui-common.md` | `components/shared/` | — |
 | Đa ngôn ngữ, chữ UI | `03-i18n.md` | `lib/i18n/`, `lib/i18n/locales/*.json` | Luật: `coding-style.md` mục i18n. Task mở: spec `i18n` |
@@ -64,7 +64,7 @@ Cập nhật: 2026-10-13 · Đối chiếu code: 2026-10-13
 | Phần | Mã |
 |---|---|
 | `01-core.md` | `INV-CORE-01`..`09` |
-| `02-ui-common.md` | `INV-UI-01`..`13` |
+| `02-ui-common.md` | `INV-UI-01`..`15` |
 | `03-i18n.md` | `INV-I18N-01`..`09` |
 | `04-shortcuts.md` | `INV-KEY-01`..`11` |
 | `05-settings.md` | `INV-SET-01`..`08` |

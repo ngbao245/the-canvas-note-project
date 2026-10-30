@@ -8,6 +8,7 @@ export { LoadingState } from './LoadingState';
 export { EmptyState } from './EmptyState';
 export { ErrorState } from './ErrorState';
 export { OverlayScroll } from './OverlayScroll';
+export { Tooltip } from './Tooltip';
 export { UpdateBanner } from './UpdateBanner';
 // TẠM: gỡ khi `canvas-sync` xử lý ngầm.
 export { OfflineBadge } from './OfflineBadge';

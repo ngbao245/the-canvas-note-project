@@ -30,8 +30,16 @@ const config: Config = {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.3' },
         },
+        // Vệt sáng lướt qua Skeleton (lớp ::before đặt sẵn -translate-x-full).
+        shimmer: {
+          '100%': { transform: 'translateX(100%)' },
+        },
       },
+      // Vòng lặp trang trí: nhịp riêng của từng chỉ báo, không phải token dùng chung.
+      // Phần tử dùng các class này gắn `data-motion-loop` để giảm chuyển động tắt được
+      // ở 1 chỗ (src/styles/motion.css).
       animation: {
+        shimmer: 'shimmer 1.6s infinite',
         'presence-pulse': 'presence-pulse 1.5s var(--easing-standard) infinite',
         // idle thở chậm nhè nhẹ; đang lưu thở nhanh + sâu hơn (báo "đang chạy").
         'save-breathe': 'save-breathe 2.8s var(--easing-standard) infinite',
@@ -121,11 +129,15 @@ const config: Config = {
       },
       transitionTimingFunction: {
         standard: 'var(--easing-standard)',
+        enter: 'var(--easing-enter)',
+        exit: 'var(--easing-exit)',
       },
       // Trỏ vào token trong index.css: đổi thời gian ở 1 chỗ, class + CSS thuần cùng theo.
       transitionDuration: {
         fast: 'var(--duration-fast)',
+        quick: 'var(--duration-quick)',
         normal: 'var(--duration-normal)',
+        slow: 'var(--duration-slow)',
       },
     },
   },

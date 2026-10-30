@@ -3,6 +3,9 @@ import { SoonBadge } from '@/components/settings/SettingsBlocks';
 import { useShortcutsModalStore } from '@/stores/shortcuts-modal-store';
 import { useI18n } from '@/lib/i18n';
 import { usePopup } from '../hooks/usePopup';
+import { FOCUS_RING } from '@/lib/focus-ring';
+import { PRESSABLE_MOTION, ROW_MOTION } from '@/lib/motion';
+import { Tooltip } from '@/components/shared';
 
 /**
  * HelpMenu — nút Trợ giúp trên header + popup (Milanote help popup).
@@ -13,31 +16,34 @@ import { usePopup } from '../hooks/usePopup';
  */
 export function HelpMenu() {
   // Bấm ngoài / Esc đóng (Esc không lọt xuống canvas) — xem usePopup.
-  const { open, ref, close, toggle } = usePopup();
+  const { open, ref, close, toggle, presence } = usePopup();
   const openShortcuts = useShortcutsModalStore((s) => s.openModal);
   const { t } = useI18n();
   const label = t('CANVAS.HEADER.HELP');
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={toggle}
-        title={label}
-        aria-label={label}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        className={`grid h-8 w-8 place-items-center rounded-md transition-colors duration-normal hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-          open ? 'bg-muted text-foreground' : 'text-muted-foreground'
-        }`}
-      >
-        <CircleHelp className="h-6 w-6" strokeWidth={1.5} />
-      </button>
+      <Tooltip label={label} side="bottom" disabled={open}>
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={label}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          className={`grid h-8 w-8 place-items-center rounded-md hover:bg-muted hover:text-foreground ${PRESSABLE_MOTION} ${FOCUS_RING} ${
+            open ? 'bg-muted text-foreground' : 'text-muted-foreground'
+          }`}
+        >
+          <CircleHelp className="h-6 w-6" strokeWidth={1.5} />
+        </button>
+      </Tooltip>
 
-      {open ? (
+      {presence.mounted ? (
         <div
           role="dialog"
           aria-label={label}
+          data-motion="dropdown"
+          {...presence.props}
           className="absolute right-0 top-full z-tooltip mt-2 w-72 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-elevation-2"
         >
           {/* Mũi tên chỉ lên nút: tâm nút 32px cách mép phải 16px. */}
@@ -88,7 +94,7 @@ function HelpItem({
       onClick={onClick}
       aria-disabled={soon || undefined}
       title={soon ? `${title} (${t('COMMON.COMING_SOON')})` : undefined}
-      className={`relative flex w-full items-start gap-3 rounded-md p-3 text-left transition-colors duration-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+      className={`relative flex w-full items-start gap-3 rounded-md p-3 text-left ${ROW_MOTION} ${FOCUS_RING} ${
         soon ? '' : 'hover:bg-muted'
       }`}
     >

@@ -55,7 +55,7 @@ Loại `rect` (thử từ Phase A, không có nút) đã gỡ 2026-10-13 theo b�
 
 ### Thanh tạo object (`components/Toolbar.tsx`, chế độ tạo)
 
-- Nút thật lấy từ `getToolbarObjectTypes()` (lọc `showInToolbar`). Bấm: tạo ở tâm màn hình. Kéo (`useToolbarDrag`): tạo tại chỗ thả, chỉ khi thả trên mặt canvas.
+- Nút thật lấy từ `getToolbarObjectTypes()` (lọc `showInToolbar`). Bấm: tạo ở tâm màn hình. Kéo (`useToolbarDrag`): tạo tại chỗ thả, chỉ khi thả trên mặt canvas. Lúc kéo, preview còn chạm khung toolbar thì nhỏ hơn cỡ thật 20% (`COMPACT_RATIO` 0.8, tính trên cỡ đã nhân zoom; không mờ, không đổi con trỏ); ra hẳn thì bung về cỡ thật quanh con trỏ (`normal` + `enter`), kéo ngược vào thì co lại. Đổi 2026-10-22.
 - Icon nút: bảng `REGISTRY_TO_TILE` (type → icon trong `TileIcons.tsx`). Loại thiếu trong bảng hiện icon note.
 - Nút giữ chỗ (chưa làm, bấm không có gì): Link, Image, To-do, Table, File, Line (`PLACEHOLDER_TYPES`).
 - Chế độ chọn / sửa của toolbar đọc `renderElementActions` / `renderEditingActions` của loại đang chọn.

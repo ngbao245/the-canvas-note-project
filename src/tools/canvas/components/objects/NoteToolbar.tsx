@@ -29,6 +29,7 @@ import {
 import { ActionButton, PopupActionButton } from '../Toolbar';
 import { ToolbarPopup } from '../ToolbarPopup';
 import { ToolbarMenuDivider, ToolbarMenuItem } from '../ToolbarMenuItem';
+import { ROW_MOTION } from '@/lib/motion';
 import { CustomColorButton, SavedColorRow, Swatch, SwatchRow } from '../ColorSwatches';
 import { useToolbarPopupClose } from '../../hooks/useToolbarPopupClose';
 import {
@@ -297,7 +298,7 @@ function TextStylePopup({ editor, onClose }: { editor: Editor; onClose: () => vo
                   opt.apply(editor);
                   onClose();
                 }}
-                className={`flex h-8 items-center rounded-md px-2 text-left transition-colors duration-fast hover:bg-muted ${
+                className={`flex h-8 items-center rounded-md px-2 text-left hover:bg-muted ${ROW_MOTION} ${
                   active ? 'bg-muted text-foreground' : 'text-muted-foreground'
                 }`}
               >
@@ -365,8 +366,9 @@ function MarkSwatchGroup({
               title={label}
               aria-label={label}
               aria-pressed={c.hex === current}
-              className={`grid h-7 w-7 place-items-center rounded-md border text-sm font-semibold text-foreground transition-transform duration-fast hover:scale-105 ${
-                c.hex === current ? 'border-primary ring-1 ring-primary' : 'border-border'
+              // Hover hiện viền, ô không phóng to (thống nhất với ColorSwatches).
+              className={`grid h-7 w-7 place-items-center rounded-md border text-sm font-semibold text-foreground transition-[border-color,box-shadow] duration-quick ease-standard ${
+                c.hex === current ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-border-strong'
               }`}
               style={faceStyle(c.hex)}
             >
@@ -838,7 +840,7 @@ function ColorTabButton({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`flex flex-col items-center gap-1 rounded-md py-1.5 text-[10px] font-medium transition-colors duration-fast ${
+      className={`flex flex-col items-center gap-1 rounded-md py-1.5 text-[10px] font-medium transition-[color,background-color,opacity] duration-quick ease-standard ${
         active ? 'bg-muted text-foreground' : 'text-muted-foreground opacity-60 hover:opacity-100'
       }`}
     >

@@ -11,6 +11,9 @@ import type { Board } from '../types';
 import { BreadcrumbList } from './BreadcrumbList';
 import { BoardTitleRow } from './BoardTitleRow';
 import { useInterfaceScale } from '@/stores/interface-store';
+import { Tooltip } from '@/components/shared';
+import { FOCUS_RING } from '@/lib/focus-ring';
+import { PRESSABLE_MOTION } from '@/lib/motion';
 
 /**
  * CanvasHeader — 2 hàng:
@@ -67,10 +70,10 @@ export function CanvasHeader({
 // Gom class Tailwind lặp nhiều lần. disabled tự thêm style mờ + no-hover.
 // ============================================================
 
-const ICON_BTN_CLS =
-  'grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground';
+const ICON_BTN_CLS = `grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground ${PRESSABLE_MOTION} ${FOCUS_RING}`;
+// aria-disabled (không `disabled`) để nút tắt vẫn hiện tooltip.
 const ICON_BTN_DISABLED_CLS =
-  'disabled:opacity-40 disabled:hover:bg-transparent';
+  'aria-disabled:opacity-40 aria-disabled:hover:bg-transparent aria-disabled:hover:text-muted-foreground';
 
 function IconButton({
   icon: Icon,
@@ -86,16 +89,17 @@ function IconButton({
   disabled?: boolean;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      aria-label={ariaLabel}
-      className={disabled ? `${ICON_BTN_CLS} ${ICON_BTN_DISABLED_CLS}` : ICON_BTN_CLS}
-    >
-      <Icon className="h-6 w-6" strokeWidth={1.5} />
-    </button>
+    <Tooltip label={title ?? ariaLabel} side="bottom">
+      <button
+        type="button"
+        onClick={disabled ? undefined : onClick}
+        aria-disabled={disabled || undefined}
+        aria-label={ariaLabel}
+        className={`${ICON_BTN_CLS} ${ICON_BTN_DISABLED_CLS}`}
+      >
+        <Icon className="h-6 w-6" strokeWidth={1.5} />
+      </button>
+    </Tooltip>
   );
 }
 
@@ -140,15 +144,16 @@ export function HelpSearchNotify() {
 function SoonIconButton({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
   const { t } = useI18n();
   return (
-    <button
-      type="button"
-      aria-disabled="true"
-      aria-label={label}
-      title={`${label} (${t('COMMON.COMING_SOON')})`}
-      className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition-colors duration-normal hover:bg-muted"
-    >
-      <Icon className="h-6 w-6" strokeWidth={1.5} />
-    </button>
+    <Tooltip label={`${label} (${t('COMMON.COMING_SOON')})`} side="bottom">
+      <button
+        type="button"
+        aria-disabled="true"
+        aria-label={label}
+        className={`grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted ${PRESSABLE_MOTION} ${FOCUS_RING}`}
+      >
+        <Icon className="h-6 w-6" strokeWidth={1.5} />
+      </button>
+    </Tooltip>
   );
 }
 

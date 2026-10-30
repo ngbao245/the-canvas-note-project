@@ -10,6 +10,7 @@ import { useI18n } from '@/lib/i18n';
 import { isRootBoard, type Board } from '../types';
 import { resolveBoardColor } from '../lib/board-colors';
 import { useResolvedTheme } from '@/stores/theme-store';
+import { PRESSABLE_MOTION, ROW_MOTION } from '@/lib/motion';
 
 /**
  * BreadcrumbList — đường dẫn các cấp board ở header-left (Milanote parity).
@@ -264,8 +265,7 @@ function BoardIcon({ board }: { board: Board }) {
   );
 }
 
-const ELLIPSIS_BTN_CLS =
-  'grid h-6 w-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground';
+const ELLIPSIS_BTN_CLS = `grid h-6 w-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground ${PRESSABLE_MOTION}`;
 
 /** Hình nút "..." cho lớp đo (cùng kích thước nút thật, không có hành vi). */
 function EllipsisButtonShape() {
@@ -280,7 +280,7 @@ function EllipsisButtonShape() {
 function EllipsisMenu({ boards }: { boards: Board[] }) {
   const { t } = useI18n();
   // Bấm ngoài / Esc đóng (Esc không lọt xuống canvas) — xem usePopup.
-  const { open, ref, close, toggle } = usePopup();
+  const { open, ref, close, toggle, presence } = usePopup();
 
   return (
     <div ref={ref} className="relative flex shrink-0 items-center">
@@ -295,9 +295,12 @@ function EllipsisMenu({ boards }: { boards: Board[] }) {
       >
         <MoreHorizontal className="h-4 w-4" />
       </button>
-      {open ? (
+      {presence.mounted ? (
         <div
           role="menu"
+          data-motion="dropdown"
+          data-align="start"
+          {...presence.props}
           className="absolute left-0 top-full z-tooltip mt-1 flex w-56 flex-col rounded-md border border-border bg-popover p-1 shadow-elevation-2"
         >
           {boards.map((b) => (
@@ -307,7 +310,7 @@ function EllipsisMenu({ boards }: { boards: Board[] }) {
               role="menuitem"
               title={b.name}
               onClick={close}
-              className="flex min-w-0 items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-foreground hover:bg-muted"
+              className={`flex min-w-0 items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-foreground hover:bg-muted ${ROW_MOTION}`}
             >
               <BoardIcon board={b} />
               <span className="truncate">{b.name}</span>

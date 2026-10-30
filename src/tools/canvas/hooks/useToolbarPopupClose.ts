@@ -1,5 +1,6 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useContext, useEffect, useRef, type RefObject } from 'react';
 import { useEscapeLayer } from '@/lib/shortcuts';
+import { ToolbarPopupPresence } from '../lib/toolbar-popup-presence';
 
 /**
  * Đóng popup mở từ toolbar (đi cùng `<ToolbarPopup>`): click ngoài + Escape.
@@ -31,15 +32,22 @@ export function useToolbarPopupClose({
   // gỡ/gắn lại liên tục. Giữ bản mới nhất trong ref, effect chỉ chạy 1 lần.
   const callbacksRef = useRef({ onClose, onRefocus });
   callbacksRef.current = { onClose, onRefocus };
+  // Popup đang tan (hiệu ứng thoát): gỡ Esc + click ngoài ngay, không chờ tan xong
+  // → Esc kế tiếp về lại canvas, không bị popup đang biến mất nuốt.
+  const active = useContext(ToolbarPopupPresence)?.state !== 'closed';
 
   // Esc ở lớp overlay (consume): CHỈ đóng popup, không lọt xuống canvas (bỏ chọn)
   // hay NoteEditor (thoát edit). Chạy cả khi focus trong ô URL của popup Link.
-  useEscapeLayer(() => {
-    callbacksRef.current.onClose();
-    callbacksRef.current.onRefocus?.();
-  });
+  useEscapeLayer(
+    () => {
+      callbacksRef.current.onClose();
+      callbacksRef.current.onRefocus?.();
+    },
+    { enabled: active },
+  );
 
   useEffect(() => {
+    if (!active) return;
     const onPointerDown = (e: PointerEvent) => {
       const t = e.target;
       if (t instanceof Element && popupRef.current?.contains(t)) return;
@@ -48,5 +56,5 @@ export function useToolbarPopupClose({
     };
     window.addEventListener('pointerdown', onPointerDown, true);
     return () => window.removeEventListener('pointerdown', onPointerDown, true);
-  }, [popupRef, anchorLabel]);
+  }, [popupRef, anchorLabel, active]);
 }

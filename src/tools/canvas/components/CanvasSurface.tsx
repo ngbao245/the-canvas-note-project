@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { useI18n } from '@/lib/i18n';
 import { StickyNote } from 'lucide-react';
 import { useObjectsStore } from '../store/objects-store';
 import { useInteractionStore } from '../store/interaction-store';
@@ -69,7 +70,10 @@ export function CanvasSurface({ boardId }: { boardId: string }) {
   const gridSparseRef = useRef<HTMLDivElement>(null);
   const showGrid = useCanvasSettingsStore((s) => s.showGrid);
   const gridVisibilityCls = showGrid ? '' : 'hidden';
+  const { t } = useI18n();
+  // Đóng giữ lại toạ độ (open=false) để menu tan tại chỗ, không nhảy về 0,0.
   const [menu, setMenu] = useState<{
+    open: boolean;
     screenX: number;
     screenY: number;
     canvasX: number;
@@ -216,6 +220,8 @@ export function CanvasSurface({ boardId }: { boardId: string }) {
   }, []);
 
   // --- Context menu ---
+  // useCallback: ContextMenu dùng làm deps của effect click ngoài.
+  const closeMenu = useCallback(() => setMenu((m) => (m ? { ...m, open: false } : m)), []);
   const onContextMenu = (e: ReactMouseEvent<HTMLDivElement>) => {
     e.preventDefault();
     const rect = surfaceRef.current?.getBoundingClientRect();
@@ -224,7 +230,7 @@ export function CanvasSurface({ boardId }: { boardId: string }) {
     const screenY = e.clientY - rect.top;
     const camera = getCameraEngine().getCamera();
     const { x, y } = screenToCanvas({ x: screenX, y: screenY }, camera);
-    setMenu({ screenX: e.clientX, screenY: e.clientY, canvasX: x, canvasY: y });
+    setMenu({ open: true, screenX: e.clientX, screenY: e.clientY, canvasX: x, canvasY: y });
   };
 
   return (
@@ -289,16 +295,17 @@ export function CanvasSurface({ boardId }: { boardId: string }) {
 
       {menu ? (
         <ContextMenu
+          open={menu.open}
           x={menu.screenX}
           y={menu.screenY}
           items={[
             {
               icon: StickyNote,
-              label: 'Thêm Note',
+              label: t('CANVAS.CONTEXT_MENU.ADD_NOTE'),
               onClick: () => createObjectAt('note', menu.canvasX, menu.canvasY, boardId),
             },
           ]}
-          onClose={() => setMenu(null)}
+          onClose={closeMenu}
         />
       ) : null}
     </div>

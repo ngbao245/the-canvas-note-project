@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  useContext,
   useImperativeHandle,
   useLayoutEffect,
   useRef,
@@ -7,6 +8,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useInterfaceScale } from '@/stores/interface-store';
+import { ToolbarPopupPresence } from '../lib/toolbar-popup-presence';
 
 /**
  * Overlay primitive dùng chung cho các popup mở từ toolbar (element mode + editing
@@ -28,8 +30,10 @@ import { useInterfaceScale } from '@/stores/interface-store';
  * chiều cao thật rồi gán lại ngay trong cùng 1 nhịp. Đi qua state thì ResizeObserver
  * thấy kích thước đổi qua lại giữa 2 lần commit → báo lặp.
  *
- * Tách 2 lớp: lớp ngoài (fixed, không overflow) chứa mũi tên; lớp trong mang
- * `className` của caller (có thể `overflow-y-auto`) → mũi tên không bị cắt.
+ * Tách 3 lớp: lớp ngoài (fixed, không overflow, scale giao diện); lớp giữa chạy
+ * hiệu ứng vào / ra (`data-motion="popover"`, trạng thái từ ToolbarPopupPresence)
+ * và chứa mũi tên để mũi tên đi cùng popup; lớp trong mang `className` của caller
+ * (có thể `overflow-y-auto`) → mũi tên không bị cắt.
  *
  * `data-canvas-overlay` là contract chung với NoteEditor `onBlur` guard +
  * `useToolbarPopupClose` (click-outside bỏ qua vùng này). Giữ nguyên trên node
@@ -58,6 +62,9 @@ export const ToolbarPopup = forwardRef<HTMLDivElement, ToolbarPopupProps>(functi
   ref,
 ) {
   const outerRef = useRef<HTMLDivElement>(null);
+  // Lớp chạy hiệu ứng vào / ra (motion.css `popover`). Tách khỏi lớp ngoài vì
+  // place() ghi `transform` (scale giao diện, gốc 0 0) lên lớp ngoài.
+  const motionRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const arrowRef = useRef<SVGSVGElement>(null);
   // Neo đo vị trí: span rỗng render tại chỗ (trong cây toolbar), parent của nó là
@@ -72,13 +79,16 @@ export const ToolbarPopup = forwardRef<HTMLDivElement, ToolbarPopupProps>(functi
   // vị trí `left/top` của lớp ngoài là px màn hình; kích thước, mũi tên bên trong là
   // px cục bộ (chưa nhân scale).
   const scale = useInterfaceScale();
+  // Không có provider (popup mở không qua PopupActionButton) → chỉ có hiệu ứng vào.
+  const presence = useContext(ToolbarPopupPresence);
 
   useLayoutEffect(() => {
     const anchorEl = anchorRef.current?.parentElement;
     const outer = outerRef.current;
+    const layer = motionRef.current;
     const inner = innerRef.current;
     const arrow = arrowRef.current;
-    if (!anchorEl || !outer || !inner || !arrow) return;
+    if (!anchorEl || !outer || !layer || !inner || !arrow) return;
 
     const place = () => {
       const r = anchorEl.getBoundingClientRect();
@@ -133,6 +143,11 @@ export const ToolbarPopup = forwardRef<HTMLDivElement, ToolbarPopupProps>(functi
         Math.max(ARROW_EDGE_INSET, hLocal - ARROW_EDGE_INSET - ARROW_H),
       );
       arrow.style.top = `${arrowTop}px`;
+      // Popup bung ra từ đầu mũi tên: gốc scale ở cạnh phía nút, cao bằng mũi tên.
+      // `data-side` cho motion.css biết dịch từ trái hay phải.
+      const originY = `${arrowTop + ARROW_H / 2}px`;
+      layer.dataset.side = side;
+      layer.style.transformOrigin = side === 'right' ? `0 ${originY}` : `100% ${originY}`;
       // Lùi 1px vào trong để phần fill che đoạn viền popup dưới chân mũi tên.
       if (side === 'right') {
         arrow.style.left = `${-ARROW_W + 1}px`;
@@ -175,6 +190,13 @@ export const ToolbarPopup = forwardRef<HTMLDivElement, ToolbarPopupProps>(functi
           className="z-toolbar"
         >
           <div
+            ref={motionRef}
+            data-motion="popover"
+            data-state="open"
+            {...presence?.props}
+            className="relative"
+          >
+          <div
             ref={innerRef}
             className={`rounded-lg border border-border bg-card shadow-lg ${className}`}
           >
@@ -195,6 +217,7 @@ export const ToolbarPopup = forwardRef<HTMLDivElement, ToolbarPopupProps>(functi
               strokeWidth={1}
             />
           </svg>
+          </div>
         </div>,
         document.body,
       )}

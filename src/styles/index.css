@@ -31,9 +31,25 @@
   /* Bộ token dùng chung cho mọi theme (hình khối + motion, không đổi theo màu) */
   :root {
     --radius: 10px;
-    --duration-fast: 60ms;
-    --duration-normal: 200ms;
-    --easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+    /*
+     * Motion token — nguồn chuẩn duy nhất cho thời gian / easing / biên độ.
+     * Bảng dùng theo loại component: docs/system/02-ui-common.md mục Chuyển động.
+     * Preset vào / ra theo loại ở src/styles/motion.css.
+     */
+    --duration-fast: 60ms; /* nhấn nút, dòng menu, dropdown / menu chuột phải / sheet thoát */
+    --duration-quick: 120ms; /* hover nút, popup / modal thoát, tooltip + menu chuột phải vào */
+    --duration-normal: 160ms; /* popup / dropdown / modal / toast vào, panel đóng */
+    --duration-slow: 220ms; /* panel mở từ cạnh, sheet vào */
+    --easing-standard: cubic-bezier(0.4, 0, 0.2, 1); /* đổi trạng thái tại chỗ */
+    --easing-enter: cubic-bezier(0.16, 1, 0.3, 1); /* xuất hiện: nhanh đầu, chậm cuối, không vượt đích */
+    --easing-exit: cubic-bezier(0.4, 0, 1, 1); /* biến mất: tăng tốc rồi đi */
+    --motion-shift: 4px; /* quãng dịch popup / menu (tooltip dùng nửa) */
+    --motion-shift-lg: 8px; /* quãng dịch modal / toast */
+    --motion-scale-pop: 0.98; /* scale khởi đầu popup / menu */
+    --motion-scale-modal: 0.96; /* scale khởi đầu hộp modal */
+    /* Nền mờ sau modal hộp. Đen mờ đọc được trên cả 2 theme. */
+    --backdrop: rgba(0, 0, 0, 0.4);
 
     /*
      * Ánh xạ token chung → biến drawably.
@@ -232,12 +248,6 @@
   :disabled,
   [aria-disabled='true'] {
     cursor: not-allowed;
-  }
-}
-
-@keyframes shimmer {
-  100% {
-    transform: translateX(100%);
   }
 }
 

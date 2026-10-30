@@ -16,6 +16,7 @@ import { EmptyState, OverlayScroll } from '@/components/shared';
 import { useShortcutsModalStore } from '@/stores/shortcuts-modal-store';
 import { useInterfaceScale } from '@/stores/interface-store';
 import { ShortcutWays } from './ShortcutKeys';
+import { usePresence, type Presence } from '@/lib/motion';
 
 /**
  * Modal phím tắt (Milanote ShortcutsModal). Mount 1 lần ở App, mở qua
@@ -109,11 +110,14 @@ function rowKeysText(def: ShortcutDef, platform: KeyboardPlatform): string {
 
 export function ShortcutsModal() {
   const open = useShortcutsModalStore((s) => s.open);
-  return open ? <ShortcutsDialog /> : null;
+  // Giữ dialog tới khi tan xong (motion `modal`); phím + focus theo `open`.
+  const presence = usePresence(open);
+  return presence.mounted ? <ShortcutsDialog presence={presence} /> : null;
 }
 
-/** Tách khỏi ShortcutsModal: mount khi mở → effect focus / trả focus gắn theo vòng đời. */
-function ShortcutsDialog() {
+/** Tách khỏi ShortcutsModal: mount khi mở → dữ liệu dựng lại mỗi lần mở. */
+function ShortcutsDialog({ presence }: { presence: Presence }) {
+  const open = presence.state === 'open';
   const close = useShortcutsModalStore((s) => s.close);
   const uiScale = useInterfaceScale();
   const platform = useKeyboardPlatform();
@@ -150,11 +154,13 @@ function ShortcutsDialog() {
   const shownActive = visibleKeys.has(active) ? active : visibleGroups[0]?.key;
 
   useEffect(() => {
-    // Nhớ chỗ focus cũ (nút Trợ giúp) để trả lại khi đóng. Mở là gõ tìm được ngay.
+    if (!open) return;
+    // Nhớ chỗ focus cũ (nút Trợ giúp) để trả lại khi đóng — ngay lúc bắt đầu tan,
+    // không chờ hiệu ứng. Mở là gõ tìm được ngay.
     const prevFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     searchRef.current?.focus();
     return () => prevFocus?.focus();
-  }, []);
+  }, [open]);
 
   const onQueryChange = (value: string) => {
     setQuery(value);
@@ -167,7 +173,7 @@ function ShortcutsDialog() {
       onQueryChange('');
       searchRef.current?.focus();
     } else close();
-  }, dialogRef);
+  }, dialogRef, { enabled: open });
 
   const scrollToGroup = (key: MessageKey) => {
     const el = sectionRefs.current.get(key);
@@ -191,26 +197,31 @@ function ShortcutsDialog() {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-modal flex items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.4)' }}
-      // mousedown đúng nền (không phải đang kéo bôi chữ trong modal rồi thả ra ngoài) → đóng.
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) close();
-      }}
-    >
+    // Khung ngoài không bắt chuột; nền mờ + hộp tự bật lại, lúc tan motion.css tắt.
+    <div className="pointer-events-none fixed inset-0 z-modal flex items-center justify-center">
+      <div
+        aria-hidden="true"
+        data-motion="modal-backdrop"
+        data-state={presence.state}
+        className="pointer-events-auto absolute inset-0"
+        style={{ background: 'var(--backdrop)' }}
+        // mousedown đúng nền (không phải đang kéo bôi chữ trong modal rồi thả ra ngoài) → đóng.
+        onMouseDown={close}
+      />
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="shortcuts-title"
+        data-motion="modal"
+        {...presence.props}
         // Kích thước giao diện: zoom cả khung, bù vw/vh để không tràn màn hình.
         style={{
           zoom: uiScale,
           width: `min(880px, calc(92vw / ${uiScale}))`,
           height: `min(640px, calc(85vh / ${uiScale}))`,
         }}
-        className="flex flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-elevation-2"
+        className="pointer-events-auto relative flex flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-elevation-2"
       >
         <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border pl-5 pr-3">
           <h2 id="shortcuts-title" className="text-sm font-semibold">

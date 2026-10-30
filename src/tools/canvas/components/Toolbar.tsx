@@ -32,6 +32,10 @@ import { useInterfaceScale } from '@/stores/interface-store';
 import { useHeaderStyle } from '@/stores/canvas-settings-store';
 import { ISLANDS_EDGE, islandsTopInset } from '../lib/header-islands';
 import { useI18n, type MessageKey } from '@/lib/i18n';
+import { HOVER_MOTION, PRESSABLE_MOTION, usePresence } from '@/lib/motion';
+import { FOCUS_RING } from '@/lib/focus-ring';
+import { Tooltip } from '@/components/shared';
+import { ToolbarPopupPresence } from '../lib/toolbar-popup-presence';
 
 /**
  * Toolbar palette dọc — screen-space overlay trong canvas.
@@ -84,18 +88,21 @@ function TileButton({
 }) {
   const { t } = useI18n();
   return (
+    <Tooltip label={label} side="right">
     <button
       type="button"
-      title={label}
       aria-label={onPointerDown ? t('CANVAS.TOOLBAR.CREATE', { label }) : label}
       onPointerDown={onPointerDown}
-      className="group flex w-12 flex-col items-center gap-1 rounded-lg py-1.5 text-muted-foreground transition-colors duration-fast hover:bg-muted hover:text-foreground"
+      className={`group flex w-12 flex-col items-center gap-1 rounded-lg py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground ${PRESSABLE_MOTION} ${FOCUS_RING}`}
     >
       <TileIcon type={tileType} />
-      <span className="text-[9px] font-medium leading-tight text-muted-foreground group-hover:text-foreground">
+      <span
+        className={`text-[9px] font-medium leading-tight text-muted-foreground group-hover:text-foreground ${HOVER_MOTION}`}
+      >
         {label}
       </span>
     </button>
+    </Tooltip>
   );
 }
 
@@ -199,6 +206,7 @@ export function ActionButton({
   disabled,
   title,
   iconNode,
+  suppressTooltip,
 }: {
   icon: LucideIcon | ComponentType<{ className?: string }>;
   label: string;
@@ -213,8 +221,11 @@ export function ActionButton({
   title?: string;
   /** Vẽ icon riêng thay cho `icon` (VD nút Màu note xem trước màu hiện tại). */
   iconNode?: ReactNode;
+  /** Không hiện tooltip (nút đang mở popup của chính nó). */
+  suppressTooltip?: boolean;
 }) {
   return (
+    <Tooltip label={title ?? label} side="right" disabled={suppressTooltip}>
     <button
       type="button"
       onClick={disabled ? undefined : onClick}
@@ -226,9 +237,8 @@ export function ActionButton({
       // editor thì vô hại. DismissButton cố ý KHÔNG preventDefault — thoát edit
       // là ý định rõ ràng.
       onMouseDown={(e) => e.preventDefault()}
-      title={title ?? label}
       aria-label={label}
-      className={`grid h-10 w-10 place-items-center rounded-lg transition-colors duration-fast ${
+      className={`grid h-10 w-10 place-items-center rounded-lg ${PRESSABLE_MOTION} ${FOCUS_RING} ${
         disabled
           ? 'text-muted-foreground opacity-40'
           : `hover:bg-muted hover:text-foreground ${active ? 'bg-muted text-foreground' : 'text-muted-foreground'}`
@@ -236,6 +246,7 @@ export function ActionButton({
     >
       {iconNode ?? <Icon className="h-5 w-5" />}
     </button>
+    </Tooltip>
   );
 }
 
@@ -259,6 +270,9 @@ export function PopupActionButton({
   renderPopup: (close: () => void) => ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  // Giữ popup tới khi tan xong. Popup đọc trạng thái qua context (ToolbarPopup +
+  // useToolbarPopupClose), nên từng popup không phải tự xử lý.
+  const presence = usePresence(open);
   return (
     <div className="relative">
       <ActionButton
@@ -267,8 +281,13 @@ export function PopupActionButton({
         label={label}
         active={open || active}
         onClick={() => setOpen((o) => !o)}
+        suppressTooltip={open}
       />
-      {open ? renderPopup(() => setOpen(false)) : null}
+      {presence.mounted ? (
+        <ToolbarPopupPresence.Provider value={presence}>
+          {renderPopup(() => setOpen(false))}
+        </ToolbarPopupPresence.Provider>
+      ) : null}
     </div>
   );
 }
@@ -278,15 +297,16 @@ export function PopupActionButton({
 // = thoát edit về element).
 function DismissButton({ onClick, label }: { onClick: () => void; label: string }) {
   return (
+    <Tooltip label={label} side="right">
     <button
       type="button"
       onClick={onClick}
-      title={label}
       aria-label={label}
-      className="mb-1 flex h-8 w-10 items-center justify-center rounded-lg border-b border-border text-muted-foreground transition-colors duration-fast hover:bg-muted hover:text-foreground"
+      className={`mb-1 flex h-8 w-10 items-center justify-center rounded-lg border-b border-border text-muted-foreground hover:bg-muted hover:text-foreground ${PRESSABLE_MOTION} ${FOCUS_RING}`}
     >
       <ArrowLeft className="h-4 w-4" />
     </button>
+    </Tooltip>
   );
 }
 
@@ -414,18 +434,20 @@ export function Toolbar({ boardId }: { boardId: string }) {
         </div>
         {/* Trash sticky footer, chung 3 mode */}
         <div className="border-t border-border p-2">
-          <button
-            type="button"
-            data-trash-drop="true"
-            title={t('CANVAS.TOOLBAR.TRASH')}
-            aria-label={t('CANVAS.TOOLBAR.TRASH_LABEL')}
-            disabled={!hasSelection}
-            onClick={onTrash}
-            className="group flex w-12 flex-col items-center gap-1 rounded-lg py-1.5 text-muted-foreground transition-all duration-fast hover:bg-destructive/10 hover:text-destructive disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
-          >
-            <Trash2 className="h-5 w-5" />
-            <span className="text-[9px] font-medium leading-tight">{t('CANVAS.TOOLBAR.TRASH_SHORT')}</span>
-          </button>
+          {/* aria-disabled thay `disabled`: nút disabled không nhận chuột → tooltip không hiện. */}
+          <Tooltip label={t('CANVAS.TOOLBAR.TRASH')} side="right">
+            <button
+              type="button"
+              data-trash-drop="true"
+              aria-label={t('CANVAS.TOOLBAR.TRASH_LABEL')}
+              aria-disabled={!hasSelection || undefined}
+              onClick={hasSelection ? onTrash : undefined}
+              className={`group flex w-12 flex-col items-center gap-1 rounded-lg py-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive aria-disabled:opacity-40 aria-disabled:hover:bg-transparent aria-disabled:hover:text-muted-foreground ${PRESSABLE_MOTION} ${FOCUS_RING}`}
+            >
+              <Trash2 className="h-5 w-5" />
+              <span className="text-[9px] font-medium leading-tight">{t('CANVAS.TOOLBAR.TRASH_SHORT')}</span>
+            </button>
+          </Tooltip>
         </div>
       </div>
     </div>

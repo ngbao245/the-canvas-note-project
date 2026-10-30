@@ -20,6 +20,8 @@ import { useHeaderStyle } from '@/stores/canvas-settings-store';
 import { useInterfaceScale } from '@/stores/interface-store';
 import { OverlayScroll } from '@/components/shared';
 import { ISLANDS_EDGE, islandsTopInset } from '../lib/header-islands';
+import { HOVER_MOTION, usePresence } from '@/lib/motion';
+import { FOCUS_RING } from '@/lib/focus-ring';
 
 function useHoveredUnsortDropTarget(): boolean {
   return useInteractionStore((s) => s.hoveredUnsortDropTarget);
@@ -134,6 +136,8 @@ export function UnsortPanel({ boardId }: { boardId: string }) {
   }, []);
 
   // Ctrl+A chọn hết item Unsort khi panel là vùng đang làm việc (lớp panel, trên canvas).
+  // Panel đóng (trượt ra ngoài, inert) → gỡ lớp phím.
+  const panelOpen = useUnsortStore((s) => s.panelOpen);
   useShortcutLayer(
     'panel',
     bindShortcuts(CANVAS_SHORTCUT_DEFS, {
@@ -146,6 +150,7 @@ export function UnsortPanel({ boardId }: { boardId: string }) {
         },
       },
     }),
+    { enabled: panelOpen },
   );
 
   const handlePanelPointerDown = useCallback(
@@ -288,19 +293,24 @@ export function UnsortToggle({ boardId }: { boardId: string }) {
     return n;
   }, [objectsMap, boardId]);
 
-  if (open) return null;
+  // Mờ chéo với panel (motion `fade`): panel mở thì nút tan dần thay vì biến mất.
+  const presence = usePresence(!open);
+  if (!presence.mounted) return null;
 
   return (
     <button
       type="button"
       data-canvas-overlay="true"
-      data-unsort-drop-target="true"
+      // Đang tan thì không còn là chỗ thả (tránh thả vào nút sắp biến mất).
+      data-unsort-drop-target={open ? undefined : 'true'}
+      data-motion="fade"
+      {...presence.props}
       onClick={toggle}
       aria-label={t('CANVAS.UNSORT.TOGGLE', { count })}
       // Header đảo nổi: nút thành 1 đảo nhỏ dưới đảo phải, cùng ngôn ngữ với các đảo trên
       // (bo xl, viền, bóng, nền mờ như Island), không dính góc màn.
       style={islands ? { top: islandsTopInset(uiScale), right: ISLANDS_EDGE } : undefined}
-      className={`absolute z-toolbar flex items-center gap-2 bg-card/90 px-3 py-2 text-xs backdrop-blur transition-colors duration-fast ${
+      className={`absolute z-toolbar flex items-center gap-2 bg-card/90 px-3 py-2 text-xs backdrop-blur ${HOVER_MOTION} ${FOCUS_RING} ${
         islands ? 'rounded-xl border shadow-lg' : 'right-0 top-0 rounded-bl-lg border-b border-l'
       } ${
         hoveredDropTarget

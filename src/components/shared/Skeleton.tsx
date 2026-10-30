@@ -10,9 +10,11 @@ export const Skeleton = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
+      // Vệt sáng là vòng lặp trang trí: giảm chuyển động thì đứng yên (motion.css).
+      data-motion-loop
       className={cn(
         'relative overflow-hidden rounded-md bg-muted',
-        'before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_1.6s_infinite]',
+        'before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer',
         'before:bg-gradient-to-r before:from-transparent before:via-white/5 before:to-transparent',
         className,
       )}

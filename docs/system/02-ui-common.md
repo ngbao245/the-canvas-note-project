@@ -38,11 +38,61 @@ Không gồm: khởi động app, thứ tự nạp CSS (`01`), modal Cài đặt
 
 ### Chuyển động
 
-- Token: `--duration-fast` 60ms, `--duration-normal` 200ms, `--easing-standard` `cubic-bezier(0.4, 0, 0.2, 1)`. Tailwind: `duration-fast`, `duration-normal`, `ease-standard`.
-- `fast` cho thao tác trực tiếp trên canvas; `normal` cho hover / mở đóng ở phần khung (header, modal, menu, panel).
-- `el.animate()` không nhận `var()`: đọc lúc chạy bằng `readCssToken()` (`lib/css-token.ts`, đang dùng ở `useObjectDrag`).
-- Keyframes có tên: `shimmer` (Skeleton, `index.css`), `presence-pulse` (nhãn "đang sửa ở tab khác", `tailwind.config.ts`).
-- Đối chiếu: code ngoài `src/experiments/` không còn `duration-<số>` cứng.
+Spec: `.kiro/specs/motion-system/`. Luật chung: không spring, không nảy, không vượt đích; scale nhỏ nhất 0.96, không phóng quá 1; thoát nhanh hơn vào; không hiệu ứng nào chặn thao tác.
+
+Ba nhóm, chung token, khác cơ chế:
+
+| Nhóm | Cơ chế | Chỗ |
+|---|---|---|
+| Vào / ra (popup, menu, modal, tooltip, toast) | Keyframes theo `data-motion` + `data-state`, hook `usePresence` giữ mount tới khi thoát xong | `src/styles/motion.css`, `src/lib/motion/usePresence.ts` |
+| Panel cạnh | Transition trên phần tử luôn mount (`data-motion="panel"`), đóng thì `inert` | `motion.css`, `CanvasApp` |
+| Tương tác (hover, nhấn) | Hằng class `PRESSABLE_MOTION` (nút icon / tile), `HOVER_MOTION` (nút chữ), `ROW_MOTION` (dòng menu) | `src/lib/motion/interaction.ts` |
+| Liên tục (kéo, pan, zoom) | Vòng rAF riêng; đọc token bằng `readCssToken`, kiểm `prefersReducedMotion()` | `camera-engine`, `useObjectDrag`, `useEdgePan` |
+
+Token (`:root` trong `index.css`, Tailwind map `duration-*`, `ease-*`):
+
+| Token | Giá trị | Dùng cho |
+|---|---|---|
+| `--duration-fast` | 60ms | Nhấn nút, dòng menu, dropdown / menu chuột phải / sheet thoát, phản hồi trực tiếp object |
+| `--duration-quick` | 120ms | Hover nút (cả toolbar canvas), popup / modal thoát, tooltip, menu chuột phải vào, card trượt vào chỗ khớp |
+| `--duration-normal` | 160ms | Popup / dropdown / modal / toast vào, panel đóng, đổi màu chrome |
+| `--duration-slow` | 220ms | Panel mở, sheet vào |
+| `--easing-standard` | `cubic-bezier(0.4, 0, 0.2, 1)` | Đổi trạng thái tại chỗ |
+| `--easing-enter` | `cubic-bezier(0.16, 1, 0.3, 1)` | Xuất hiện |
+| `--easing-exit` | `cubic-bezier(0.4, 0, 1, 1)` | Biến mất |
+| `--motion-shift` / `--motion-shift-lg` | 4px / 8px | Quãng dịch popup / modal, toast (tooltip dùng nửa `shift`) |
+| `--motion-scale-pop` / `--motion-scale-modal` | 0.98 / 0.96 | Scale khởi đầu popup, menu / modal, sheet |
+| `--backdrop` | đen 40% | Nền mờ sau modal hộp |
+
+Loại `data-motion` (thêm loại mới: 1 khối trong `motion.css` + 1 dòng ở đây, không viết keyframes trong component):
+
+| Loại | Áp cho | Vào | Ra |
+|---|---|---|---|
+| `popover` | Popup toolbar (`ToolbarPopup`, cấp trạng thái qua `PopupActionButton`) | mờ + scale 0.98 + dịch 4px từ phía nút (`data-side`), gốc ở đầu mũi tên. `normal` + `enter` | mờ, `quick` + `exit` |
+| `dropdown` | View, Export, Help, Account, breadcrumb "..." | như popover, dịch từ trên xuống, gốc góc trên phải (`data-align="start"` → trái). `normal` | mờ, `fast` |
+| `context-menu` | Menu chuột phải canvas | mờ + scale 0.98, `quick` | mờ, `fast` |
+| `modal-backdrop` + `modal` | ConfirmDialog, ShortcutsModal | nền mờ dần; hộp mờ + scale 0.96 + dịch 8px lên, chạy song song | cả hai mờ, `quick`, hộp thu về 0.96 |
+| `sheet` | SettingsModal (toàn màn) | mờ + scale 0.96 + dịch 4px lên, `slow` | mờ + thu về 0.96, `fast` |
+| `tooltip` | `Tooltip` | mờ + dịch 2px, `quick` | gỡ ngay |
+| `toast` | CanvasNotice, UpdateBanner, OfflineBadge | mờ + dịch 8px từ cạnh gắn (`data-edge`) | mờ |
+| `fade` | Nút mở Khay chờ | mờ chéo, `quick` | mờ chéo |
+| `panel` | Khay chờ | trượt vào `slow` + `enter` | trượt ra `normal` + `exit`, quay đầu được giữa chừng |
+
+Vòng đời vào / ra (`usePresence`):
+- Mở là render ngay. Đóng: phần tử giữ lại với `data-state="closed"`, gỡ khi `animationend` của chính nó (hẹn giờ dự phòng 400ms khi tab ẩn).
+- Lớp phím (Esc, chặn phím), click ngoài, trả focus theo `open`, không theo `mounted`: gỡ ngay khi bắt đầu đóng.
+- Phần tử đang tan: `pointer-events: none` + `aria-hidden` → click đi xuống phần bên dưới.
+- Đang tan mà mở lại → về `open`, keyframes vào chạy lại.
+- Cha cần giữ nội dung lần cuối lúc tan (ConfirmDialog, CanvasNotice) thì tự nhớ bằng ref.
+- Dùng thuộc tính `translate` / `scale` riêng, không `transform`, để không đè transform sẵn có (căn giữa `-translate-x-1/2`, scale giao diện của `ToolbarPopup`).
+
+Tooltip (`components/shared/Tooltip.tsx`): chỉ ở nút toolbar canvas + header; chỗ khác vẫn `title=`. Trễ 500ms, "ấm" 300ms (rê sang nút kế hiện ngay), focus bàn phím hiện ngay, ẩn khi rời / nhấn / Esc (Esc vẫn rơi xuống lớp dưới), bỏ qua chạm. Nút dùng Tooltip bỏ `title`, giữ `aria-label`; nút tắt dùng `aria-disabled` (nút `disabled` không nhận chuột).
+
+Giảm chuyển động: 1 khối `@media (prefers-reduced-motion: reduce)` ở `motion.css` đặt biên độ về 0 / scale về 1 (chỉ còn mờ dần), panel hiện thẳng, phần tử `data-motion-loop` (save-breathe, presence-pulse, shimmer) đứng yên; spinner vẫn quay. JS: `prefersReducedMotion()` (thả object nhảy thẳng vào chỗ khớp, Fit / Về 100% nhảy thẳng tới đích). Sau này thêm lựa chọn trong Cài đặt: lặp khối đó cho `:root[data-motion-pref='reduce']`.
+
+- `el.animate()` không nhận `var()`: đọc lúc chạy bằng `readCssToken()` (`lib/css-token.ts`).
+- Keyframes có tên ở `tailwind.config.ts`: `shimmer`, `presence-pulse`, `save-breathe(-strong)`. Nhịp riêng của từng chỉ báo, không phải token chung.
+- Kiểm tự động: ESLint chặn `duration-<số>`, `duration-[...]`, `cubic-bezier(` trong `src/**/*.ts(x)` (trừ `experiments`). CSS chưa có lint: `cubic-bezier` chỉ được nằm ở `index.css`.
 
 ### Lớp z
 
@@ -101,7 +151,9 @@ Chờ dữ liệu: skeleton theo đúng hình nội dung thật. Spinner chỉ c
 | `INV-UI-04` | Thêm theme = thêm khối `[data-theme]` + mở type `Theme`; không thêm tên token mới chỉ cho 1 theme | Mọi theme cùng bộ tên token, Tailwind không phải sửa | Review |
 | `INV-UI-05` | Button / Card / Badge cần đổi theo phong cách: import từ `@/components/style`, không gọi drawably hay `components/ui` thẳng. Không sửa `components/ui/` | Đổi phong cách 1 chỗ; giữ shadcn gốc để cập nhật | Review |
 | `INV-UI-06` | Chỗ theo kích thước giao diện đọc tỉ lệ qua `useInterfaceScale` / `getInterfaceScale`, không tự giữ hằng số | 3 mức đổi ở 1 chỗ, engine + UI khớp nhau | Review |
-| `INV-UI-07` | Thời gian / easing chỉ qua token; `el.animate` đọc bằng `readCssToken`. Cần mức mới thì thêm token ở `index.css` + `tailwind.config.ts` | Đổi nhịp chuyển động ở 1 chỗ | Review |
+| `INV-UI-07` | Thời gian / easing chỉ qua token; `el.animate` đọc bằng `readCssToken`. Cần mức mới thì thêm token ở `index.css` + `tailwind.config.ts`. Vào / ra chọn loại `data-motion` có sẵn, không viết keyframes trong component | Đổi nhịp chuyển động ở 1 chỗ | ESLint (`duration-<số>`, `cubic-bezier(`) + Review |
+| `INV-UI-14` | Overlay có hiệu ứng thoát dùng `usePresence`; lớp phím, click ngoài, trả focus theo `open` (gỡ ngay khi bắt đầu đóng); phần tử đang tan không nhận click | Esc / click không bị phần tử đang biến mất nuốt | Review |
+| `INV-UI-15` | Giảm chuyển động 1 nguồn: CSS ở khối `prefers-reduced-motion` của `motion.css`, JS qua `prefersReducedMotion()`; vòng lặp trang trí gắn `data-motion-loop` | Không rải `matchMedia` / `motion-safe:` theo từng component | Review |
 | `INV-UI-08` | z-index trên màn hình chỉ qua token `--z-*`; không so / trộn với `geometry.zIndex`; preview kéo portal dùng `drag-layer` | Số cứng chồng lớp lộn; preview bị toolbar che | Review |
 | `INV-UI-09` | Viền focus bàn phím dùng `FOCUS_RING` | Đổi kiểu focus ở 1 chỗ | Review |
 | `INV-UI-10` | Con trỏ tạm chỉ qua `setCursorOverride`, tắt ở cleanup của chính hook bật; cấm `style.cursor`, class trên `body`, thêm `!important` khác | 1 cơ chế đè, không kẹt con trỏ sau khi kéo | Review |
@@ -112,8 +164,11 @@ Chờ dữ liệu: skeleton theo đúng hình nội dung thật. Spinner chỉ c
 
 | File | Vai trò |
 |---|---|
-| `src/styles/index.css` | Token màu / hình / chuyển động / z, map drawably, rule con trỏ tầng 1 + 3, `shimmer`, placeholder Tiptap |
-| `tailwind.config.ts` | Map token sang class, `darkMode`, `presence-pulse` |
+| `src/styles/index.css` | Token màu / hình / chuyển động / z, map drawably, rule con trỏ tầng 1 + 3, placeholder Tiptap |
+| `src/styles/motion.css` | Preset vào / ra theo `data-motion`, panel, khối giảm chuyển động |
+| `src/lib/motion/` | `usePresence`, `prefersReducedMotion`, hằng class tương tác |
+| `src/components/shared/Tooltip.tsx` | Tooltip có độ trễ (toolbar, header) |
+| `tailwind.config.ts` | Map token sang class, `darkMode`, keyframes `shimmer` / `presence-pulse` / `save-breathe` |
 | `src/stores/theme-store.ts` | Lựa chọn theme, giải `system`, `applyThemeAttr` |
 | `src/stores/ui-style-store.ts` | Phong cách, `applyUiStyleAttr` |
 | `src/stores/interface-store.ts` | Kích thước giao diện |

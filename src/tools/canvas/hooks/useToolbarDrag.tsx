@@ -15,6 +15,8 @@ import { setCursorOverride } from '@/lib/cursor-override';
  * Cơ chế:
  *   - pointerdown → ghi start point + grab offset (center preview).
  *   - pointermove vượt DRAG_THRESHOLD → state active, render FloatingObjectPreview.
+ *     Bản nhỏ (COMPACT_RATIO cỡ thật) còn chạm khung toolbar → giữ nhỏ; ra hẳn → bung
+ *     về cỡ thật quanh con trỏ (kéo ngược vào thì co lại).
  *   - pointerup:
  *       + Chưa vượt threshold → onClick (tạo ở tâm viewport).
  *       + Drop canvas → onDrop(clientX, clientY).
@@ -27,6 +29,9 @@ import { setCursorOverride } from '@/lib/cursor-override';
  */
 
 const DRAG_THRESHOLD = 5;
+/** Tỉ lệ preview lúc còn trong toolbar so với cỡ thật (đã nhân zoom): nhỏ hơn
+ *  20%. Mọi loại co cùng 1 tỉ lệ → giữ hình dáng; ra khỏi toolbar bung về 1. */
+const COMPACT_RATIO = 0.8;
 
 interface PreviewState {
   clientX: number;
@@ -38,6 +43,9 @@ interface PreviewState {
   /** Cursor ở vùng khác canvas trống → dim preview để feedback "chỗ này khác
    *  drop-canvas-thường". */
   dim: boolean;
+  /** Bản nhỏ còn chạm khung toolbar → scale nhỏ (zoom × COMPACT_RATIO); ra hẳn
+   *  = null, bung cỡ thật. */
+  compactScale: number | null;
 }
 
 export function useToolbarDrag(opts: {
@@ -73,6 +81,18 @@ export function useToolbarDrag(opts: {
       const zoom = getCameraEngine().getCamera().zoom;
       const grabOffsetX = (opts.defaultGeometry.width * zoom) / 2;
       const grabOffsetY = (opts.defaultGeometry.height * zoom) / 2;
+      // Khung toolbar chụp lúc nhấn (toolbar không đổi chỗ trong lúc kéo).
+      const toolbarRect = e.currentTarget.closest('[data-toolbar-root]')?.getBoundingClientRect() ?? null;
+      const compactScale = zoom * COMPACT_RATIO;
+      const compactHalfW = (opts.defaultGeometry.width * compactScale) / 2;
+      const compactHalfH = (opts.defaultGeometry.height * compactScale) / 2;
+      // Cùng 1 phép thử cho cả chiều ra lẫn chiều vào → không nháy ở mép.
+      const touchesToolbar = (x: number, y: number) =>
+        toolbarRect !== null &&
+        x - compactHalfW < toolbarRect.right &&
+        x + compactHalfW > toolbarRect.left &&
+        y - compactHalfH < toolbarRect.bottom &&
+        y + compactHalfH > toolbarRect.top;
 
       const onMove = (ev: PointerEvent) => {
         const s = startRef.current;
@@ -87,14 +107,18 @@ export function useToolbarDrag(opts: {
         // không block (drop silent nhưng không phải "sai"). isSecondaryZone dùng
         // để dim (rộng hơn: bao gồm trash/unsort/board-tile — chỗ "khác canvas
         // trống").
+        // Còn trong toolbar = đang nhấc lên, chưa phải thả sai chỗ → không chặn
+        // con trỏ, không làm mờ.
+        const compact = touchesToolbar(ev.clientX, ev.clientY);
         const zone = hitZone(ev.clientX, ev.clientY);
-        setCursorOverride(isInvalidZone(zone) ? 'not-allowed' : null);
+        setCursorOverride(!compact && isInvalidZone(zone) ? 'not-allowed' : null);
         setState({
           clientX: ev.clientX,
           clientY: ev.clientY,
           grabOffsetX,
           grabOffsetY,
-          dim: isSecondaryZone(ev.clientX, ev.clientY),
+          dim: !compact && isSecondaryZone(ev.clientX, ev.clientY),
+          compactScale: compact ? compactScale : null,
         });
       };
 
@@ -157,6 +181,7 @@ export function useToolbarDrag(opts: {
             grabOffsetX={state.grabOffsetX}
             grabOffsetY={state.grabOffsetY}
             dim={state.dim}
+            compactScale={state.compactScale}
           />
         );
       })()

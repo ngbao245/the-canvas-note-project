@@ -3,6 +3,9 @@ import { HardDrive, Settings, User } from 'lucide-react';
 import { useSettingsModalStore } from '@/stores/settings-modal-store';
 import { useI18n } from '@/lib/i18n';
 import { useEscapeLayer } from '@/lib/shortcuts';
+import { FOCUS_RING } from '@/lib/focus-ring';
+import { PRESSABLE_MOTION, usePresence } from '@/lib/motion';
+import { Tooltip } from '@/components/shared';
 
 /**
  * AccountMenu — nút avatar trên header + popup tài khoản (Milanote AccountPopup).
@@ -22,34 +25,39 @@ export function AccountMenu() {
 
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => {
+    // pointerdown + capture: canvas preventDefault pointerdown nên không có mousedown.
+    const onDown = (e: PointerEvent) => {
       if (!wrapperRef.current?.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
+    window.addEventListener('pointerdown', onDown, true);
+    return () => window.removeEventListener('pointerdown', onDown, true);
   }, [open]);
 
   // Lớp overlay: Esc chỉ đóng popup, không lọt xuống canvas.
   useEscapeLayer(() => setOpen(false), { enabled: open });
+  const presence = usePresence(open);
 
   return (
     <div ref={wrapperRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        title={accountLabel}
-        aria-label={accountLabel}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        className="grid h-8 w-8 place-items-center rounded-full bg-muted text-muted-foreground ring-1 ring-border transition-colors duration-normal hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <User className="h-6 w-6" strokeWidth={1.5} />
-      </button>
+      <Tooltip label={accountLabel} side="bottom" disabled={open}>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-label={accountLabel}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          className={`grid h-8 w-8 place-items-center rounded-full bg-muted text-muted-foreground ring-1 ring-border hover:text-foreground ${PRESSABLE_MOTION} ${FOCUS_RING}`}
+        >
+          <User className="h-6 w-6" strokeWidth={1.5} />
+        </button>
+      </Tooltip>
 
-      {open ? (
+      {presence.mounted ? (
         <div
           role="dialog"
           aria-label={accountLabel}
+          data-motion="dropdown"
+          {...presence.props}
           className="absolute right-0 top-full z-tooltip mt-2 w-72 rounded-lg border border-border bg-popover text-popover-foreground shadow-elevation-2"
         >
           {/* Mũi tên chỉ lên avatar: tâm nút 32px nằm cách mép phải 16px. */}

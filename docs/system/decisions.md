@@ -1,10 +1,19 @@
 ﻿# Sổ quyết định
 
-Cập nhật: 2026-10-15
+Cập nhật: 2026-10-21
 
 Ghi quyết định bạn đã chốt: ngày, quyết gì, vì sao, thay quyết định nào. Hành vi hiện tại xem các phần `01`–`30`; file này chỉ giữ lý do. Mới nhất ở trên. Quyết định bị thay thì giữ dòng cũ, ghi "THAY bởi ...".
 
 Câu đã ghi ở đây là "ĐÃ CHỐT", không hỏi lại.
+
+## 2026-10-21
+
+| Quyết | Vì sao | Thay / ghi ở |
+|---|---|---|
+| Hệ chuyển động không thêm thư viện: CSS keyframes theo `data-motion` + hook `usePresence`, hằng class tương tác, rAF riêng cho canvas | 90% chuyển động là CSS; canvas cần rAF tự quản; tránh nặng bundle + đổi bảng Stack | `02` Chuyển động, spec `motion-system` |
+| Tooltip có độ trễ chỉ ở nút toolbar canvas + header; chỗ khác giữ `title=` | Nút icon không chữ cần tooltip nhất, phạm vi gọn | `02` Chuyển động |
+| Hover mọi nút (cả toolbar canvas) dùng `--duration-quick` 120ms; `fast` chỉ cho nhấn nút, dòng menu, thao tác trực tiếp object | 60ms trông phẳng, 200ms thấy lì | THAY luật "`fast` cho toolbar canvas" trong `coding-style.md` |
+| Chuyển cảnh vào / ra board con và ramp zoom theo thời gian: để spec sau | Thuộc nhóm liên tục, đụng camera, rủi ro cao | spec `motion-system` Ngoài phạm vi |
 
 ## 2026-10-16
 
@@ -18,7 +27,7 @@ Câu đã ghi ở đây là "ĐÃ CHỐT", không hỏi lại.
 | Lăn chuột ngừng `WHEEL_SETTLE_MS` thì trượt về; touchpad lố thì debounce theo sự kiện (`TOUCHPAD_OVERSCROLL_DEBOUNCE_MS`) nhưng trần `TOUCHPAD_OVERSCROLL_MAX_HOLD_MS` tính từ lúc bắt đầu lố; trần an toàn tài liệu ±100.000 canvas | Quán tính touchpad gửi sự kiện 1-2s sau khi nhấc tay, debounce thuần giữ màn lố mãi | `10` Giới hạn pan |
 | Board trống giữ vùng 1000 × 800 quanh gốc | Milanote chưa đo đủ case này; cỡ theo màn dễ sai theo zoom lúc vào | spec `canvas-pan-bounce` |
 | Tài liệu × zoom nhỏ hơn màn: tài liệu trôi tự do trong màn, có kéo lố | Đúng ý "pan tự do", không quay lại lỗi khoá trục | spec `canvas-pan-bounce` |
-| Kéo lố trần min(15% màn, 120px), trượt về giảm tốc rồi dừng, không nảy qua lại | Nhẹ, mượt, giữ đúng `motion-rules.md` (cấm spring) | spec `canvas-pan-bounce` |
+| Kéo lố trần min(15% màn, 120px), trượt về giảm tốc rồi dừng, không nảy qua lại | Nhẹ, mượt, giữ đúng luật chuyển động (`02-ui-common.md`, cấm spring) | spec `canvas-pan-bounce` |
 
 ## 2026-10-15
 

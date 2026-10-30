@@ -1,6 +1,7 @@
 import { RefreshCw, X } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { FOCUS_RING } from '@/lib/focus-ring';
+import { HOVER_MOTION, usePresence } from '@/lib/motion';
 import { applyUpdate, dismissUpdate, usePwaStore } from '@/lib/pwa';
 
 /**
@@ -11,18 +12,23 @@ import { applyUpdate, dismissUpdate, usePwaStore } from '@/lib/pwa';
 export function UpdateBanner() {
   const { t } = useI18n();
   const visible = usePwaStore((s) => s.needRefresh);
-  if (!visible) return null;
+  // Hiện / ẩn bằng motion `toast` từ mép dưới.
+  const presence = usePresence(visible);
+  if (!presence.mounted) return null;
 
   return (
     <div
       role="status"
+      data-motion="toast"
+      data-edge="bottom"
+      {...presence.props}
       className="fixed bottom-4 left-1/2 z-header flex -translate-x-1/2 items-center gap-3 rounded-lg border border-border bg-popover py-2 pl-4 pr-2 text-sm text-popover-foreground shadow-lg"
     >
       <span>{t('COMMON.PWA.UPDATE_READY')}</span>
       <button
         type="button"
         onClick={applyUpdate}
-        className={`inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground transition-colors duration-normal ease-standard hover:bg-primary-hover ${FOCUS_RING}`}
+        className={`inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground hover:bg-primary-hover ${HOVER_MOTION} ${FOCUS_RING}`}
       >
         <RefreshCw className="h-3.5 w-3.5" aria-hidden />
         {t('COMMON.PWA.RELOAD')}
@@ -32,7 +38,7 @@ export function UpdateBanner() {
         onClick={dismissUpdate}
         aria-label={t('COMMON.PWA.DISMISS')}
         title={t('COMMON.PWA.DISMISS')}
-        className={`rounded-md p-1.5 text-muted-foreground transition-colors duration-normal ease-standard hover:bg-muted hover:text-foreground ${FOCUS_RING}`}
+        className={`rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground ${HOVER_MOTION} ${FOCUS_RING}`}
       >
         <X className="h-4 w-4" aria-hidden />
       </button>
